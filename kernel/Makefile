@@ -1,3 +1,4 @@
+CC :=
 ARCH_OBJ :=
 ARCH_CFLAGS :=
 ARCH_LINKER :=
@@ -9,20 +10,22 @@ ifdef TARGET_ARCH
     include arch/$(TARGET_ARCH)/make.config
 endif
 
-include core/make.config
+#include core/make.config
 
 .PHONY: all clean
 
 %.o: %.c
-	i686-elf-gcc -o $@ $< $(CFLAGS)
+	mkdir -p bin/$(dir $@)
+	$(CC) -o $@ $< $(CFLAGS)
 
 %.o: %.S
-	i686-elf-gcc -o $@ $< $(CFLAGS)
+	mkdir -p bin/$(dir $@)
+	$(CC) -o $@ $< $(CFLAGS)
 
-k4.kern: $(ARCH_OBJ) $(BUILD_OBJ)
-	i686-elf-gcc -T $(ARCH_LINKER) $(LFLAGS) $(ARCH_OBJ) $(BUILD_OBJ) -o $@
+k4-$(TARGET_ARCH).kern: $(ARCH_OBJ) $(BUILD_OBJ)
+	$(CC) -T $(ARCH_LINKER) $(LFLAGS) $(ARCH_OBJ) $(BUILD_OBJ) -o $@
 
 all: k4.kern
 
 clean:
-	rm -f $(BUILD_OBJ) $(ARCH_OBJ) k4.kern
+	rm -f $(BUILD_OBJ) $(ARCH_OBJ) k4-$(TARGET_ARCH).kern

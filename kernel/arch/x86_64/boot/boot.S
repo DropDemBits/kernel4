@@ -84,6 +84,10 @@ multiboot2_header_end:
 
 .section .bss
 	.align 4096
+bootstrap_pml4:
+	.skip 4096
+bootstrap_pdpt:
+	.skip 4096
 bootstrap_pd:
 	.skip 4096
 bootstrap_pt0:
@@ -143,6 +147,7 @@ idtr:
 
 
 .section .text
+.code32
 .global _start, Halt
 .type _start, @function
 
@@ -209,7 +214,7 @@ done:
 
 	leal cont, %edx
 
-	jmp *%edx
+	jmp %edx
 
 cont:
 	# Load GDT
