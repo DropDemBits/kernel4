@@ -1,0 +1,5 @@
+*.o
+*.a
+*/k4.kern
+isodir/
+bochsrc
