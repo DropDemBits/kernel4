@@ -11,6 +11,8 @@ endif
 
 include core/make.config
 
+.PHONY: all clean
+
 %.o: %.c
 	i686-elf-gcc -o $@ $< $(CFLAGS)
 
@@ -23,4 +25,4 @@ k4.kern: $(ARCH_OBJ) $(BUILD_OBJ)
 all: k4.kern
 
 clean:
-	rm $(BUILD_OBJ) $(ARCH_OBJ) k4.kern
+	rm -f $(BUILD_OBJ) $(ARCH_OBJ) k4.kern
