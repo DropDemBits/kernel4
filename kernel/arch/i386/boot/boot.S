@@ -194,7 +194,7 @@ done:
 	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + 4
 	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 0
 	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 4
-	movl $(0xC0000083), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xe00)
+	movl $(0xFD000083), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xe00)
 
 	movl %cr4, %edx
 	orl $0x00000090, %edx # PGE, PSE

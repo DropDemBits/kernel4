@@ -1,5 +1,6 @@
 PROJECTS := libk kernel
 HOSTS := i386 x86_64
+COMPILERS := i686-elf-gcc x86_64-elf-gcc
 
 .PHONY: all clean geniso
 

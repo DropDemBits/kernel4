@@ -7,25 +7,33 @@ CFLAGS := -c -ffreestanding -nostdlib -Wall
 LFLAGS := -ffreestanding -nostdlib -lgcc
 
 ifdef TARGET_ARCH
-    include arch/$(TARGET_ARCH)/make.config
+include arch/$(TARGET_ARCH)/make.config
 endif
 
-#include core/make.config
+include core/make.config
+
+BIN_PREFIX := bin/$(TARGET_ARCH)/
+OBJS := $(addprefix $(BIN_PREFIX), $(ARCH_OBJ) $(BUILD_OBJ))
+
 
 .PHONY: all clean
 
-%.o: %.c
-	mkdir -p bin/$(dir $@)
+bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.S
+	mkdir -p $(dir $@)
 	$(CC) -o $@ $< $(CFLAGS)
 
-%.o: %.S
-	mkdir -p bin/$(dir $@)
+bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.c
+	mkdir -p $(dir $@)
 	$(CC) -o $@ $< $(CFLAGS)
 
-k4-$(TARGET_ARCH).kern: $(ARCH_OBJ) $(BUILD_OBJ)
-	$(CC) -T $(ARCH_LINKER) $(LFLAGS) $(ARCH_OBJ) $(BUILD_OBJ) -o $@
+bin/$(TARGET_ARCH)/%.o: %.c
+	mkdir -p $(dir $@)
+	$(CC) -o $@ $< $(CFLAGS)
+
+bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern: $(OBJS)
+	$(CC) -T $(ARCH_LINKER) $(LFLAGS) $(OBJS) -o $@
 
 all: k4.kern
 
 clean:
-	rm -f $(BUILD_OBJ) $(ARCH_OBJ) k4-$(TARGET_ARCH).kern
+	rm -rf bin/

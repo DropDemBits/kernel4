@@ -1,6 +1,6 @@
 *.o
 *.a
-*/k4*.kern
+k4*.kern
 isodir/
 bochsrc
 k4*.iso

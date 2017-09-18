@@ -4,7 +4,7 @@ AR?=
 DESTDIR?=
 PREFIX?=/usr/local
 
-OBJ=
+BUILD_OBJ=
 CFLAGS=-Wall -Wextra
 CPPFLAGS= -I$(DESTDIR)$(PREFIX)/include
 LIBK_CFLAGS=$(CFLAGS) -ffreestanding -fbuiltin
@@ -12,7 +12,7 @@ LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
 
 include ./arch/$(TARGET_ARCH)/make.config
 
-OBJ:= $(OBJ) \
+BUILD_OBJ:= $(BUILD_OBJ) \
 stdio/printf.o \
 stdio/sprintf.o \
 stdio/vprintf.o \
@@ -36,29 +36,35 @@ string/strnicmp.o \
 string/strlen.o \
 ctype/ctype.o \
 
+BIN_PREFIX := bin/$(TARGET_ARCH)/
+OBJ := $(addprefix $(BIN_PREFIX), $(BUILD_OBJ))
+
 LIBK_OBJ:=$(OBJ:.o=.libk.o)
 
-BINARIES=libk.a #libc.a
+BINARIES=$(BIN_PREFIX)libk-$(TARGET_ARCH).a #$(BIN_PREFIX)libc-$(TARGET_ARCH).a
 
-all: libk.a
-	
+all: $(BINARIES)
 
-%.o: %.c
+$(BIN_PREFIX)%.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< -std=gnu11 $(CFLAGS) $(CPPFLAGS)
-%.o: %.S
+$(BIN_PREFIX)%.o: %.S
+	mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< $(CFLAGS) $(CPPFLAGS)
 
-%.libk.o: %.c
+$(BIN_PREFIX)%.libk.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< -std=gnu11 $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)
-%.libk.o: %.S
+$(BIN_PREFIX)%.libk.o: %.S
+	mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)
 
-libc.a: $(OBJ)
+$(BIN_PREFIX)libc-$(TARGET_ARCH).a: $(OBJ)
 	$(AR) rcs $@ $(OBJ)
-libk.a: $(LIBK_OBJ)
+$(BIN_PREFIX)libk-$(TARGET_ARCH).a: $(LIBK_OBJ)
 	$(AR) rcs $@ $(LIBK_OBJ)
 clean:
-	rm -f $(OBJ) $(LIBK_OBJ) $(BINARIES) *.o */*.o */*/*.o
+	rm -rf bin/ #*.o */*.o */*/*.o
 
 install-binaries: $(BINARIES)
 	mkdir -p $(DESTDIR)$(PREFIX)/lib/
