@@ -1,9 +1,10 @@
 ENTRY(_start)
 TARGET(elf32-i386)
+KERNEL_VMA = 0xC0100000;
 
 SECTIONS {
 
-	. = 0xC0100000;
+	. = KERNEL_VMA;
 	kernel_start = .;
 
 	.text ALIGN(4K) : AT(ADDR(.text) - 0xC0000000) {

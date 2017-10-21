@@ -1,13 +1,17 @@
 CC :=
 ARCH_OBJ :=
 ARCH_CFLAGS :=
+ARCH_LFLAGS :=
 ARCH_LINKER :=
 BUILD_OBJ :=
 CFLAGS := -c -ffreestanding -nostdlib -Wall
 LFLAGS := -ffreestanding -nostdlib -lgcc
+HAS_LOADER := n
 
 ifdef TARGET_ARCH
 include arch/$(TARGET_ARCH)/make.config
+CFLAGS += $(ARCH_CFLAGS)
+LFLAGS += $(ARCH_LFLAGS)
 endif
 
 include core/make.config

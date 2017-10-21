@@ -143,7 +143,7 @@ idtr:
 
 
 .section .text
-.global _start, Halt
+.global _start, halt
 .type _start, @function
 
 .extern kernel_start, kernel_end, kmain
@@ -226,7 +226,10 @@ cont:
 flush_cs:
 
 	#jmp kmain
-Halt:
+	mov $0xFEEEEB1E, %eax
+	
+.code32
+halt:
 	cli
 	hlt
-	jmp Halt
+	jmp halt
