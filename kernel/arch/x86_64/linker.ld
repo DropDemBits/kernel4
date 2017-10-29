@@ -1,6 +1,6 @@
 ENTRY(_start)
 BOOTSTRAP_VMA = 1M;
-KERNEL_VMA = 0x0000000000200000;
+KERNEL_VMA = 0xFFFF800000000000;
 OUTPUT_FORMAT(elf32-i386)
 
 SECTIONS {
@@ -27,6 +27,10 @@ SECTIONS {
 	}
 
 	rodata_end = .;
+
+	.init ALIGN(4K) : AT(ADDR(.init) - KERNEL_VMA + 0x200000) {
+		*(.init)
+	}
 
 	.data ALIGN(4K) : AT(ADDR(.data) - KERNEL_VMA + 0x200000) {
 		*(.data)

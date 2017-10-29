@@ -1,3 +1,8 @@
+# Multiboot things
+.set MULTIBOOT1_LOADER_MAGIC, 0x2BADB002
+.set MULTIBOOT2_LOADER_MAGIC, 0x36D76289
+
+.set KERNEL_BASE, 0xFFFF800000000000 - 0x200000
 
 .section .bss
 	.align 4096
@@ -5,26 +10,25 @@
 stack_top:
 	.skip 16384 # 16KiB
 stack_bottom:
-
-mb2_ptr:
-	.quad 0
-mb1_ptr:
-	.quad 0
+.global stack_bottom
 
 .section .data
 	.align 4096
 	.global bootstrap_pml4
 bootstrap_pml4:
-	.quad bootstrap_pdpt + 0x003
+	.quad bootstrap_pdpt0 - KERNEL_BASE + 0x003
+	.skip 2048 - 8
+	.quad bootstrap_pdpt1 - KERNEL_BASE + 0x003
+	.skip 2048 - 16
+	.quad bootstrap_pml4 - KERNEL_BASE + 0x003
+bootstrap_pdpt1:
+	.quad bootstrap_pd1 - KERNEL_BASE + 0x003
 	.skip 4096 - 8
-bootstrap_pdpt:
-	.quad bootstrap_pd + 0x003
-	.skip 4096 - 8
-bootstrap_pd:
-	.quad 0x0000000000000000 + 0x083
+bootstrap_pd1:
 	.quad 0x0000000000200000 + 0x083
+	.quad 0x0000000000000000 + 0x083
 	.skip 4096 - 16
-	# GDT32
+
 gdt_begin:
 	.long 0, 0
 	# R0 Code32 Descriptor
@@ -66,6 +70,37 @@ idtr:
 	.word (idt_end - idt_begin)
 	.quad idt_begin
 
+.section .init
+	# Bootstrap page structures
+bootstrap_pdpt0:
+	.quad bootstrap_pd0 - KERNEL_BASE + 0x003
+	.skip 4096 - 8
+bootstrap_pd0:
+	.quad 0x0000000000000000 + 0x083
+	.quad 0x0000000000200000 + 0x083
+	.skip 4096 - 16
+	# Bootstrap GDT
+gdt32_begin:
+	.long 0, 0
+	# R0 Code32 Descriptor
+	.word 0xFFFF, 0x0000 # Segment Limit, Base Address (IGNORED LM)
+	.byte 0x00 # Base Address (IGNORED LM)
+	.byte 0b10011010
+	.byte 0b10101111
+	.byte 0x00
+	# R0 Data32 Descriptor
+	.word 0xFFFF, 0x0000
+	.byte 0x00
+	.byte 0b10010010
+	.byte 0b11001111
+	.byte 0x00
+gdt32_end:
+
+gdtr32:
+	.global gdtr32
+	.word (gdt_end - gdt_begin)
+	.quad gdt32_begin - KERNEL_BASE
+
 .section .text
 .global lm_entry, halt
 .type lm_entry, @function
@@ -73,6 +108,14 @@ idtr:
 .extern kmain, stack_bottom
 
 lm_entry:
+	# Get rid of bootstap paging structures
+	movabsq $bootstrap_pml4, %rdx
+	movq $0x0, (%rdx)
+
+	# Reload CR3
+	movq %cr3, %rdx
+	movq %rdx, %cr3
+
 	# Load IDT
 	movabsq $idtr, %rdx
 	lidt (%rdx)
@@ -81,6 +124,7 @@ lm_entry:
 	movabsq $gdtr, %rdx
 	lgdt (%rdx)
 
+	# Load stack
 	movabs $stack_bottom, %rsp
 
 	#jmp kmain

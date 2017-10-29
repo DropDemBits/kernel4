@@ -19,8 +19,8 @@
 #define FRAMEBUFFER_HEIGHT  480
 #define FRAMEBUFFER_BPP     16
 
-.set KERNEL_BASE, 0x0000000000000000
-.set BOOTSTRAP_VMA, 0x000000
+.set KERNEL_BASE, 0xFFFF800000000000 - 0x200000
+.set BOOTSTRAP_VMA, 0x00000000000000
 
 .section .multiboot
 	# Multiboot2 Header
@@ -83,30 +83,6 @@ multiboot2_header_end:
 	.long FRAMEBUFFER_HEIGHT
 	.long FRAMEBUFFER_BPP
 
-.section .data
-	.align 4096
-
-	# Bootstrap GDT
-gdt_begin:
-	.long 0, 0
-	# R0 Code32 Descriptor
-	.word 0xFFFF, 0x0000 # Segment Limit, Base Address (IGNORED LM)
-	.byte 0x00 # Base Address (IGNORED LM)
-	.byte 0b10011010
-	.byte 0b10101111
-	.byte 0x00
-	# R0 Data32 Descriptor
-	.word 0xFFFF, 0x0000
-	.byte 0x00
-	.byte 0b10010010
-	.byte 0b11001111
-	.byte 0x00
-
-gdt_end:
-gdtr:
-	.word (gdt_end - gdt_begin)
-	.quad gdt_begin
-
 .section .rodata
 err_not_lm:
 	.asciz "Error: This cpu doesn't support the x86_64 arch."
@@ -116,7 +92,7 @@ err_not_lm:
 .type _start, @function
 
 .extern kernel_start, kernel_end, lm_entry, halt
-.extern bootstrap_pml4
+.extern bootstrap_pml4, stack_bottom, gdtr32
 .code32
 _start:
 	cli
@@ -154,19 +130,21 @@ _start:
 
 	# At this point, we are in Compatibility Mode
 	# Load GDT
-	lgdt (gdtr)
+	xchg %bx, %bx
+	lgdt (gdtr32 - 0xFFFF800000000000 + 0x200000)
 
 	# Flush Everything
-	mov $0x10, %dx
-	mov %dx, %ds
-	mov %dx, %ss
-	mov %dx, %es
-	mov %dx, %fs
-	mov %dx, %gs
-	ljmp $0x8, $flush_cs
-flush_cs:
+	movw $0x10, %dx
+	movw %dx, %ds
+	movw %dx, %ss
+	movw %dx, %es
+	movw %dx, %fs
+	movw %dx, %gs
 
-.code64 # We are now in long mode
+	jmp $0x08, $(flush_cs - KERNEL_BASE)
+
+flush_cs:
+.code64 # We are now in long mode proper
 
 	# Restore old value of EAX
 	movq %rbp, %rax
