@@ -19,7 +19,7 @@
 #define FRAMEBUFFER_HEIGHT  480
 #define FRAMEBUFFER_BPP     16
 
-.set KERNEL_VIRTUAL_BASE, 0xC0000000
+.set KERNEL_VIRTUAL_BASE, 0x80000000
 
 .section .multiboot
 	# Multiboot2 Header
@@ -227,7 +227,7 @@ flush_cs:
 
 	#jmp kmain
 	mov $0xFEEEEB1E, %eax
-	
+
 .code32
 halt:
 	cli
