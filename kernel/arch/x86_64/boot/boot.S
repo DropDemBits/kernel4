@@ -127,7 +127,7 @@ lm_entry:
 	# Load stack
 	movabs $stack_bottom, %rsp
 
-	#jmp kmain
+	jmp kmain
 halt:
 	cli
 	hlt

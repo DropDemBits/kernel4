@@ -130,7 +130,6 @@ _start:
 
 	# At this point, we are in Compatibility Mode
 	# Load GDT
-	xchg %bx, %bx
 	lgdt (gdtr32 - 0xFFFF800000000000 + 0x200000)
 
 	# Flush Everything

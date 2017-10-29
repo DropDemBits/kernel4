@@ -1,4 +1,11 @@
+#include <stdint.h>
+
 extern void halt();
+
+static uint32_t set_eax(uint32_t value)
+{
+	return value;
+}
 
 void kmain()
 {
@@ -7,5 +14,6 @@ void kmain()
 	{
 		framebuffer[i] = 0xFFFFFFFF;
 	}*/
+	uint32_t test = set_eax(0xFEFEB00F);
 	halt();
 }

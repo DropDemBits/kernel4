@@ -225,8 +225,7 @@ cont:
 	ljmp $0x8, $flush_cs
 flush_cs:
 
-	#jmp kmain
-	mov $0xFEEEEB1E, %eax
+	jmp kmain
 
 .code32
 halt:
