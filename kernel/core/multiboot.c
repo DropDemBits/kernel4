@@ -83,5 +83,38 @@ void parse_mb1()
  */
 void parse_mb2()
 {
+	// Check address alignment
+	if(((size_t)multiboot_ptr) & 7)
+	{
+		// Our address is unaligned... Do something about that.
+		return;
+	}
 
+	struct multiboot_tag *tag;
+
+	for (tag = (struct multiboot_tag *) (multiboot_ptr + (8 * 8 / sizeof(uptr_t))); tag->type != MULTIBOOT_TAG_TYPE_END; tag = (struct multiboot_tag *) ((uint8_t *) tag + ((tag->size + 7) & ~7)))
+	{
+		switch (tag->type) {
+			case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO:
+				mb_mem_lower = ((struct multiboot_tag_basic_meminfo*) tag)->mem_lower;
+				mb_mem_upper = ((struct multiboot_tag_basic_meminfo*) tag)->mem_upper;
+				break;
+			case MULTIBOOT_TAG_TYPE_MODULE:
+				mb_mods_addr = ((struct multiboot_tag_module *) tag)->mod_start;
+				mb_mods_count++;
+				break;
+			case MULTIBOOT_TAG_TYPE_MMAP:
+				// TODO: Parse mmap
+				break;
+			case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
+				mb_framebuffer_addr = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_addr;
+				mb_framebuffer_width = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_width;
+				mb_framebuffer_height = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_height;
+				mb_framebuffer_type = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_type;
+				mb_framebuffer_bpp = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_bpp;
+				break;
+			default:
+				break;
+		}
+	}
 }

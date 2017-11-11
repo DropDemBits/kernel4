@@ -158,9 +158,9 @@ _start:
 	movl $4096, %ecx                                   # Map 4096 Pages
 
 begin:
-	cmp $(kernel_start - KERNEL_VIRTUAL_BASE), %esi
-	jl skip
-	cmp $(kernel_end - KERNEL_VIRTUAL_BASE), %esi
+	#cmp $(kernel_start - KERNEL_VIRTUAL_BASE), %esi
+	#jl skip
+	cmp $(kernel_end - KERNEL_VIRTUAL_BASE + 0x8000), %esi
 	jg done
 	cmp $(rodata_end - KERNEL_VIRTUAL_BASE), %esi
 	jle ro

@@ -5,7 +5,7 @@ echo "Creating ISO for target $1"
 mkdir -p isodir/boot/grub/
 cat > isodir/boot/grub/grub.cfg << EOF
 menuentry "K4" {
-    multiboot "/k4-$1.kern"
+    multiboot2 "/k4-$1.kern"
     boot
 }
 EOF

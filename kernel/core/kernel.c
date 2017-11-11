@@ -7,17 +7,18 @@ void kmain()
 {
 	multiboot_parse();
 	/*
-	 * TODO: Sometimes our bootloader will fulfill our request. Search PCI
+	 * TODO: Sometimes our bootloader will not fulfill our request. Search PCI
 	 * devices for sutable device.
 	 */
 
+	 // It probably makes sense to map the address before using it, right?
 	if(mb_framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
 	{
-		uint64_t *framebuffer = (uint64_t*) mb_framebuffer_addr;
+		/*uint64_t *framebuffer = (uint64_t*) mb_framebuffer_addr;
 		for(uint64_t i = 0; i < mb_framebuffer_width * mb_framebuffer_height; i++)
 		{
 			framebuffer[i] = 0xFFFFFFFFFFFFFFFF;
-		}
+		}*/
 	}
 	else if(mb_framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
 	{
