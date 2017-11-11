@@ -106,11 +106,12 @@ gdtr32:
 .type lm_entry, @function
 
 .extern kmain, stack_bottom
+.extern multiboot_magic, multiboot_ptr
 
 lm_entry:
-	# Get rid of bootstap paging structures
-	movabsq $bootstrap_pml4, %rdx
-	movq $0x0, (%rdx)
+	# Get rid of bootstap paging structures (Not yet because multiboot)
+	#movabsq $bootstrap_pml4, %rdx
+	#movq $0x0, (%rdx)
 
 	# Reload CR3
 	movq %cr3, %rdx
@@ -126,6 +127,13 @@ lm_entry:
 
 	# Load stack
 	movabs $stack_bottom, %rsp
+
+	# Set multiboot things
+	xchg %bx, %bx
+	movabs $multiboot_magic, %rdx
+	movl %eax, (%rdx)
+	movabs $multiboot_ptr, %rdx
+	movl %ebx, (%rdx)
 
 	jmp kmain
 halt:

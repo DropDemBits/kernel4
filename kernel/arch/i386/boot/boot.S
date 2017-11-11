@@ -147,6 +147,7 @@ idtr:
 .type _start, @function
 
 .extern kernel_start, kernel_end, kmain
+.extern multiboot_ptr, multiboot_magic
 _start:
 	cli
 
@@ -215,15 +216,20 @@ cont:
 	# Load GDT
 	lgdt (gdtr)
 
-	mov $0x10, %ax
-	mov %ax, %ds
-	mov %ax, %ss
+	mov $0x10, %dx
+	mov %dx, %ds
+	mov %dx, %ss
 	movl $(stack_bottom - KERNEL_VIRTUAL_BASE), %esp
-	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
+	mov %dx, %es
+	mov %dx, %fs
+	mov %dx, %gs
 	ljmp $0x8, $flush_cs
 flush_cs:
+
+	# Set multiboot pointer
+	xchg %bx, %bx
+	movl %eax, (multiboot_magic)
+	movl %ebx, (multiboot_ptr)
 
 	jmp kmain
 

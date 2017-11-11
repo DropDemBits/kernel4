@@ -4,13 +4,13 @@ ARCH_CFLAGS :=
 ARCH_LFLAGS :=
 ARCH_LINKER :=
 BUILD_OBJ :=
-CFLAGS := -c -ffreestanding -nostdlib -Wall
+CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude/common
 LFLAGS := -ffreestanding -nostdlib -lgcc
 HAS_LOADER := n
 
 ifdef TARGET_ARCH
 include arch/$(TARGET_ARCH)/make.config
-CFLAGS += $(ARCH_CFLAGS)
+CFLAGS += $(ARCH_CFLAGS) -D _$(TARGET_ARCH)_ -Iinclude/$(TARGET_ARCH)
 LFLAGS += $(ARCH_LFLAGS)
 endif
 
