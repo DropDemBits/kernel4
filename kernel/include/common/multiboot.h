@@ -1,5 +1,5 @@
 /*  multiboot.h - Multiboot header file.  */
-/*  Modified to only use multboot typedefs */
+/*  Modified to only use multboot typedefs and work with multiboot2.h */
 /*  Copyright (C) 1999,2003,2007,2008,2009,2010  Free Software Foundation, Inc.
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -92,10 +92,13 @@
 
 #ifndef ASM_FILE
 
+#ifndef MB_TYPES
+#define MB_TYPES 1
 typedef unsigned char		multiboot_uint8_t;
 typedef unsigned short		multiboot_uint16_t;
 typedef unsigned int		multiboot_uint32_t;
 typedef unsigned long long	multiboot_uint64_t;
+#endif /* MB_TYPES */
 
 struct multiboot_header
 {

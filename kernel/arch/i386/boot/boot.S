@@ -227,7 +227,6 @@ cont:
 flush_cs:
 
 	# Set multiboot pointer
-	xchg %bx, %bx
 	movl %eax, (multiboot_magic)
 	movl %ebx, (multiboot_ptr)
 

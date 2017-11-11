@@ -1,4 +1,5 @@
 /*  multiboot2.h - Multiboot 2 header file.  */
+/*  Modified to work with multiboot2.h */
 /*  Copyright (C) 1999,2003,2007,2008,2009,2010  Free Software Foundation, Inc.
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,12 +20,12 @@
  *  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef MULTIBOOT_HEADER
-#define MULTIBOOT_HEADER 1
+#ifndef MULTIBOOT2_HEADER
+#define MULTIBOOT2_HEADER 1
 
 /* How many bytes from the start of the file we search for the header.  */
-#define MULTIBOOT_SEARCH			32768
-#define MULTIBOOT_HEADER_ALIGN			8
+#define MULTIBOOT2_SEARCH			32768
+#define MULTIBOOT2_HEADER_ALIGN			8
 
 /* The magic field should contain this.  */
 #define MULTIBOOT2_HEADER_MAGIC			0xe85250d6
@@ -33,10 +34,10 @@
 #define MULTIBOOT2_BOOTLOADER_MAGIC		0x36d76289
 
 /* Alignment of multiboot modules.  */
-#define MULTIBOOT_MOD_ALIGN			0x00001000
+#define MULTIBOOT2_MOD_ALIGN			0x00001000
 
 /* Alignment of the multiboot info structure.  */
-#define MULTIBOOT_INFO_ALIGN			0x00000008
+#define MULTIBOOT2_INFO_ALIGN			0x00000008
 
 /* Flags set in the 'flags' member of the multiboot header.  */
 
@@ -88,12 +89,15 @@
 
 #ifndef ASM_FILE
 
+#ifndef MB_TYPES
+#define MB_TYPES 1
 typedef unsigned char		multiboot_uint8_t;
 typedef unsigned short		multiboot_uint16_t;
 typedef unsigned int		multiboot_uint32_t;
 typedef unsigned long long	multiboot_uint64_t;
+#endif /* MB_TYPES */
 
-struct multiboot_header
+struct multiboot2_header
 {
   /* Must be MULTIBOOT_MAGIC - see above.  */
   multiboot_uint32_t magic;
@@ -178,14 +182,14 @@ struct multiboot_header_tag_relocatable
   multiboot_uint32_t preference;
 };
 
-struct multiboot_color
+struct multiboot2_color
 {
   multiboot_uint8_t red;
   multiboot_uint8_t green;
   multiboot_uint8_t blue;
 };
 
-struct multiboot_mmap_entry
+struct multiboot2_mmap_entry
 {
   multiboot_uint64_t addr;
   multiboot_uint64_t len;
@@ -197,7 +201,7 @@ struct multiboot_mmap_entry
   multiboot_uint32_t type;
   multiboot_uint32_t zero;
 };
-typedef struct multiboot_mmap_entry multiboot_memory_map_t;
+typedef struct multiboot2_mmap_entry multiboot2_memory_map_t;
 
 struct multiboot_tag
 {
@@ -244,7 +248,7 @@ struct multiboot_tag_mmap
   multiboot_uint32_t size;
   multiboot_uint32_t entry_size;
   multiboot_uint32_t entry_version;
-  struct multiboot_mmap_entry entries[0];  
+  struct multiboot2_mmap_entry entries[0];
 };
 
 struct multiboot_vbe_info_block
@@ -297,7 +301,7 @@ struct multiboot_tag_framebuffer
     struct
     {
       multiboot_uint16_t framebuffer_palette_num_colors;
-      struct multiboot_color framebuffer_palette[0];
+      struct multiboot2_color framebuffer_palette[0];
     };
     struct
     {
@@ -388,7 +392,7 @@ struct multiboot_tag_efi_mmap
   multiboot_uint32_t descr_size;
   multiboot_uint32_t descr_vers;
   multiboot_uint8_t efi_mmap[0];
-}; 
+};
 
 struct multiboot_tag_efi32_ih
 {

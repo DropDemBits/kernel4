@@ -129,7 +129,6 @@ lm_entry:
 	movabs $stack_bottom, %rsp
 
 	# Set multiboot things
-	xchg %bx, %bx
 	movabs $multiboot_magic, %rdx
 	movl %eax, (%rdx)
 	movabs $multiboot_ptr, %rdx
