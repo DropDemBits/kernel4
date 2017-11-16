@@ -191,11 +191,17 @@ done:
 	addl $0x4, %edi
 	loop 1b*/
 
+	# Identity
 	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + 0
 	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + 4
+
+	# HH
 	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 0
 	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 4
-	movl $(0xFD000083), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xe00)
+
+	# Misc
+	movl $(graphics_pt0 - KERNEL_VIRTUAL_BASE + 0x003), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xe00)
+	movl $(bootstrap_pd - KERNEL_VIRTUAL_BASE + 0x003), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xffc)
 
 	movl %cr4, %edx
 	orl $0x00000090, %edx # PGE, PSE

@@ -28,6 +28,14 @@ bootstrap_pd1:
 	.quad 0x0000000000200000 + 0x083
 	.quad 0x0000000000000000 + 0x083
 	.skip 4096 - 16
+graphics_pdpt0:
+	.quad graphics_pd0 - KERNEL_BASE + 0x003
+	.skip 4096 - 8
+graphics_pd0:
+	.quad graphics_pt0 - KERNEL_BASE + 0x003
+	.skip 4096 - 8
+graphics_pt0:
+	.skip 4096
 
 gdt_begin:
 	.long 0, 0
@@ -109,9 +117,13 @@ gdtr32:
 .extern multiboot_magic, multiboot_ptr
 
 lm_entry:
-	# Get rid of bootstap paging structures (Not yet because multiboot)
+	# Get rid of bootstap paging structures (Not yet because multiboot stuff)
 	#movabsq $bootstrap_pml4, %rdx
 	#movq $0x0, (%rdx)
+
+	# Add Graphics structures (temporary)
+	movabs $bootstrap_pml4, %rdx
+	movq $(graphics_pdpt0 - KERNEL_BASE + 0x003), 448*8(%rdx)
 
 	# Reload CR3
 	movq %cr3, %rdx
