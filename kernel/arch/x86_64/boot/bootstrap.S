@@ -130,7 +130,7 @@ _start:
 
 	# At this point, we are in Compatibility Mode
 	# Load GDT
-	lgdt (gdtr32 - 0xFFFF800000000000 + 0x200000)
+	lgdt (gdtr32)
 
 	# Flush Everything
 	movw $0x10, %dx

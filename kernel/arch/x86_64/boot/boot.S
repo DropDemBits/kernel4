@@ -28,6 +28,7 @@ bootstrap_pd1:
 	.quad 0x0000000000200000 + 0x083
 	.quad 0x0000000000000000 + 0x083
 	.skip 4096 - 16
+
 graphics_pdpt0:
 	.quad graphics_pd0 - KERNEL_BASE + 0x003
 	.skip 4096 - 8
@@ -78,7 +79,7 @@ idtr:
 	.word (idt_end - idt_begin)
 	.quad idt_begin
 
-.section .init
+.section .init.data
 	# Bootstrap page structures
 bootstrap_pdpt0:
 	.quad bootstrap_pd0 - KERNEL_BASE + 0x003

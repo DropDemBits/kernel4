@@ -6,6 +6,11 @@ SECTIONS {
 
 	. = KERNEL_VMA;
 	kernel_start = .;
+	.init ALIGN(4K) : AT(ADDR(.init) - 0x80000000) {
+		*(init.code)
+		*(init.data)
+		*(init.bss)
+	}
 
 	.text ALIGN(4K) : AT(ADDR(.text) - 0x80000000) {
 		*(.multiboot)

@@ -43,13 +43,13 @@ static void invlpg(linear_addr_t* address)
 	asm volatile("invlpg (%%rax)" : "=a"(address));
 }
 
-void mm_init()
+void mmu_init()
 {
 	// Set CR3
 	asm volatile("movq %%cr3, %%rax\n\t": "=a"(cr3));
 }
 
-void mm_map_address(linear_addr_t* address, physical_addr_t* mapping)
+void mmu_map_address(linear_addr_t* address, physical_addr_t* mapping)
 {
 	// TODO: Add PML5 support
 	uint64_t pml4e_off = ((linear_addr_t)address >> PML4_SHIFT) & 0x00000000001FF;

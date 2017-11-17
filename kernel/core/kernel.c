@@ -14,6 +14,8 @@ void kmain()
 {
 	multiboot_parse();
 	mm_init();
+	mmu_init();
+	
 	/*
 	 * TODO: Sometimes our bootloader will not fulfill our request. Search PCI
 	 * devices for sutable device.
@@ -26,7 +28,7 @@ void kmain()
 		off <= (mb_framebuffer_width * mb_framebuffer_height * (mb_framebuffer_bpp / 8));
 		off += 0x1000)
 	{
-		mm_map_address((linear_addr_t*)((linear_addr_t)framebuffer + off),
+		mmu_map_address((linear_addr_t*)((linear_addr_t)framebuffer + off),
 					  (physical_addr_t*)(mb_framebuffer_addr + off));
 	}
 

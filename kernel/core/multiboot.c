@@ -1,5 +1,6 @@
 #include <multiboot.h>
 #include <multiboot2.h>
+#include <mm.h>
 #include <types.h>
 
 uptr_t multiboot_ptr = (void*)0;
@@ -105,6 +106,17 @@ void parse_mb2()
 				break;
 			case MULTIBOOT_TAG_TYPE_MMAP:
 				// TODO: Parse mmap
+			{
+				multiboot2_memory_map_t *mmap;
+
+				for (mmap = ((struct multiboot_tag_mmap *) tag)->entries;
+				(uint8_t *) mmap < (uint8_t *) tag + tag->size;
+				mmap = (multiboot2_memory_map_t *)((uint32_t) mmap + ((struct multiboot_tag_mmap *) tag)->entry_size))
+				{
+					if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+						mm_add_free_region(mmap->addr, mmap->len);
+				}
+			}
 				break;
 			case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
 				mb_framebuffer_addr = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_addr;

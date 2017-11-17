@@ -14,11 +14,17 @@ SECTIONS {
 		*bootstrap.o (.bss)
 	}
 
+	.init : ALIGN(4K) {
+		*(.init.code)
+		*(.init.data)
+		*(.init.bss)
+		*(.init.*)
+	}
+
 	. = KERNEL_VMA;
 	kernel_start = .;
 
 	.text ALIGN(4K) : AT(ADDR(.text) - KERNEL_VMA + 0x200000) {
-		*(.multiboot)
 		*(.text)
 	}
 
@@ -27,10 +33,6 @@ SECTIONS {
 	}
 
 	rodata_end = .;
-
-	.init ALIGN(4K) : AT(ADDR(.init) - KERNEL_VMA + 0x200000) {
-		*(.init)
-	}
 
 	.data ALIGN(4K) : AT(ADDR(.data) - KERNEL_VMA + 0x200000) {
 		*(.data)

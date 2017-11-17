@@ -34,14 +34,14 @@ static void invlpg(linear_addr_t* address)
 	asm volatile("invlpg (%%eax)" : "=a"(address));
 }
 
-void mm_init()
+void mmu_init()
 {
 	// Set CR3
 	asm volatile("movl %%cr3, %%eax\n\t"
 		: "=a"(cr3));
 }
 
-void mm_map_address(linear_addr_t* address, physical_addr_t* mapping)
+void mmu_map_address(linear_addr_t* address, physical_addr_t* mapping)
 {
 	uint32_t pde_off = ((linear_addr_t)address >> PDT_SHIFT) & 0x003FF;
 	uint32_t pte_off = ((linear_addr_t)address >> PTT_SHIFT) & 0xFFFFF;
