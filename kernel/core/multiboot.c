@@ -3,6 +3,9 @@
 #include <mm.h>
 #include <types.h>
 
+typedef multiboot2_memory_map_t mb2_mmap_t;
+typedef multiboot_memory_map_t mb_mmap_t;
+
 uptr_t multiboot_ptr = (void*)0;
 size_t multiboot_magic = 0;
 
@@ -65,7 +68,14 @@ void parse_mb1()
 
 	if(flags & MULTIBOOT_INFO_MEM_MAP)
 	{
-		// TODO Parse this for mm
+		mb_mmap_t* mmap = mb1->mmap_addr;
+
+		while(mmap < mb1->mmap_addr + mb1->mmap_length) {
+			mb2_mmap_t* actual = (mb2_mmap_t*)((uint32_t)mmap + 4);
+			mm_add_region(actual->addr, actual->len, actual->type);
+
+			mmap = (mb_mmap_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
+		}
 	}
 
 	if(flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)
@@ -105,13 +115,12 @@ void parse_mb2()
 				mb_mods_count++;
 				break;
 			case MULTIBOOT_TAG_TYPE_MMAP:
-				// TODO: Parse mmap
 			{
-				multiboot2_memory_map_t *mmap;
+				mb2_mmap_t *mmap;
 
 				for (mmap = ((struct multiboot_tag_mmap *) tag)->entries;
 				(uint8_t *) mmap < (uint8_t *) tag + tag->size;
-				mmap = (multiboot2_memory_map_t *)((uint32_t) mmap + ((struct multiboot_tag_mmap *) tag)->entry_size))
+				mmap = (mb2_mmap_t *)((uint32_t) mmap + ((struct multiboot_tag_mmap *) tag)->entry_size))
 				{
 					mm_add_region(mmap->addr, mmap->len, mmap->type);
 				}
