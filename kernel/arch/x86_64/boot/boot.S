@@ -16,7 +16,7 @@ stack_bottom:
 	.align 4096
 	.global bootstrap_pml4
 bootstrap_pml4:
-	.quad bootstrap_pdpt0 - KERNEL_BASE + 0x003
+	.quad bootstrap_pdpt0 + 0x003
 	.skip 2048 - 8
 	.quad bootstrap_pdpt1 - KERNEL_BASE + 0x003
 	.skip 2048 - 16
@@ -79,10 +79,10 @@ idtr:
 	.word (idt_end - idt_begin)
 	.quad idt_begin
 
-.section .init.data
+.section .init.data, "awx"
 	# Bootstrap page structures
 bootstrap_pdpt0:
-	.quad bootstrap_pd0 - KERNEL_BASE + 0x003
+	.quad bootstrap_pd0 + 0x003
 	.skip 4096 - 8
 bootstrap_pd0:
 	.quad 0x0000000000000000 + 0x083
@@ -108,7 +108,7 @@ gdt32_end:
 gdtr32:
 	.global gdtr32
 	.word (gdt_end - gdt_begin)
-	.quad gdt32_begin - KERNEL_BASE
+	.quad gdt32_begin
 
 .section .text
 .global lm_entry, halt
