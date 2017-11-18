@@ -113,8 +113,7 @@ void parse_mb2()
 				(uint8_t *) mmap < (uint8_t *) tag + tag->size;
 				mmap = (multiboot2_memory_map_t *)((uint32_t) mmap + ((struct multiboot_tag_mmap *) tag)->entry_size))
 				{
-					if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
-						mm_add_free_region(mmap->addr, mmap->len);
+					mm_add_region(mmap->addr, mmap->len, mmap->type);
 				}
 			}
 				break;
