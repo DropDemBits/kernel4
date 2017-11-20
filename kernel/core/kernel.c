@@ -15,10 +15,10 @@ void kmain()
 	multiboot_parse();
 	mm_init();
 	mmu_init();
-	
+
 	/*
-	 * TODO: Sometimes our bootloader will not fulfill our request. Search PCI
-	 * devices for sutable device.
+	 * TODO: Sometimes our bootloader will not fulfill our request for a video
+	 * device. Search PCI devices for sutable video device.
 	 */
 
 	linear_addr_t *framebuffer = get_fb_address();
