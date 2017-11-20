@@ -21,14 +21,14 @@ struct mem_block
 	uint64_t* bitmap;
 	uint64_t super_map;
 
+	uint64_t base : 48;
 	mem_flags_t flags;
-	uint64_t base : 52;
 } __attribute__((__packed__));
 typedef struct mem_block mem_region_t;
 
 static mem_region_t* region_list = KNULL;
-static size_t total_blocks = 0;
-static size_t frame_blocks = 0;
+static size_t total_blocks = 1;
+static size_t frame_blocks = 1;
 
 // List utilities (TODO: Abstract away into a new file)
 /*
@@ -47,43 +47,39 @@ static mem_region_t* list_get_tail(mem_region_t* list_head)
 /*
  * Inserts a block after the specified item in a list
  */
-static void list_insert_after(mem_region_t* list_item, mem_region_t* insert)
+static void list_insert_after(mem_region_t* list_head, mem_region_t* insert)
 {
-	if(list_item == KNULL || insert == KNULL) return;
+	if(list_head == KNULL || insert == KNULL) return;
 	// Are we inserting at the list tail?
-	if(list_item->next == KNULL)
+	if(list_head->next == KNULL)
 	{
 		// Append item to list tail
-		list_item->next = insert;
+		list_head->next = insert;
 		return;
 	}
 
 	// Insert between two items
-	mem_region_t* next_item = list_item->next;
-	list_item->next = insert;
+	mem_region_t* next_item = list_head->next;
+	list_head->next = insert;
 	/*
-	 * TODO: We are trusting that the insert provided is safe. Can this
+	 * We are trusting that the insert provided is safe. Can this
 	 * assumption bring about a security flaw?
 	 */
 	list_get_tail(insert)->next = next_item;
 }
 
 /*
- * Searches list for a memory block which contains the address and matching
- * flags.
+ * Searches list for a memory block which contains the address
  * Returns the block which matches the requirements, or KNULL if none was found
  */
-static mem_region_t* list_search_block(
-	mem_region_t* list_head,
-	uint64_t addr,
-	mem_flags_t flag_match)
+static mem_region_t* list_search_block(mem_region_t* list_head, uint64_t addr)
 {
 	// TODO: Abstract away into a macro
 	mem_region_t* block = list_head;
 
 	while(block != KNULL)
 	{
-		if(addr >= block->base && block->flags.type == flag_match.type) break;
+		if(addr >= block->base) break;
 		block = block->next;
 	}
 
@@ -101,7 +97,8 @@ static mem_region_t* list_search_free(mem_region_t* list_head)
 
 	while(block != KNULL)
 	{
-		if(block->super_map != 0xFFFFFFFFFFFFFFFF) break;
+		if(block->super_map != 0xFFFFFFFFFFFFFFFFULL && block->flags.present)
+			break;
 		block = block->next;
 	}
 
@@ -111,15 +108,18 @@ static mem_region_t* list_search_free(mem_region_t* list_head)
 /*
  * Appends a new block to the list. Automatically allocates frames to the list
  * if needed.
+ * Returns true if a new pointer block was allocated
  */
-static void mm_append_block(mem_region_t* list_item, mem_region_t* block)
+static bool mm_append_block(mem_region_t* list_head, mem_region_t* block)
 {
-	list_insert_after(list_item, block);
+	list_insert_after(list_head, block);
 	total_blocks++;
 	if(++frame_blocks >= 64)
 	{
-		// TODO: Allocate new blocks
+		block->next = mm_alloc(1);
+		return true;
 	}
+	return false;
 }
 
 // Bitmap utilities
@@ -127,34 +127,18 @@ typedef union
 {
 	struct
 	{
-		uint16_t bit_index32 : 5;
-		uint16_t dword_index : 10;
-		uint16_t sign32 : 1;
-	};
-	struct
-	{
 		uint16_t bit_index64 : 6;
 		uint16_t qword_index : 9;
 		uint16_t sign64 : 1;
 	};
+	struct
+	{
+		uint16_t bit_index32 : 5;
+		uint16_t dword_index : 10;
+		uint16_t sign32 : 1;
+	};
 	uint16_t value;
 } bm_index_t;
-
-/*typedef union
-{
-	struct
-	{
-		uint16_t padding32 : 9;
-		uint16_t bit_index32 : 6;
-		uint16_t sign : 1;
-	};
-	struct
-	{
-		uint16_t padding64 : 9;
-		uint16_t bit_index64 : 6;
-		uint16_t sign : 1;
-	};
-} sbm_index_t;*/
 
 typedef union
 {
@@ -181,15 +165,15 @@ static void bm_set_bit(mem_region_t* mem_block, size_t index)
 
 	if(sizeof(uint64_t*) == 8)
 	{
-		mem_block->bitmap[bm_index.qword_index] |= (1 << bm_index.bit_index64);
-		if(mem_block->bitmap[bm_index.qword_index] == ~0)
-			mem_block->super_map |= (1 << sbm_index.bit_index);
+		mem_block->bitmap[bm_index.qword_index] |= (1ULL << bm_index.bit_index64);
+		if(mem_block->bitmap[bm_index.qword_index] == ~0ULL)
+			mem_block->super_map |= (1ULL << sbm_index.bit_index);
 	} else
 	{
 		mem_block->bitmap[bm_index.dword_index] |= (1 << bm_index.bit_index32);
-		if(mem_block->bitmap[(bm_index.dword_index & 1) + 0] == ~0 &&
-			mem_block->bitmap[(bm_index.dword_index & 1) + 1] == ~0)
-			mem_block->super_map |= (1 << sbm_index.bit_index);
+		if(mem_block->bitmap[(bm_index.dword_index & 1) + 0] == ~0U &&
+			mem_block->bitmap[(bm_index.dword_index & 1) + 1] == ~0U)
+			mem_block->super_map |= (1ULL << sbm_index.bit_index);
 	}
 }
 
@@ -207,12 +191,12 @@ static void bm_clear_bit(mem_region_t* mem_block, size_t index)
 
 	if(sizeof(uint64_t*) == 8)
 	{
-		mem_block->bitmap[bm_index.qword_index] &= ~(1 << bm_index.bit_index64);
-		mem_block->super_map &= ~(1 << sbm_index.bit_index);
+		mem_block->bitmap[bm_index.qword_index] &= ~(1ULL << bm_index.bit_index64);
+		mem_block->super_map &= ~(1ULL << sbm_index.bit_index);
 	} else
 	{
 		mem_block->bitmap[bm_index.dword_index] &= ~(1 << bm_index.bit_index32);
-		mem_block->super_map &= ~(1 << sbm_index.bit_index);
+		mem_block->super_map &= ~(1ULL << sbm_index.bit_index);
 	}
 }
 
@@ -228,19 +212,87 @@ static uint8_t bm_get_bit(mem_region_t* mem_block, size_t index)
 	bm_index_t bm_index = {.value = index};
 	if(sizeof(uint64_t*) == 8)
 	{
-		return (uint8_t) (mem_block->bitmap[bm_index.qword_index] >> (bm_index.bit_index64) & 0x1);
+		return (uint8_t) (mem_block->bitmap[bm_index.qword_index] >> (bm_index.bit_index64)) & 0x1;
 	} else
 	{
-		return (uint8_t) (mem_block->bitmap[bm_index.dword_index] >> (bm_index.bit_index32) & 0x1);
+		return (uint8_t) (mem_block->bitmap[bm_index.dword_index] >> (bm_index.bit_index32)) & 0x1;
 	}
 }
 
-static size_t bm_find_bit(mem_region_t* mem_block, uint8_t bit)
+static uint8_t bm_test_bit(uint64_t bitmap, size_t index)
+{
+	if(index > 64) return 1;
+	return (uint8_t) (bitmap >> index) & 0x1;
+}
+
+static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
 {
 	bm_index_t index = {.value = 0xFFFF};
+	sbm_index_t sbm_index = {.value = 0x0000};
+	size_t num_free_bits;
 
-	// TODO: Bitsearch
+	for(size_t sb_index = 0; sb_index < 64; sb_index++)
+	{
+		if(bm_test_bit(mem_block->super_map, sb_index) == 0)
+		{
+			sbm_index.bit_index = sb_index;
+			index.value = sbm_index.value;
+
+			for(size_t i = 0; i < 512; i++)
+			{
+				index.bit_index64 = i & 0x3FULL;
+				index.qword_index |= (i >> 6ULL) & 0x7ULL;
+
+				if(bm_get_bit(mem_block, index.value) == 0)
+				{
+					if(++num_free_bits >= size) break;
+				} else
+					num_free_bits = 0;
+			}
+		}
+
+		if(num_free_bits == 0) index.value = 0xFFFF;
+		else if(num_free_bits >= size) break;
+	}
+
 	return (size_t)index.value;
+}
+
+/*
+ * Creates a region block and appends it to list_head.
+ * Base to be passed should be base >> 27.
+ */
+static mem_region_t* mm_create_region(mem_region_t* list_head,
+									 uint64_t base)
+{
+	mem_region_t* append = KNULL;
+	if(list_head->next == KNULL || list_head->next == (void*)~1ULL)
+	{
+		append = (mem_region_t*)((size_t)list_head + sizeof(mem_region_t));
+	} else
+	{
+		append = list_head->next;
+	}
+
+	append->next = KNULL;
+	append->base = base;
+	append->super_map = 1ULL;
+
+	if(base == 0x0) append->flags.type = RTYPE_LOW;
+	else if(base <= 32) append->flags.type = RTYPE_32BIT;
+	else append->flags.type = RTYPE_64BIT;
+	append->flags.reserved = 0xFFU;
+	append->flags.present = 0;
+
+	append->bitmap = mm_alloc(1);
+	for(size_t i = 0; i < 512 && list_head->bitmap != KNULL; i++)
+	{
+		list_head->bitmap[i] = ~1ULL;
+	}
+
+	append->flags.present = 1;
+	mm_append_block(list_head, append);
+	return list_head->next;
 }
 
 void mm_init()
@@ -251,13 +303,12 @@ void mm_init()
 
 void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 {
-	mem_region_t *tail = list_search_free(region_list);
+	mem_region_t *tail = list_get_tail(region_list);
 	bool was_init_call = false;
-	bool base_in_bda = false;
-	bool clear_map = false;
 
 	if(tail == KNULL)
 	{
+		bool base_in_bda = false;
 		was_init_call = true;
 
 		// Set first 8K block in region for region tracking
@@ -282,46 +333,38 @@ void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 
 		region_list->next = KNULL;
 		region_list->base = base >> 27;
-		region_list->super_map = 0;
+		region_list->super_map = 0xFFFFFFFFFFFFFFFFULL;
 
 		// Flags
 		if(base < 0x1000000) region_list->flags.type = RTYPE_LOW;
 		else if(base <= 0xFFFFFFFF) region_list->flags.type = RTYPE_32BIT;
 		else region_list->flags.type = RTYPE_64BIT;
-		region_list->flags.reserved = 0;
-	}
-	if(was_init_call)
-	{
-		tail = list_search_free(region_list);
-		clear_map = true;
-	} else if((base >> 27) > (tail->base >> 27))
-	{
-		//asm volatile("xchg %bx, %bx");
-		if(type != 1 && type != 3) return;
-		// TODO Allocate new block
-		clear_map = true;
-	}
+		region_list->flags.reserved = 0xFFU;
+		region_list->flags.present = 1;
 
-	if(clear_map)
-	{
-		// Init bitmap
+		tail = list_get_tail(region_list);
 		tail->bitmap = (uint64_t*)(base - 0x1000);
-		for(size_t i = 0; i < 512; i++)
-		{
-			tail->bitmap[i] = 0xFFFFFFFFFFFFFFFF;
-		}
-	}
 
-	if(was_init_call)
-	{
+		for(size_t i = 0; i < 512 && tail->bitmap != KNULL; i++)
+		{
+			tail->bitmap[i] = 0xFFFFFFFFFFFFFFFFULL;
+		}
+
 		// Set bits for allocated blocks
 		if(base_in_bda) bm_set_bit(region_list, (base - 0x3000) >> 12);
 		bm_set_bit(region_list, (base - 0x2000) >> 12);
 		bm_set_bit(region_list, (base - 0x1000) >> 12);
 	}
+	if((base >> 27) > (tail->base >> 27))
+	{
+		if(type != 1 && type != 3) return;
+
+		// Alloc new block & ptr
+		tail = mm_create_region(tail, base >> 27);
+	}
 
 	// Set bits according to type
-	for(size_t block = (base >> 27);;)
+	for(size_t block = 0;;)
 	{
 		for(size_t bit = (base >> 12); bit < ((length >> 12) & 0x7FFF); bit++)
 		{
@@ -332,8 +375,65 @@ void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 			else bm_set_bit(tail, bit);
 		}
 
+		if(was_init_call)
+		{
+			// TODO: Cover Kernel Region
+		}
+
 		if(++block >= (length >> 27)) break;
-		// TODO: Alloc new block
-		asm("xchg %bx, %bx");
-	}//*/
+
+		// Alloc new block & ptr
+		tail = mm_create_region(tail, (base >> 27) + block);
+	}
+}
+
+/*
+ * Finds a free memory block with the specified size.
+ * Size is in 4KiB blocks.
+ * Returns a pointer which matches the criteria, or KNULL if none was found.
+ */
+void* mm_alloc(size_t size)
+{
+	size_t bit_index;
+	mem_region_t* region = list_search_free(region_list);
+
+	if(size >= 32768)
+	{
+		// TODO: Are allocations larger than 128MiB needed?
+		return KNULL;
+	} else
+	{
+		// Find index
+		while(region != KNULL)
+		{
+			bit_index = bm_find_free_bits(region, size);
+			if(bit_index != 0xFFFF) break;
+			region = list_search_free(region->next);
+		}
+
+		// Check if a block was actually found
+		if(region == KNULL || bit_index == 0xFFFF) return KNULL;
+
+		// Set bits in bitmap (TODO: Figure out why this isn't working)
+		for(size_t i = 0; i < size; i++)
+			bm_set_bit(region, bit_index+size);
+
+		return (void*)((region->base << 27) | (bit_index << 12));
+	}
+}
+
+/*
+ * Frees a memory block allocated by mm_alloc
+ */
+void mm_free(void* addr, size_t size)
+{
+	if(addr == KNULL || size == 0 || size >= 32768) return;
+
+	mem_region_t* region = list_search_block(region_list, (size_t)addr);
+	if(region == KNULL) return; // None of the mappings contain this address
+
+	size_t frame_ptr = (((size_t)addr) >> 12) & 0x7FFF;
+
+	for(size_t i = 0; i < size; i++)
+		bm_clear_bit(region, frame_ptr + i);
 }
