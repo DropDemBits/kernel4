@@ -15,6 +15,7 @@ void kmain()
 	multiboot_parse();
 	mm_init();
 	mmu_init();
+	multiboot_reclaim();
 
 	/*
 	 * TODO: Sometimes our bootloader will not fulfill our request for a video

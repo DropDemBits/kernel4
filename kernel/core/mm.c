@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <mm.h>
 
 enum {
@@ -266,7 +265,7 @@ static mem_region_t* mm_create_region(mem_region_t* list_head,
 									 uint64_t base)
 {
 	mem_region_t* append = KNULL;
-	if(list_head->next == KNULL || list_head->next == (void*)~1ULL)
+	if(list_head->next == KNULL || list_head->next == (void*)~0ULL)
 	{
 		append = (mem_region_t*)((size_t)list_head + sizeof(mem_region_t));
 	} else
@@ -285,9 +284,9 @@ static mem_region_t* mm_create_region(mem_region_t* list_head,
 	append->flags.present = 0;
 
 	append->bitmap = mm_alloc(1);
-	for(size_t i = 0; i < 512 && list_head->bitmap != KNULL; i++)
+	for(size_t i = 0; i < 512 && append->bitmap != KNULL; i++)
 	{
-		list_head->bitmap[i] = ~1ULL;
+		append->bitmap[i] = ~0ULL;
 	}
 
 	append->flags.present = 1;
@@ -412,11 +411,11 @@ void* mm_alloc(size_t size)
 		}
 
 		// Check if a block was actually found
-		if(region == KNULL || bit_index == 0xFFFF) return KNULL;
+		if(region == KNULL && bit_index == 0xFFFF) return KNULL;
 
-		// Set bits in bitmap (TODO: Figure out why this isn't working)
+		// Set bits in bitmap
 		for(size_t i = 0; i < size; i++)
-			bm_set_bit(region, bit_index+size);
+			bm_set_bit(region, bit_index + i);
 
 		return (void*)((region->base << 27) | (bit_index << 12));
 	}

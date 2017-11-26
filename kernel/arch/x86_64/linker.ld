@@ -23,6 +23,7 @@ SECTIONS {
 
 	. = KERNEL_VMA;
 	kernel_start = .;
+	kernel_phystart = . - KERNEL_VMA + 0x200000;
 
 	.text ALIGN(4K) : AT(ADDR(.text) - KERNEL_VMA + 0x200000) {
 		*(.text)
@@ -53,4 +54,5 @@ SECTIONS {
 
 	kernel_end = .;
 	kernel_page_end = ALIGN(4K);
+	kernel_physize = kernel_page_end - kernel_start;
 }

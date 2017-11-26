@@ -19,5 +19,6 @@ extern uint8_t mb_framebuffer_type;
 extern uint8_t mb_framebuffer_bpp;
 
 void multiboot_parse();
+void multiboot_reclaim();
 
 #endif /* __MB2PARSE_H__ */

@@ -21,6 +21,8 @@
 
 .set KERNEL_VIRTUAL_BASE, 0x80000000
 
+.section .init, "awx"
+
 .section .multiboot
 	# Multiboot2 Header
 	.align 8
