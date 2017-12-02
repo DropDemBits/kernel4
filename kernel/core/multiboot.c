@@ -3,9 +3,6 @@
 #include <mm.h>
 #include <types.h>
 
-extern size_t kernel_phystart;
-extern size_t kernel_physize;
-
 typedef multiboot2_memory_map_t mb2_mmap_t;
 typedef multiboot_memory_map_t mb_mmap_t;
 
@@ -108,10 +105,6 @@ void parse_mb1()
 				mm_add_region(	multiboot_base,
 								multiboot_size,
 								MULTIBOOT_MEMORY_RESERVED);
-				// Reserve kernel image region
-				mm_add_region(	(physical_addr_t)&kernel_phystart,
-								(size_t)&kernel_physize,
-								MULTIBOOT_MEMORY_RESERVED);
 				first_iter = false;
 			}
 
@@ -135,7 +128,7 @@ void parse_mb2()
 	}
 
 	struct multiboot_tag *tag;
-	struct multiboot_tag_mmap *mmap_tag;
+	struct multiboot_tag_mmap *mmap_tag = KNULL;
 	size_t info_size = 0;
 	mb2_mmap_t *mmap;
 
@@ -162,13 +155,15 @@ void parse_mb2()
 				mb_framebuffer_bpp = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_bpp;
 				break;
 			case MULTIBOOT_TAG_TYPE_ELF_SECTIONS:
-				asm volatile("xchg %%bx, %%bx"::"a"(tag->type),"c"(tag));
 				break;
 			default:
 				break;
 		}
 		info_size += tag->size;
 	}
+	
+	// Check if we have been passed a memory map
+	if(mmap_tag == KNULL) return;
 
 	// 4KiB align info size
 	info_size = (info_size + (8 + 0xFFF)) & ~0xFFF;
@@ -187,10 +182,6 @@ void parse_mb2()
 			multiboot_size = info_size;
 			mm_add_region(	multiboot_base,
 							multiboot_size,
-							MULTIBOOT_MEMORY_RESERVED);
-			// Reserve kernel image region
-			mm_add_region(	(physical_addr_t)&kernel_phystart,
-							(size_t)&kernel_physize,
 							MULTIBOOT_MEMORY_RESERVED);
 
 			first_iter = false;

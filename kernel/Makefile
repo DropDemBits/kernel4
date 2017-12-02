@@ -4,7 +4,7 @@ ARCH_CFLAGS :=
 ARCH_LFLAGS :=
 ARCH_LINKER :=
 BUILD_OBJ :=
-CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude/common
+CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude/common -O2
 LFLAGS := -ffreestanding -nostdlib -lgcc
 HAS_LOADER := n
 

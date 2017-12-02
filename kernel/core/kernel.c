@@ -2,16 +2,26 @@
 #include <mm.h>
 #include <vga.h>
 #include <mb2parse.h>
+#include <uart.h>
 
 extern void halt();
 
-uint64_t set_eax(uint64_t eax)
+size_t strlen(const char* str)
 {
-	return eax;
+    size_t len = 0;
+    while(str[len]) len++;
+    return len;
+}
+
+serial_write(const char* str)
+{
+	uart_writestr(str, strlen(str));
 }
 
 void kmain()
 {
+	uart_init();
+	serial_write("Hello!");
 	multiboot_parse();
 	mm_init();
 	mmu_init();

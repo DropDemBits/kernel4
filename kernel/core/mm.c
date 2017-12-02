@@ -1,5 +1,8 @@
 #include <mm.h>
 
+extern size_t kernel_phystart;
+extern size_t kernel_physize;
+
 enum {
 	RTYPE_LOW,
 	RTYPE_32BIT,
@@ -228,7 +231,7 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
 {
 	bm_index_t index = {.value = 0xFFFF};
 	sbm_index_t sbm_index = {.value = 0x0000};
-	size_t num_free_bits;
+	size_t num_free_bits = 0;
 
 	for(size_t sb_index = 0; sb_index < 64; sb_index++)
 	{
@@ -297,18 +300,18 @@ static mem_region_t* mm_create_region(mem_region_t* list_head,
 void mm_init()
 {
 	// Now that we have our regions defined, map our region list to virt-mem
-	asm("xchg %%bx, %%bx"::"a"(region_list));
+	//asm("xchg %%bx, %%bx"::"a"(region_list));
 }
 
 void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 {
 	mem_region_t *tail = list_get_tail(region_list);
-	bool was_init_call = false;
+	bool cover_kernel = false;
 
 	if(tail == KNULL)
 	{
 		bool base_in_bda = false;
-		was_init_call = true;
+		cover_kernel = true;
 
 		// Set first 8K block in region for region tracking
 		if(base < 0x1000)
@@ -374,9 +377,13 @@ void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 			else bm_set_bit(tail, bit);
 		}
 
-		if(was_init_call)
+		if(cover_kernel)
 		{
-			// TODO: Cover Kernel Region
+			// Reserve kernel image region
+			mm_add_region(	(physical_addr_t)&kernel_phystart,
+							(size_t)&kernel_physize,
+							1);
+			cover_kernel = false;
 		}
 
 		if(++block >= (length >> 27)) break;

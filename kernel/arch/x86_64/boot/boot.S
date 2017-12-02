@@ -68,16 +68,16 @@ gdt_begin:
 
 gdt_end:
 	.align 4096
-idt_begin:
-	.skip (8*256)
+idt_table:
+	.skip (16 * 256)
 idt_end:
 
 gdtr:
 	.word (gdt_end - gdt_begin)
 	.quad gdt_begin
 idtr:
-	.word (idt_end - idt_begin)
-	.quad idt_begin
+	.word (idt_end - idt_table)
+	.quad idt_table
 
 .section .init.data, "awx"
 	# Bootstrap page structures
@@ -130,13 +130,13 @@ lm_entry:
 	movq %cr3, %rdx
 	movq %rdx, %cr3
 
-	# Load IDT
-	movabsq $idtr, %rdx
-	lidt (%rdx)
-
 	# Reload GDTR
 	movabsq $gdtr, %rdx
 	lgdt (%rdx)
+
+	# Load IDT
+	movabsq $idtr, %rdx
+	lidt (%rdx)
 
 	# Load stack
 	movabs $stack_bottom, %rsp

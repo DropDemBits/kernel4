@@ -21,9 +21,7 @@
 
 .set KERNEL_VIRTUAL_BASE, 0x80000000
 
-.section .init, "awx"
-
-.section .multiboot
+.section .multiboot, "awx"
 	# Multiboot2 Header
 	.align 8
 multiboot2_header_start:
@@ -132,7 +130,7 @@ gdt_begin:
 
 gdt_end:
 	.align 4096
-idt_begin:
+idt_table:
 	.skip (8*256)
 idt_end:
 
@@ -140,8 +138,8 @@ gdtr:
 	.word (gdt_end - gdt_begin)
 	.long gdt_begin
 idtr:
-	.word (idt_end - idt_begin)
-	.long idt_begin
+	.word (idt_end - idt_table)
+	.long idt_table
 
 
 .section .text
@@ -227,6 +225,7 @@ cont:
 	mov $0x10, %dx
 	mov %dx, %ds
 	mov %dx, %ss
+	# Setup stack
 	movl $(stack_bottom - KERNEL_VIRTUAL_BASE), %esp
 	mov %dx, %es
 	mov %dx, %fs
@@ -237,6 +236,9 @@ flush_cs:
 	# Set multiboot pointer
 	movl %eax, (multiboot_magic)
 	movl %ebx, (multiboot_ptr)
+
+	# Load IDTR
+	lidt (idtr)
 
 	jmp kmain
 
