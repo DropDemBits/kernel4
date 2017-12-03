@@ -111,8 +111,6 @@ void parse_mb1()
 			mmap = (mb_mmap_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
 		}
 	}
-
-
 }
 
 /**

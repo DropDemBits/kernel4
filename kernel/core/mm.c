@@ -368,13 +368,13 @@ void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 	// Set bits according to type
 	for(size_t block = 0;;)
 	{
-		for(size_t bit = (base >> 12); bit < ((length >> 12) & 0x7FFF); bit++)
+		for(size_t bit = 0; bit < ((length >> 12) & 0x7FFF); bit++)
 		{
 			if(type == 1)
 			{
-				bm_clear_bit(tail, bit);
+				bm_clear_bit(tail, bit + (base >> 12));
 			}
-			else bm_set_bit(tail, bit);
+			else bm_set_bit(tail, bit + (base >> 12));
 		}
 
 		if(cover_kernel)
@@ -382,7 +382,7 @@ void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 			// Reserve kernel image region
 			mm_add_region(	(physical_addr_t)&kernel_phystart,
 							(size_t)&kernel_physize,
-							1);
+							2);
 			cover_kernel = false;
 		}
 
