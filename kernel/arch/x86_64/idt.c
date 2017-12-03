@@ -1,5 +1,5 @@
-#include <types.h>
 #include <idt.h>
+#include <tty.h>
 #include <stack_state.h>
 #include <uart.h>
 
@@ -128,11 +128,10 @@ void isr_common(struct intr_stack *frame)
 	if(function_table[frame->int_num].pointer == KNULL && frame->int_num < 32)
 	{
 		// Do Generic Fault
-		// TODO: Use TTY prints / printf instead of uart only
-		serial_write("An exception has occured in the kernel\r\n");
-		serial_write("The exception was \"");
-		serial_write(fault_names[frame->int_num]);
-		serial_write("\"\r\n");
+		tty_prints("An exception has occured in the kernel\n");
+		tty_prints("The exception was \"");
+		tty_prints(fault_names[frame->int_num]);
+		tty_prints("\"\n");
 		halt();
 	}
 	else {

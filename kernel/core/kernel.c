@@ -3,6 +3,7 @@
 #include <vga.h>
 #include <mb2parse.h>
 #include <uart.h>
+#include <tty.h>
 
 extern void halt();
 
@@ -20,8 +21,9 @@ void serial_write(const char* str)
 
 void kmain()
 {
+	tty_init();
 	uart_init();
-	serial_write("Hello!\r\n");
+	tty_prints("Hello World!\n");
 	multiboot_parse();
 	mm_init();
 	mmu_init();
@@ -53,24 +55,13 @@ void kmain()
 	else if(mb_framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
 	{
 		uint16_t* console = (uint16_t*) framebuffer;
+		tty_add_output(VGA_CONSOLE, (size_t)console);
 		// Clear screen
 		for(int i = 0; i < mb_framebuffer_width * mb_framebuffer_height; i++)
 			console[i] = 0x0700;
-
-		// Do Hello World
-		console[0]  = 'H' | 0x0700;
-		console[1]  = 'e' | 0x0700;
-		console[2]  = 'l' | 0x0700;
-		console[3]  = 'l' | 0x0700;
-		console[4]  = 'o' | 0x0700;
-		console[5]  = ' ' | 0x0700;
-		console[6]  = 'W' | 0x0700;
-		console[7]  = 'o' | 0x0700;
-		console[8]  = 'r' | 0x0700;
-		console[9]  = 'l' | 0x0700;
-		console[10] = 'd' | 0x0700;
-		console[11] = '!' | 0x0700;
 	}
+
+	tty_prints("Je suis un test.\n");
 
 	uint8_t* result = (uint8_t*)0xFFBFEEEE;
 	uart_writec(*result);
