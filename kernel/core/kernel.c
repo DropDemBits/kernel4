@@ -13,7 +13,7 @@ size_t strlen(const char* str)
     return len;
 }
 
-serial_write(const char* str)
+void serial_write(const char* str)
 {
 	uart_writestr(str, strlen(str));
 }
@@ -21,7 +21,7 @@ serial_write(const char* str)
 void kmain()
 {
 	uart_init();
-	serial_write("Hello!");
+	serial_write("Hello!\r\n");
 	multiboot_parse();
 	mm_init();
 	mmu_init();
@@ -71,6 +71,9 @@ void kmain()
 		console[10] = 'd' | 0x0700;
 		console[11] = '!' | 0x0700;
 	}
+
+	uint8_t* result = (uint8_t*)0xFFBFEEEE;
+	uart_writec(*result);
 
 	halt();
 }

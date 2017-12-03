@@ -133,6 +133,7 @@ gdt_end:
 idt_table:
 	.skip (8*256)
 idt_end:
+.global idt_table
 
 gdtr:
 	.word (gdt_end - gdt_begin)
@@ -146,7 +147,7 @@ idtr:
 .global _start, halt
 .type _start, @function
 
-.extern kernel_start, kernel_end, kmain
+.extern kernel_start, kernel_end, kmain, setup_idt
 .extern multiboot_ptr, multiboot_magic
 _start:
 	cli
@@ -239,6 +240,7 @@ flush_cs:
 
 	# Load IDTR
 	lidt (idtr)
+	call setup_idt
 
 	jmp kmain
 
