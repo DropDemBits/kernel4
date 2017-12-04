@@ -1,7 +1,9 @@
+#include <types.h>
+#include <mm.h>
+#include <fb.h>
+#include <tty.h>
 #include <multiboot.h>
 #include <multiboot2.h>
-#include <mm.h>
-#include <types.h>
 
 typedef multiboot2_memory_map_t mb2_mmap_t;
 typedef multiboot_memory_map_t mb_mmap_t;
@@ -19,13 +21,6 @@ uint32_t mb_mem_upper;
 
 uint32_t mb_mods_count;
 uint32_t mb_mods_addr;
-
-// Framebuffer things
-uint64_t mb_framebuffer_addr;
-uint32_t mb_framebuffer_width;
-uint32_t mb_framebuffer_height;
-uint8_t mb_framebuffer_type;
-uint8_t mb_framebuffer_bpp;
 
 /* Forward Declerations */
 void parse_mb1();
@@ -83,11 +78,35 @@ void parse_mb1()
 
 	if(flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)
 	{
-		mb_framebuffer_addr = mb1->framebuffer_addr;
-		mb_framebuffer_width = mb1->framebuffer_width;
-		mb_framebuffer_height = mb1->framebuffer_height;
-		mb_framebuffer_type = mb1->framebuffer_type;
-		mb_framebuffer_bpp = mb1->framebuffer_bpp;
+		fb_info.base_addr = mb1->framebuffer_addr;
+		fb_info.width = mb1->framebuffer_width;
+		fb_info.height = mb1->framebuffer_height;
+		fb_info.type = mb1->framebuffer_type;
+		fb_info.pitch = mb1->framebuffer_pitch;
+		fb_info.bits_pp = mb1->framebuffer_bpp;
+		fb_info.bytes_pp = mb1->framebuffer_bpp >> 3;
+
+		if(fb_info.type == TYPE_INDEXED)
+		{
+			fb_info.palette_size = mb1->framebuffer_palette_num_colors;
+			fb_info.palette_addr = mb1->framebuffer_palette_addr;
+		}
+		else if (fb_info.type == TYPE_RGB)
+		{
+			fb_info.red_position = mb1->framebuffer_red_field_position;
+			fb_info.red_mask_size = mb1->framebuffer_red_mask_size;
+			fb_info.green_position = mb1->framebuffer_green_field_position;
+			fb_info.green_mask_size = mb1->framebuffer_green_mask_size;
+			fb_info.blue_position = mb1->framebuffer_blue_field_position;
+			fb_info.blue_mask_size = mb1->framebuffer_blue_mask_size;
+		}
+	}
+
+	if(flags & MULTIBOOT_INFO_BOOT_LOADER_NAME)
+	{
+		tty_prints("Loaded by bootloader \"");
+		tty_prints(mb1->boot_loader_name);
+		tty_prints("\"\n");
 	}
 
 	// This needs to be last as to not overwrite the rest of multiboot things
@@ -146,20 +165,44 @@ void parse_mb2()
 				mmap_tag = ((struct multiboot_tag_mmap *) tag);
 				break;
 			case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
-				mb_framebuffer_addr = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_addr;
-				mb_framebuffer_width = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_width;
-				mb_framebuffer_height = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_height;
-				mb_framebuffer_type = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_type;
-				mb_framebuffer_bpp = ((struct multiboot_tag_framebuffer *) tag)->common.framebuffer_bpp;
+			{
+				struct multiboot_tag_framebuffer *fb = ((struct multiboot_tag_framebuffer *) tag);
+				fb_info.base_addr = fb->common.framebuffer_addr;
+				fb_info.width = fb->common.framebuffer_width;
+				fb_info.height = fb->common.framebuffer_height;
+				fb_info.type = fb->common.framebuffer_type;
+				fb_info.pitch = fb->common.framebuffer_pitch;
+				fb_info.bits_pp = fb->common.framebuffer_bpp;
+				fb_info.bytes_pp = fb->common.framebuffer_bpp >> 3;
+				if(fb_info.type == TYPE_INDEXED)
+				{
+					fb_info.palette_size = fb->framebuffer_palette_num_colors;
+					fb_info.palette_addr = (uint64_t)&(fb->framebuffer_palette);
+				}
+				else if (fb_info.type == TYPE_RGB)
+				{
+					fb_info.red_position = fb->framebuffer_red_field_position;
+					fb_info.red_mask_size = fb->framebuffer_red_mask_size;
+					fb_info.green_position = fb->framebuffer_green_field_position;
+					fb_info.green_mask_size = fb->framebuffer_green_mask_size;
+					fb_info.blue_position = fb->framebuffer_blue_field_position;
+					fb_info.blue_mask_size = fb->framebuffer_blue_mask_size;
+				}
+			}
 				break;
 			case MULTIBOOT_TAG_TYPE_ELF_SECTIONS:
+				break;
+			case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME:
+				tty_prints("Loaded by bootloader \"");
+				tty_prints(((struct multiboot_tag_string*)tag)->string);
+				tty_prints("\"\n");
 				break;
 			default:
 				break;
 		}
 		info_size += tag->size;
 	}
-	
+
 	// Check if we have been passed a memory map
 	if(mmap_tag == KNULL) return;
 

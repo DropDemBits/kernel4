@@ -1,4 +1,5 @@
 #include <tty.h>
+#include <fb.h>
 #include <uart.h>
 
 #define TTY_SIZE 80*25*1
@@ -71,7 +72,6 @@ void tty_set_colour(uint8_t fg, uint8_t bg)
  */
 void tty_reshow()
 {
-	asm("xchg %bx, %bx");
 	// Write to UART
 	for(; uart_base < (column + (row + screen_row) * width); uart_base++)
 	{
@@ -105,7 +105,11 @@ void tty_reshow()
 
 	if(extra_devices[FB_CONSOLE].base != (size_t)KNULL)
 	{
-		// TODO: Push to fb device
+		for(int i = 0; i < TTY_SIZE; i++)
+		{
+			if(window[i].actual_char == '\n') continue;
+			fb_putchar(extra_devices[FB_CONSOLE].base, i << 3, (i / width) << 4, window[i].actual_char);
+		}
 	}
 }
 

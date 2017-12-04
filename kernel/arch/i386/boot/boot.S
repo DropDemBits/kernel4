@@ -14,7 +14,7 @@
 	MULTIBOOT2_LENGTH)
 
 # Framebuffer preferences
-#define FRAMEBUFFER_TYPE    1
+#define FRAMEBUFFER_TYPE    0
 #define FRAMEBUFFER_WIDTH   640
 #define FRAMEBUFFER_HEIGHT  480
 #define FRAMEBUFFER_BPP     16
