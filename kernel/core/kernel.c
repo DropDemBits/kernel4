@@ -49,12 +49,14 @@ void kmain()
 	if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
 	{
 		tty_add_output(FB_CONSOLE, (size_t)get_fb_address());
+
+		// Clear screen
 		fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0x000000);
 	}
 	else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
 	{
-		uint16_t* console = (uint16_t*) framebuffer;
-		tty_add_output(VGA_CONSOLE, (size_t)console);
+		tty_add_output(VGA_CONSOLE, (size_t)framebuffer);
+
 		// Clear screen
 		for(int i = 0; i < fb_info.width * fb_info.height; i++)
 			console[i] = 0x0700;
