@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <mm.h>
 #include <fb.h>
+#include <hal.h>
 #include <mb2parse.h>
 #include <uart.h>
 #include <tty.h>
@@ -29,6 +30,7 @@ void kmain()
 	mmu_init();
 	fb_init();
 	multiboot_reclaim();
+	hal_init();
 
 	/*
 	 * TODO: Sometimes our bootloader will not fulfill our request for a video

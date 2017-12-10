@@ -11,4 +11,6 @@ typedef uint64_t size_t;
 typedef uint64_t linear_addr_t;
 typedef uint64_t physical_addr_t;
 
+typedef uint8_t(*isr_t)(void*);
+
 #endif /* __TYPES_H__ */

@@ -1,0 +1,77 @@
+#include <hal.h>
+#include <pic.h>
+#include <idt.h>
+#include <stack_state.h>
+
+extern void irq_common(struct intr_stack *frame);
+
+static bool use_apic = false;
+
+static bool apic_exists()
+{
+	uint32_t edx;
+	asm volatile("cpuid":"=d"(edx):"a"(1));
+	return (edx >> 9) & 0x1;
+}
+
+void hal_init()
+{
+	// Check for APIC
+	if(apic_exists())
+	{
+		// TODO: Enable & init apic
+		//outb(PIC1_DATA, 0xFF);
+		//outb(PIC2_DATA, 0xFF);
+	}
+	pic_init();
+
+	for(int i = 0; i < 16; i++)
+		irq_add_handler(i+32, irq_common);
+
+	if(!use_apic)
+	{
+		// Mask PIT & RTC
+		pic_mask(0);
+		pic_mask(8);
+		asm("sti");
+		while(pic_read_irr() & ~(0x11));
+		asm("cli");
+		pic_unmask(0);
+		pic_unmask(8);
+	}
+}
+
+void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
+{
+
+}
+
+void timer_set_counter(uint16_t id, uint64_t value)
+{
+
+}
+
+void ic_mask(uint16_t irq)
+{
+	pic_mask(irq);
+}
+
+void ic_unmask(uint16_t irq)
+{
+	pic_unmask(irq);
+}
+
+void ic_check_spurious(uint16_t irq)
+{
+	pic_check_spurious(irq);
+}
+
+void ic_eoi(uint16_t irq)
+{
+	pic_eoi(irq);
+}
+
+void irq_add_handler(uint16_t irq, isr_t handler)
+{
+	isr_add_handler(irq + 32, handler);
+}

@@ -33,13 +33,6 @@
 #define OCW3_SSMM 0x20 // Set Special Mask
 #define OCW3_ESMM 0x40 // Enable writes to Special Mask
 
-static bool apic_exists()
-{
-	uint32_t edx;
-	asm volatile("cpuid":"=d"(edx):"a"(1));
-	return (edx >> 9) & 0x1;
-}
-
 uint16_t pic_read_irr()
 {
 	uint16_t irr = 0;
@@ -52,14 +45,6 @@ uint16_t pic_read_irr()
 
 void pic_init()
 {
-	// Check for APIC
-	if(apic_exists())
-	{
-		// TODO: Enable & init apic
-		//outb(PIC1_DATA, 0xFF);
-		//outb(PIC2_DATA, 0xFF);
-	}
-
 	// Save Masks
 	uint8_t mask_a = inb(PIC1_DATA);
 	uint8_t mask_b = inb(PIC2_DATA);

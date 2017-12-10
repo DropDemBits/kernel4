@@ -1,8 +1,7 @@
+#include <hal.h>
 #include <idt.h>
 #include <tty.h>
 #include <stack_state.h>
-#include <uart.h>
-#include <pic.h>
 
 #define IDT_TYPE_TASK			0x5
 #define IDT_TYPE_INTERRUPT16	0x6
@@ -142,7 +141,7 @@ void isr_common(struct intr_stack *frame)
 
 void irq_common(struct intr_stack *frame)
 {
-	pic_eoi(frame->int_num - 32);
+	ic_eoi(frame->int_num - 32);
 }
 
 void setup_idt()
@@ -202,14 +201,4 @@ void setup_idt()
 
 	for(int i = 0; i < 16; i++)
 		isr_add_handler(i+32, irq_common);
-
-	// Mask PIT & RTC
-	asm("xchg %bx, %bx");
-	pic_mask(0);
-	pic_mask(8);
-	asm("sti");
-	while(pic_read_irr() & ~(0x11));
-	asm("cli");
-	pic_unmask(0);
-	pic_unmask(8);
 }
