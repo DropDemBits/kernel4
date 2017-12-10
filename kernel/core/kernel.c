@@ -59,7 +59,7 @@ void kmain()
 
 		// Clear screen
 		for(int i = 0; i < fb_info.width * fb_info.height; i++)
-			console[i] = 0x0700;
+			((uint16_t*)framebuffer)[i] = 0x0700;
 	}
 
 	tty_prints("Je suis un test.\n");
