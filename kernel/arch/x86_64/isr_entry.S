@@ -3,7 +3,7 @@
 .macro isr_err_entry int_num
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
-	push $0
+
 	push $\int_num\()
 	jmp isr_entry
 .endm
@@ -11,7 +11,7 @@ isr\int_num\()_entry:
 .macro isr_noerr_entry int_num
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
-
+	push $0
 	push $\int_num\()
 	jmp isr_entry
 .endm
@@ -101,7 +101,6 @@ isr_entry:
 	# Call isr_common
 	movq %rsp, %rdi
 	call isr_common
-	addq $8, %rsp
 
 	# Restore registers
 	popq %r11
@@ -126,4 +125,4 @@ isr_entry:
 
 	addq $16, %rsp
 
-	iret
+	iretq

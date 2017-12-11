@@ -37,9 +37,9 @@ uint16_t pic_read_irr()
 {
 	uint16_t irr = 0;
 	outb(PIC1_CMD, OCW3_WREN | OCW3_RREG);
-	irr |= inb(PIC1_DATA);
+	irr |= inb(PIC1_CMD);
 	outb(PIC2_CMD, OCW3_WREN | OCW3_RREG);
-	irr |= inb(PIC2_DATA) << 8;
+	irr |= inb(PIC2_CMD) << 8;
 	return irr;
 }
 

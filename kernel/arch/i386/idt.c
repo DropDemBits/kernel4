@@ -134,13 +134,14 @@ void isr_common(struct intr_stack *frame)
 		tty_prints("\"\n");
 		halt();
 	}
-	else {
+	else if(function_table[frame->int_num].pointer != KNULL) {
 		function_table[frame->int_num].pointer(frame);
 	}
 }
 
 void irq_common(struct intr_stack *frame)
 {
+	tty_prints("IRQ ");
 	ic_eoi(frame->int_num - 32);
 }
 
@@ -195,9 +196,6 @@ void setup_idt()
 	create_descriptor(46, (uint32_t)irq14_entry, 0x08, IDT_TYPE_TRAP);
 	// Spurious #2 (normal in APIC)
 	create_descriptor(47, (uint32_t)irq15_entry, 0x08, IDT_TYPE_TRAP);
-
-	// Cleanup Remaining IRQs
-	pic_init();
 
 	for(int i = 0; i < 16; i++)
 		isr_add_handler(i+32, irq_common);

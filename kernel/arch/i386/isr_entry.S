@@ -3,7 +3,7 @@
 .macro isr_err_entry int_num
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
-	push $0
+
 	push $\int_num\()
 	jmp isr_entry
 .endm
@@ -11,7 +11,7 @@ isr\int_num\()_entry:
 .macro isr_noerr_entry int_num
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
-
+	push $0
 	push $\int_num\()
 	jmp isr_entry
 .endm

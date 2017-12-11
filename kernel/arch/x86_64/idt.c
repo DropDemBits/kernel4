@@ -134,13 +134,14 @@ void isr_common(struct intr_stack *frame)
 		tty_prints("\"\n");
 		halt();
 	}
-	else {
+	else if(function_table[frame->int_num].pointer != KNULL) {
 		function_table[frame->int_num].pointer(frame);
 	}
 }
 
 void irq_common(struct intr_stack *frame)
 {
+	tty_prints("IRQ ");
 	ic_eoi(frame->int_num - 32);
 }
 

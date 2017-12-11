@@ -26,7 +26,9 @@ void hal_init()
 	pic_init();
 
 	for(int i = 0; i < 16; i++)
-		irq_add_handler(i+32, irq_common);
+		irq_add_handler(i, irq_common);
+
+	timer_config_counter(0, 1000, TM_MODE_INTERVAL);
 
 	if(!use_apic)
 	{
@@ -41,14 +43,24 @@ void hal_init()
 	}
 }
 
-void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
+void hal_enable_interrupts()
 {
-
+	asm volatile("sti");
 }
 
-void timer_set_counter(uint16_t id, uint64_t value)
+void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
 {
+	pit_init_counter(id, frequency, mode);
+}
 
+void timer_reset_counter(uint16_t id)
+{
+	pit_reset_counter(id);
+}
+
+void timer_set_counter(uint16_t id, uint16_t frequency)
+{
+	pit_set_counter(id, frequency);
 }
 
 void ic_mask(uint16_t irq)
