@@ -14,6 +14,7 @@ uint16_t uart_base = 0;
 tty_colour_t colour = {.fg_colour=0x7,.bg_colour=0x0};
 tty_device_t extra_devices[2];
 tty_char_t window[TTY_SIZE];
+bool background_reshow = false;
 
 static size_t strlen(const char* str)
 {
@@ -33,6 +34,11 @@ void tty_init()
 	extra_devices[0].base = (size_t)KNULL;
 	extra_devices[1].base = (size_t)KNULL;
 	// TODO: memset tty_window
+	for(int i = 0; i < TTY_SIZE; i++)
+	{
+		window[i].colour = colour;
+		window[i].actual_char = 0x00;
+	}
 }
 
 void tty_prints(const char* str)
@@ -55,10 +61,32 @@ void tty_printchar(const char c)
 		column = 0;
 		if(++row >= height)
 		{
-			// TODO: Call memcpy
-			row = 0;
+			row = height - 1;
+			tty_scroll();
 		}
 	}
+}
+
+void tty_scroll()
+{
+	size_t line = (screen_row) * width;
+	uint16_t* raw_window = (uint16_t*)window;
+
+	for(int y = 1; y < height - 1; y++)
+	{
+		for(int x = 0; x < width; x++)
+		{
+			raw_window[line+x] = raw_window[line+width+x];
+		}
+		line += width;
+	}
+
+	for(int x = 0; x < width; x++)
+	{
+		window[(height-1)*width].actual_char = 0x00;
+	}
+
+	background_reshow = true;
 }
 
 void tty_set_colour(uint8_t fg, uint8_t bg)
@@ -108,7 +136,7 @@ void tty_reshow()
 		for(int i = 0; i < TTY_SIZE; i++)
 		{
 			if(window[i].actual_char == '\n') continue;
-			fb_putchar(extra_devices[FB_CONSOLE].base, i << 3, (i / width) << 4, window[i].actual_char);
+			fb_putchar(extra_devices[FB_CONSOLE].base, (i % width) << 3, (i / width) << 4, window[i].actual_char);
 		}
 	}
 }
@@ -129,4 +157,14 @@ void tty_add_output(enum OutputType type, size_t base)
 		default:
 			break;
 	}
+}
+
+bool tty_background_dirty()
+{
+	return background_reshow;
+}
+
+bool tty_make_clean()
+{
+	background_reshow = false;
 }

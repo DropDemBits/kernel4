@@ -73,6 +73,11 @@ void kmain()
 	hal_enable_interrupts();
 	while(1)
 	{
+		if(tty_background_dirty())
+		{
+			fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0);
+			tty_make_clean();
+		}
 		tty_reshow();
 		asm("hlt");
 	}
