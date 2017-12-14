@@ -1,7 +1,5 @@
 #include <stdio.h>
-#if __STDC_HOSTED__ == 0
-extern void kputchar(int ic);
-#endif
+#include <kernhooks.h>
 
 int putchar(int ic)
 {

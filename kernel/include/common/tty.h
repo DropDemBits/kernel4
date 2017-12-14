@@ -31,6 +31,6 @@ void tty_set_colour(uint8_t fg, uint8_t bg);
 void tty_reshow();
 void tty_add_output(enum OutputType type, size_t base);
 bool tty_background_dirty();
-bool tty_make_clean();
+void tty_make_clean();
 
 #endif /* __TTY_H__ */

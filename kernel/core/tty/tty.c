@@ -164,7 +164,7 @@ bool tty_background_dirty()
 	return background_reshow;
 }
 
-bool tty_make_clean()
+void tty_make_clean()
 {
 	background_reshow = false;
 }

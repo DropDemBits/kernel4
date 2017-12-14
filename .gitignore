@@ -4,3 +4,4 @@ k4*.kern
 isodir/
 bochsrc
 k4*.iso
+sysroot

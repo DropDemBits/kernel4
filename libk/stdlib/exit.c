@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#if __STDC_HOSTED__ == 0
-extern void kexit(int status);
-#endif
+#include <kernhooks.h>
 
 __attribute__((__noreturn__))
 void exit(int status)

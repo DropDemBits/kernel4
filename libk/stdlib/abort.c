@@ -1,7 +1,5 @@
 #include <stdlib.h>
-#if __STDC_HOSTED__ == 0
-void kpanic(const char* message);
-#endif
+#include <kernhooks.h>
 
 __attribute__((__noreturn__))
 void abort(void)
@@ -11,8 +9,7 @@ void abort(void)
     printf("abort()\n");
     while (1);
 #else
-    //Panic
-    kpanic("Abnormal exit");
+    kabort();
 #endif
     __builtin_unreachable();
 }

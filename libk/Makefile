@@ -1,12 +1,12 @@
 TARGET_ARCH?=
 CC?=
 AR?=
-DESTDIR?=
+SYSROOT?=
 PREFIX?=/usr/local
 
 BUILD_OBJ=
 CFLAGS=-Wall -Wextra
-CPPFLAGS= -I$(DESTDIR)$(PREFIX)/include
+CPPFLAGS= -I$(SYSROOT)$(PREFIX)/include
 LIBK_CFLAGS=$(CFLAGS) -ffreestanding -fbuiltin
 LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
 
@@ -67,10 +67,10 @@ clean:
 	rm -rf bin/ #*.o */*.o */*/*.o
 
 install-binaries: $(BINARIES)
-	mkdir -p $(DESTDIR)$(PREFIX)/lib/
-	cp $(BINARIES) $(DESTDIR)$(PREFIX)/lib/
+	mkdir -p $(SYSROOT)$(PREFIX)/lib/
+	cp $(BINARIES) $(SYSROOT)$(PREFIX)/lib/
 install-headers:
-	mkdir -p $(DESTDIR)$(PREFIX)/include
-	cp -rp ./include $(DESTDIR)$(PREFIX)
+	mkdir -p $(SYSROOT)$(PREFIX)/include
+	cp -rp ./include $(SYSROOT)$(PREFIX)
 
 install: install-headers install-binaries

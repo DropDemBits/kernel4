@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <hal.h>
 #include <idt.h>
 #include <tty.h>
@@ -107,7 +108,6 @@ static void create_descriptor(	uint8_t index,
 								uint16_t selector,
 								uint8_t type)
 {
-	//asm volatile ("xchg %%bx, %%bx"::"a"(&idt_table),"d"(&idt_table));
 	(&idt_table)[index].offset_low =  (base >> 0) & 0xFFFF;
 	(&idt_table)[index].offset_high = (base >> 16) & 0xFFFF;
 	(&idt_table)[index].selector = selector & ~0x7;
@@ -128,10 +128,9 @@ void isr_common(struct intr_stack *frame)
 	if(function_table[frame->int_num].pointer == KNULL && frame->int_num < 32)
 	{
 		// Do Generic Fault
-		tty_prints("An exception has occured in the kernel\n");
-		tty_prints("The exception was \"");
-		tty_prints(fault_names[frame->int_num]);
-		tty_prints("\"\n");
+		printf("An exception has occured in the kernel\n");
+		printf("The exception was \"%s\"\n", fault_names[frame->int_num]);
+
 		halt();
 	}
 	else if(function_table[frame->int_num].pointer != KNULL) {
