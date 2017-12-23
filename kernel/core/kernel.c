@@ -68,8 +68,8 @@ void kmain()
 	tty_prints("Je suis un test.\n");
 
 	// Exception Handling Test
-	uint8_t* result = (uint8_t*)0xFFBFEEEE;
-	uart_writec(*result);
+	//uint8_t* result = (uint8_t*)0xFFBFEEEE;
+	//uart_writec(*result);
 
 	hal_enable_interrupts();
 	while(1)
