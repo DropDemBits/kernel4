@@ -20,6 +20,7 @@ int vprintf(const char* format, va_list params)
     int length = 0;
     int written = 0;
     char buffer[65];
+    size_t index = 0;
 
     while(*format)
     {
@@ -56,8 +57,17 @@ int vprintf(const char* format, va_list params)
         }
 
         //length
-        if(*format == 'l')
+        if(*format == 'l' || *format == 'h')
         {
+            while(*format == 'h')
+            {
+                length--;
+                format++;
+            }
+
+            if(length != 0)
+                goto bad_formatting;
+
             while(*format == 'l')
             {
                 length++;
@@ -81,38 +91,65 @@ int vprintf(const char* format, va_list params)
         else if(*format == 'd' || *format == 'i')
         {
             //Signed integer
-            size_t number;
-            if(length == 1) number = va_arg(params, int32_t);
-            else if(length == 2) number = va_arg(params, int64_t);
-            else number = va_arg(params, int);
+            long long number;
+            switch(length)
+            {
+            case 1:
+                number = va_arg(params, long);
+                break;
+            case 2:
+                number = va_arg(params, long long);
+                break;
+            default:
+                number = va_arg(params, int);
+                break;
+            }
 
-            amount += strlen(itoa(number, buffer, 10));
+            amount += strlen(lltoa(number, buffer, 10));
             print(buffer, strlen(buffer));
             format++;
         }
         else if(*format == 'u')
         {
             //Unsigned integer
-            uint32_t number;
-            if(length == 1) number = va_arg(params, uint32_t);
-            else if(length == 2) number = va_arg(params, uint32_t);
-            else number = va_arg(params, int);
+            unsigned long long number;
+            switch(length)
+            {
+            case 1:
+                number = va_arg(params, unsigned long);
+                break;
+            case 2:
+                number = va_arg(params, unsigned long long);
+                break;
+            default:
+                number = va_arg(params, unsigned int);
+                break;
+            }
 
-            amount += strlen(ultoa(number, buffer, 10));
+            amount += strlen(ulltoa(number, buffer, 10));
             print(buffer, strlen(buffer));
             format++;
         }
         else if(*format == 'x')
         {
             //Hex (lowercase)
-            uint32_t number;
-            if(length == 1)
-                number = va_arg(params, uint32_t);
-            else if(length == 2)
-                number = va_arg(params, uint32_t);
+            unsigned long long number;
+            switch(length)
+            {
+            case 1:
+                number = va_arg(params, unsigned long);
+                break;
+            case 2:
+                number = va_arg(params, unsigned long long);
+                break;
+            default:
+                number = va_arg(params, unsigned int);
+                break;
+            }
+
             if(pound) print("0x", strlen("0x"));
 
-            amount += strlen(ultoa(number, buffer, 16));
+            amount += strlen(ulltoa(number, buffer, 16));
             for(size_t i = 0; i < strlen(buffer); i++)
                 buffer[i] = tolower(buffer[i]);
             print(buffer, strlen(buffer));
@@ -121,19 +158,28 @@ int vprintf(const char* format, va_list params)
         else if(*format == 'X')
         {
             //Hex (uppercase)
-            uint32_t number;
-            if(length == 1)
-                number = va_arg(params, uint32_t);
-            else if(length == 2)
-                number = va_arg(params, uint32_t);
-                
-            if(pound) print("0x", strlen("0x"));
+            unsigned long long number;
+            switch(length)
+            {
+            case 1:
+                number = va_arg(params, unsigned long);
+                break;
+            case 2:
+                number = va_arg(params, unsigned long long);
+                break;
+            default:
+                number = va_arg(params, unsigned int);
+                break;
+            }
 
-            amount += strlen(ultoa(number, buffer, 16));
+            if(pound) print("0X", strlen("0X"));
+
+            amount += strlen(ulltoa(number, buffer, 16));
             print(buffer, strlen(buffer));
             format++;
         }
         else {
+        bad_formatting:
             length = 0;
             amount = 0;
             pound = false;

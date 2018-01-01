@@ -18,7 +18,8 @@ extern "C"
 void abort(void) __attribute__((noreturn));
 void exit(int status);
 extern char* itoa (int value, char * str, int base);
-extern char* ultoa (unsigned long value, char * str, int base);
+extern char* lltoa (long long value, char * str, int base);
+extern char* ulltoa (unsigned long long value, char * str, int base);
 
 #ifdef __cplusplus
 }

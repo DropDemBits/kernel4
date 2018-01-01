@@ -22,7 +22,8 @@ stdio/puts.o \
 stdlib/abort.o \
 stdlib/exit.o \
 stdlib/itoa.o \
-stdlib/ultoa.o \
+stdlib/lltoa.o \
+stdlib/ulltoa.o \
 string/memcmp.o \
 string/memcpy.o \
 string/memmove.o \

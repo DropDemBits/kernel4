@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-char* itoa (int value, char * str, int base)
+char* ulltoa (unsigned long long value, char * str, int base)
 {
     int begin = 0, index = 0;
 
@@ -9,11 +9,6 @@ char* itoa (int value, char * str, int base)
         str[0] = '0';
         str[1] = '\0';
         return str;
-    }
-    else if(value < 0) {
-        str[0] = '-';
-        begin++;
-        value = ~(value)+1;
     }
 
     for(index = begin; value; index++) {

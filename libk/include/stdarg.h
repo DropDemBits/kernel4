@@ -7,7 +7,7 @@
 extern "C"
 {
 #endif
-
+/*
 typedef unsigned char *va_list;
 
 #define STACKITEM int
@@ -19,6 +19,12 @@ typedef unsigned char *va_list;
 #define va_arg(AP,TYPE) \
     (AP += VA_SIZE(TYPE), *((TYPE *)(AP - VA_SIZE(TYPE))))
 #define va_end(AP)
+*/
+
+typedef __builtin_va_list va_list;
+#define va_start(v, l) __builtin_va_start(v, l)
+#define va_arg(v, t)   __builtin_va_arg(v, t)
+#define va_end(v)      __builtin_va_end(v)
 
 #ifdef __cplusplus
 }
