@@ -37,7 +37,6 @@ void heap_init()
 	heap_base = (uint64_t) get_heap_info()->base;
 	heap_limit = (uint64_t) (get_heap_info()->length + heap_base);
 	free_base = heap_base;
-	printf("Heap init.\n");
 }
 
 /** This function is supposed to lock the memory data structures. It

@@ -27,8 +27,8 @@ void kmain()
 	uart_init();
 	tty_prints("Hello World!\n");
 	multiboot_parse();
-	mm_init();
 	mmu_init();
+	mm_init();
 	fb_init();
 	multiboot_reclaim();
 	hal_init();

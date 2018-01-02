@@ -2,6 +2,7 @@
 
 extern size_t kernel_phystart;
 extern size_t kernel_physize;
+extern linear_addr_t* mm_get_base();
 
 enum {
 	RTYPE_LOW,
@@ -320,9 +321,40 @@ static mem_region_t* mm_create_region(mem_region_t* list_head,
 
 void mm_init()
 {
-	// Now that we have our regions defined, map our region list to virt-mem
-	//asm("xchg %%bx, %%bx"::"a"(region_list));
 	heap_init();
+
+	// Now that we have our regions defined, map our region list to virt-mem
+	if(region_list != KNULL)
+	{
+		// Pass1: Next pointers
+
+		mem_region_t* block = region_list;
+		mem_region_t* next_pointer = mm_get_base();
+
+		mmu_map_direct(next_pointer, region_list);
+		region_list = mm_get_base();
+		next_pointer++;
+
+		while(block->next != KNULL)
+		{
+			mmu_map_direct(next_pointer, block->next);
+			block->next = next_pointer++;
+			block = block->next;
+		}
+
+		// Pass2: Bitmaps
+		uint64_t *block_pointer = (uint64_t*) (((uintptr_t)next_pointer + 0xFFF) & ~0xFFF);
+		block = region_list;
+		while(block != KNULL)
+		{
+			mmu_map_direct(block_pointer, block->bitmap);
+			block->bitmap = block_pointer;
+
+			block_pointer += (0x1000 / sizeof(size_t));
+			block = block->next;
+		}
+
+	}
 }
 
 void mm_add_region(physical_addr_t base, size_t length, uint32_t type)

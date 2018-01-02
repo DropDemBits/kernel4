@@ -188,3 +188,8 @@ bool mmu_is_usable(linear_addr_t* address)
 		get_pte_entry(address)->p) return true;
 	return false;
 }
+
+linear_addr_t* mm_get_base()
+{
+	return (linear_addr_t*) 0x88000000;
+}
