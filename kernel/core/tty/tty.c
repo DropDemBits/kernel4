@@ -73,7 +73,7 @@ void tty_scroll()
 	size_t line = (screen_row) * width;
 	uint16_t* raw_window = (uint16_t*)window;
 
-	for(int y = 1; y < height - 1; y++)
+	for(int y = 1; y < height; y++)
 	{
 		for(int x = 0; x < width; x++)
 		{
@@ -84,7 +84,7 @@ void tty_scroll()
 
 	for(int x = 0; x < width; x++)
 	{
-		window[(height-1)*width].actual_char = 0x00;
+		((uint16_t*)window)[x+(height-1)*width] = 0x0000;
 	}
 
 	background_reshow = true;

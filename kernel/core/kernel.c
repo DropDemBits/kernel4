@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <mm.h>
 #include <fb.h>
 #include <hal.h>
@@ -83,9 +84,11 @@ void kmain()
 	mmu_map(laddr);
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
 
-
+	char ok = ' ';
 	while(1)
 	{
+		putchar(ok++);
+		if(iscntrl(ok)) ok = ' ';
 		if(tty_background_dirty())
 		{
 			fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0);
