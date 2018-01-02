@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <ctype.h>
 
+#include <archtypes.h>
+
 static void print(char *dest, const char* data, size_t data_length, size_t* offset)
 {
     for(size_t i = *offset; i < data_length; i++, (*offset)++)
@@ -173,6 +175,17 @@ int vsprintf(char *dest, const char *format, va_list params)
             }
 
             if(pound) print(dest, "0X", strlen("0X"), &index);
+
+            amount += strlen(ulltoa(number, buffer, 16));
+            print(dest, buffer, strlen(buffer), &index);
+            format++;
+        }
+        else if(*format == 'p')
+        {
+            //Pointer (uppercase)
+            unsigned long long number = GET_POINTER(params);
+
+            if(pound) print(dest, "0x", strlen("0x"), &index);
 
             amount += strlen(ulltoa(number, buffer, 16));
             print(dest, buffer, strlen(buffer), &index);

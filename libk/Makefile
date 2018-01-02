@@ -4,13 +4,20 @@ AR?=
 SYSROOT?=
 PREFIX?=/usr/local
 
+ARCH_INCLUDE_DIR?=
+ARCH_CFLAGS?=
+ARCH_CPPFLAGS?=
+
 BUILD_OBJ=
 CFLAGS=-Wall -Wextra
 CPPFLAGS= -I$(SYSROOT)$(PREFIX)/include
-LIBK_CFLAGS=$(CFLAGS) -ffreestanding -fbuiltin
-LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
 
 include ./arch/$(TARGET_ARCH)/make.config
+
+CFLAGS += $(ARCH_CFLAGS)
+CPPFLAGS += $(ARCH_CPPFLAGS) -I$(ARCH_INCLUDE_DIR)
+LIBK_CFLAGS=$(CFLAGS) -ffreestanding -fbuiltin
+LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
 
 BUILD_OBJ:= $(BUILD_OBJ) \
 stdio/printf.o \
