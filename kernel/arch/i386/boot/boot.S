@@ -90,8 +90,6 @@ bootstrap_pt0:
 	.skip 4096
 bootstrap_pt1:
 	.skip 4096
-graphics_pt0:
-	.skip 4096
 
 stack_top:
 	.skip 16384 # 16KiB
@@ -181,17 +179,6 @@ skip:
 	addl $4, %edi
 	loop begin
 done:
-	# Setup Graphics Addresses
-	/*movl $0xC0000003, %edx
-	movl $(graphics_pt0 - KERNEL_VIRTUAL_BASE), %edi
-	movl $((FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT * (FRAMEBUFFER_BPP >> 2)) >> 12), %ecx
-
-1:
-	movl %edx, (%edi)
-	addl $0x1000, %edx
-	addl $0x4, %edi
-	loop 1b*/
-
 	# Identity
 	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + 0
 	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + 4
@@ -200,8 +187,7 @@ done:
 	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 0
 	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 4
 
-	# Misc
-	movl $(graphics_pt0 - KERNEL_VIRTUAL_BASE + 0x003), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xe00)
+	# Recursive mapping
 	movl $(bootstrap_pd - KERNEL_VIRTUAL_BASE + 0x003), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xffc)
 
 	movl %cr4, %edx

@@ -45,7 +45,7 @@ void kmain()
 		off <= (fb_info.width * fb_info.height * fb_info.bytes_pp);
 		off += 0x1000)
 	{
-		mmu_map_address((linear_addr_t*)((linear_addr_t)framebuffer + off),
+		mmu_map_direct((linear_addr_t*)((linear_addr_t)framebuffer + off),
 						(physical_addr_t*)(fb_info.base_addr + off));
 	}
 
@@ -67,11 +67,23 @@ void kmain()
 
 	tty_prints("Je suis un test.\n");
 
-	// Exception Handling Test
-	//uint8_t* result = (uint8_t*)0xFFBFEEEE;
-	//uart_writec(*result);
-
 	hal_enable_interrupts();
+
+	uint8_t* alloc_test = kmalloc(16);
+	printf("Alloc test: %#p\n", (uintptr_t)alloc_test);
+	kfree(alloc_test);
+
+	uint32_t* laddr = (uint32_t*)0xF0000000;
+	physical_addr_t* addr = mm_alloc(1);
+	printf("PAlloc test: Addr0 (%#p)\n", (uintptr_t)addr);
+	mmu_map_direct(laddr, addr);
+	*laddr = 0xbeefb00f;
+	printf("At Addr1 direct map (%#p): %#lx\n", laddr, *laddr);
+	mmu_unmap(laddr);
+	mmu_map(laddr);
+	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
+
+
 	while(1)
 	{
 		if(tty_background_dirty())

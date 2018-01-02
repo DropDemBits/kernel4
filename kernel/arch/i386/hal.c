@@ -7,6 +7,8 @@
 extern void irq_common(struct intr_stack *frame);
 
 static bool use_apic = false;
+static size_t native_flags;
+static struct heap_info heap_context = {.base=0x90000000, .length=0x10000000};
 
 static bool apic_exists()
 {
@@ -49,6 +51,21 @@ void hal_enable_interrupts()
 	asm volatile("sti");
 }
 
+void hal_disable_interrupts()
+{
+	asm volatile("cli");
+}
+
+void hal_save_interrupts()
+{
+	asm volatile("pushf\n\tpopl %%eax":"=a"(native_flags));
+}
+
+void hal_restore_interrupts()
+{
+	asm volatile("push %%eax\n\tpopf":"=a"(native_flags));
+}
+
 void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
 {
 	pit_init_counter(id, frequency, mode);
@@ -87,4 +104,9 @@ void ic_eoi(uint16_t irq)
 void irq_add_handler(uint16_t irq, isr_t handler)
 {
 	isr_add_handler(irq + 32, handler);
+}
+
+struct heap_info* get_heap_info()
+{
+	return &heap_context;
 }

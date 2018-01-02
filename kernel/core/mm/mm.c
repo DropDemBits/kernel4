@@ -168,14 +168,35 @@ static void bm_set_bit(mem_region_t* mem_block, size_t index)
 	if(sizeof(uint64_t*) == 8)
 	{
 		mem_block->bitmap[bm_index.qword_index] |= (1ULL << bm_index.bit_index64);
-		if(mem_block->bitmap[bm_index.qword_index] == ~0ULL)
-			mem_block->super_map |= (1ULL << sbm_index.bit_index);
+
+		// Check superblocks
+		bool sbi_full = true;
+		for(uint16_t i = 0; i < 0b111; i++)
+		{
+			if(mem_block->bitmap[(bm_index.qword_index & ~0x7ULL) + i] != ~0ULL)
+			{
+				sbi_full = false;
+				break;
+			}
+		}
+
+		if(sbi_full) mem_block->super_map |= (1ULL << sbm_index.bit_index);
 	} else
 	{
 		mem_block->bitmap[bm_index.dword_index] |= (1 << bm_index.bit_index32);
-		if(mem_block->bitmap[(bm_index.dword_index & 1) + 0] == ~0U &&
-			mem_block->bitmap[(bm_index.dword_index & 1) + 1] == ~0U)
-			mem_block->super_map |= (1ULL << sbm_index.bit_index);
+
+		// Check superblocks
+		bool sbi_full = true;
+		for(uint16_t i = 0; i < 0b1111; i++)
+		{
+			if(mem_block->bitmap[(bm_index.dword_index & ~0xF) + i] != ~0)
+			{
+				sbi_full = false;
+				break;
+			}
+		}
+
+		if(sbi_full) mem_block->super_map |= (1ULL << sbm_index.bit_index);
 	}
 }
 
@@ -301,6 +322,7 @@ void mm_init()
 {
 	// Now that we have our regions defined, map our region list to virt-mem
 	//asm("xchg %%bx, %%bx"::"a"(region_list));
+	heap_init();
 }
 
 void mm_add_region(physical_addr_t base, size_t length, uint32_t type)

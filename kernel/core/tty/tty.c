@@ -1,5 +1,6 @@
 #include <tty.h>
 #include <fb.h>
+#include <mm.h>
 #include <uart.h>
 
 #define TTY_SIZE 80*25*1
@@ -120,7 +121,8 @@ void tty_reshow()
 		}
 	}
 
-	if(extra_devices[VGA_CONSOLE].base != (size_t)KNULL)
+	if(extra_devices[VGA_CONSOLE].base != (size_t)KNULL &&
+		mmu_is_usable((size_t*)extra_devices[VGA_CONSOLE].base))
 	{
 		// EGA Textmode console
 		uint16_t* console_base = (uint16_t*)extra_devices[VGA_CONSOLE].base;
@@ -131,7 +133,8 @@ void tty_reshow()
 		}
 	}
 
-	if(extra_devices[FB_CONSOLE].base != (size_t)KNULL)
+	if(extra_devices[FB_CONSOLE].base != (size_t)KNULL &&
+		mmu_is_usable((size_t*)extra_devices[FB_CONSOLE].base))
 	{
 		for(int i = 0; i < TTY_SIZE; i++)
 		{
