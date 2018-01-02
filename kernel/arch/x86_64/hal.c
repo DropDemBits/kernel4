@@ -60,11 +60,12 @@ void hal_disable_interrupts()
 void hal_save_interrupts()
 {
 	asm volatile("pushfq\n\tpopq %%rax":"=a"(native_flags));
+	hal_disable_interrupts();
 }
 
 void hal_restore_interrupts()
 {
-	asm volatile("push %%rax\n\tpopfq":"=a"(native_flags));
+	asm volatile("push %%rax\n\tpopfq"::"a"(native_flags));
 }
 
 void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
