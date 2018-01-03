@@ -120,5 +120,5 @@ struct heap_info* get_heap_info()
 void dump_registers(struct intr_stack *stack)
 {
 	printf("***BEGIN REGISTER DUMP***\n");
-	printf("RIP: %#llx, RSP: %#llx, RBP: %#llx\n", stack->rip, stack->rsp, stack->rbp);
+	printf("RIP: %#p, RSP: %#p, RBP: %#llx\n", stack->rip, stack->rsp, stack->rbp);
 }

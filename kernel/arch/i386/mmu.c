@@ -101,7 +101,7 @@ static bool check_and_map_entry(page_entry_t* entry, linear_addr_t* address)
 	return false;
 }
 
-void pf_handler(struct intr_stack *frame)
+isr_retval_t pf_handler(struct intr_stack *frame)
 {
 	struct PageError *page_error = (struct PageError*)frame->err_code;
 	uint32_t address = frame->cr2;
@@ -113,7 +113,9 @@ void pf_handler(struct intr_stack *frame)
 		tty_add_output(VGA_CONSOLE, (size_t)KNULL);
 	}
 
-	kpanic_intr(frame, "Error: Page fault at %#llx (error code %x)", address, page_error);
+	kpanic_intr(frame, "Error: Page fault at %#p (error code %x)", address, page_error);
+	// This shouldn't be reached
+	return ISR_HANDLED;
 }
 
 void mmu_init()

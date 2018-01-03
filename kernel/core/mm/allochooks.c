@@ -34,6 +34,7 @@ static void free_memblocks(size_t length)
 
 void heap_init()
 {
+	putchar('b');
 	heap_base = (uint64_t) get_heap_info()->base;
 	heap_limit = (uint64_t) (get_heap_info()->length + heap_base);
 	free_base = heap_base;

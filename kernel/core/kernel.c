@@ -8,6 +8,7 @@
 #include <uart.h>
 #include <tty.h>
 #include <kfuncs.h>
+#include <io.h>
 
 size_t strlen(const char* str)
 {
@@ -19,6 +20,30 @@ size_t strlen(const char* str)
 void serial_write(const char* str)
 {
 	uart_writestr(str, strlen(str));
+}
+
+isr_retval_t test0()
+{
+	printf("OIE! ");
+	inb(0x60);
+	ic_eoi(1);
+	return ISR_NOT_HANDLED;
+}
+
+isr_retval_t test1()
+{
+	printf("YOI! ");
+	inb(0x60);
+	ic_eoi(1);
+	return ISR_HANDLED;
+}
+
+isr_retval_t test2()
+{
+	printf("EOI! ");
+	inb(0x60);
+	ic_eoi(1);
+	return ISR_NOT_HANDLED;
 }
 
 void kmain()
@@ -66,6 +91,9 @@ void kmain()
 	}
 
 	tty_prints("Je suis un test.\n");
+	irq_add_handler(1, test0);
+	irq_add_handler(1, test1);
+	irq_add_handler(1, test2);
 
 	hal_enable_interrupts();
 
@@ -89,11 +117,8 @@ void kmain()
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
 	if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 
-	char ok = ' ';
 	while(1)
 	{
-		putchar(ok++);
-		if(iscntrl(ok)) ok = ' ';
 		if(tty_background_dirty())
 		{
 			fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0);
