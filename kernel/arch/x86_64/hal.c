@@ -42,7 +42,9 @@ void hal_init()
 		pic_mask(0);
 		pic_mask(8);
 		asm("sti");
-		while(pic_read_irr() & ~(0x11));
+		// There shouldn't be more than 255 queued interrupts, right?
+		uint8_t timeout = 0;
+		while(pic_read_irr() & ~(0x11) && ++timeout < 0xFF);
 		asm("cli");
 		pic_unmask(0);
 		pic_unmask(8);

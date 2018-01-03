@@ -42,7 +42,7 @@ multiboot2_header_start:
 	.long 0x00000008 # Framebuffer
 	tag1_end:
 
-	.align 8
+	.long 0 # Same as .align 8
 	tag5_start:
 	.word 5 # Frambuffer
 	.word 0x0001
@@ -52,7 +52,7 @@ multiboot2_header_start:
 	.long FRAMEBUFFER_BPP
 	tag5_end:
 
-	.align 8
+	.long 0 # Same as .align 8
 	tag6_start:
 	.word 6 # Align modules to page boundaries
 	.word 0x0000
