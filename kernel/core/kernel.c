@@ -7,8 +7,7 @@
 #include <mb2parse.h>
 #include <uart.h>
 #include <tty.h>
-
-extern void halt();
+#include <kfuncs.h>
 
 size_t strlen(const char* str)
 {
@@ -74,15 +73,21 @@ void kmain()
 	printf("Alloc test: %#p\n", (uintptr_t)alloc_test);
 	kfree(alloc_test);
 
+	// Part 1: allocation
 	uint32_t* laddr = (uint32_t*)0xF0000000;
 	physical_addr_t* addr = mm_alloc(1);
 	printf("PAlloc test: Addr0 (%#p)\n", (uintptr_t)addr);
+
+	// Part 2: Mapping
 	mmu_map_direct(laddr, addr);
 	*laddr = 0xbeefb00f;
 	printf("At Addr1 direct map (%#p): %#lx\n", laddr, *laddr);
+
+	// Part 3: Remapping
 	mmu_unmap(laddr);
 	mmu_map(laddr);
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
+	if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 
 	char ok = ' ';
 	while(1)

@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <hal.h>
 #include <pic.h>
 #include <idt.h>
@@ -111,4 +113,10 @@ void irq_add_handler(uint16_t irq, isr_t handler)
 struct heap_info* get_heap_info()
 {
 	return &heap_context;
+}
+
+void dump_registers(struct intr_stack *stack)
+{
+	printf("***BEGIN REGISTER DUMP***\n");
+	printf("RIP: %#llx, RSP: %#llx, RBP: %#llx\n", stack->rip, stack->rsp, stack->rbp);
 }

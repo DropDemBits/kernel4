@@ -1,11 +1,10 @@
 #include <kernhooks.h>
+#include <kfuncs.h>
 #include <tty.h>
-
-extern void halt();
 
 void kabort()
 {
-	halt();
+	kpanic("Abort called");
 }
 
 void kputchar(int ic)
@@ -16,5 +15,5 @@ void kputchar(int ic)
 
 void kexit(int status)
 {
-	halt();
+	kpanic("Exit called with code %d", status);
 }

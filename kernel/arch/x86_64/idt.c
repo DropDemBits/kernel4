@@ -1,7 +1,6 @@
-#include <stdio.h>
 #include <hal.h>
 #include <idt.h>
-#include <tty.h>
+#include <kfuncs.h>
 #include <stack_state.h>
 
 #define IDT_TYPE_INTERRUPT	0xE
@@ -48,8 +47,6 @@ extern void irq12_entry();
 extern void irq13_entry();
 extern void irq14_entry();
 extern void irq15_entry();
-extern void halt();
-extern void serial_write(const char*);
 
 typedef struct
 {
@@ -129,9 +126,7 @@ void isr_common(struct intr_stack *frame)
 	if(function_table[frame->int_num].pointer == KNULL && frame->int_num < 32)
 	{
 		// Do Generic Fault
-		printf("An exception has occured in the kernel\n");
-		printf("The exception was \"%s\"\n", fault_names[frame->int_num]);
-		halt();
+		kpanic_intr(frame, fault_names[frame->int_num]);
 	}
 	else if(function_table[frame->int_num].pointer != KNULL) {
 		function_table[frame->int_num].pointer(frame);

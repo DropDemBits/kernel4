@@ -1,4 +1,5 @@
 #include <types.h>
+#include <stack_state.h>
 
 #ifndef __HAL_H__
 #define __HAL_H__ 1
@@ -28,6 +29,7 @@ void ic_check_spurious(uint16_t irq);
 void ic_eoi(uint16_t irq);
 
 void irq_add_handler(uint16_t irq, isr_t handler);
+void dump_registers(struct intr_stack *stack);
 
 struct heap_info* get_heap_info();
 

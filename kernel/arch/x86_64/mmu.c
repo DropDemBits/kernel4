@@ -1,13 +1,10 @@
-#include <stdio.h>
 #include <string.h>
 
 #include <mm.h>
 #include <tty.h>
+#include <kfuncs.h>
 #include <stack_state.h>
 #include <idt.h>
-
-// Temporary until kpanic is in place
-extern void halt();
 
 struct PageError {
 	uint32_t was_present : 1;
@@ -147,9 +144,7 @@ void pf_handler(struct intr_stack *frame)
 		tty_add_output(VGA_CONSOLE, (size_t)KNULL);
 	}
 
-	printf("Error: Page fault at %#llx (error code %x)", address, page_error);
-	tty_reshow();
-	halt();
+	kpanic_intr(frame, "Error: Page fault at %#llx (error code %x)", address, page_error);
 }
 
 void mmu_init()
