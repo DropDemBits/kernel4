@@ -8,7 +8,8 @@
 #include <uart.h>
 #include <tty.h>
 #include <kfuncs.h>
-#include <io.h>
+#include <sched.h>
+#include <tasks.h>
 
 size_t strlen(const char* str)
 {
@@ -22,28 +23,9 @@ void serial_write(const char* str)
 	uart_writestr(str, strlen(str));
 }
 
-isr_retval_t test0()
+void sample_thing()
 {
-	printf("OIE! ");
-	inb(0x60);
-	ic_eoi(1);
-	return ISR_NOT_HANDLED;
-}
-
-isr_retval_t test1()
-{
-	printf("YOI! ");
-	inb(0x60);
-	ic_eoi(1);
-	return ISR_HANDLED;
-}
-
-isr_retval_t test2()
-{
-	printf("EOI! ");
-	inb(0x60);
-	ic_eoi(1);
-	return ISR_NOT_HANDLED;
+	printf("hello");
 }
 
 void kmain()
@@ -57,6 +39,7 @@ void kmain()
 	fb_init();
 	multiboot_reclaim();
 	hal_init();
+	sched_init();
 
 	/*
 	 * TODO: Sometimes our bootloader will not fulfill our request for a video
@@ -91,12 +74,10 @@ void kmain()
 	}
 
 	tty_prints("Je suis un test.\n");
-	irq_add_handler(1, test0);
-	irq_add_handler(1, test1);
-	irq_add_handler(1, test2);
 
 	hal_enable_interrupts();
 
+	// TODO: Wrap into a separate test file
 	uint8_t* alloc_test = kmalloc(16);
 	printf("Alloc test: %#p\n", (uintptr_t)alloc_test);
 	kfree(alloc_test);
@@ -117,8 +98,18 @@ void kmain()
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
 	if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 
+	process_t *p1 = process_create();
+	process_t *p2 = process_create();
+	thread_create(p1, sample_thing);
+	thread_create(p2, sample_thing);
+	thread_create(p1, sample_thing);
+	thread_create(p2, sample_thing);
+
 	while(1)
 	{
+		printf("(%d, %d) ", sched_active_process()->pid, sched_active_thread()->tid);
+		sched_switch_thread();
+
 		if(tty_background_dirty())
 		{
 			fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0);

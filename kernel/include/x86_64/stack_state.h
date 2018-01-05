@@ -33,8 +33,10 @@ struct intr_stack {
 	uint64_t ss;
 } __attribute__((__packed__));
 
-struct thread_stack_state
+struct thread_registers
 {
+	// Stack pointer (will always be first element)
+	uint64_t rsp;
 	// Preserved
 	uint64_t r15;
 	uint64_t r14;
@@ -42,7 +44,6 @@ struct thread_stack_state
 	uint64_t r12;
 	uint64_t rbx;
 	uint64_t rbp;
-	uint64_t rsp;
 	uint64_t rip; // call pushed
 	// Volatiles
 	uint64_t r11;

@@ -34,14 +34,15 @@ struct stack_state_segs {
 	struct intr_stack rest;
 } __attribute__((__packed__));
 
-struct thread_stack_state
+struct thread_registers
 {
+	// Stack pointer (will always be first element)
+	uint32_t esp;
 	// Preserved
 	uint32_t ebx;
 	uint32_t esi;
 	uint32_t edi;
 	uint32_t ebp;
-	uint32_t esp;
 	uint32_t eip;
 	// Volatiles
 	uint32_t eax;
