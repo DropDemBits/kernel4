@@ -118,5 +118,5 @@ struct heap_info* get_heap_info()
 void dump_registers(struct intr_stack *stack)
 {
 	printf("***BEGIN REGISTER DUMP***\n");
-	printf("EIP: %#p, ESP: %#p, EBP: %#lx\n", stack->eip, stack->esp, stack->ebp);
+	printf("EIP: %#p, ESP: %#p, EBP: %#p\n", stack->eip, stack->esp, stack->ebp);
 }
