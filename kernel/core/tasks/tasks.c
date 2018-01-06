@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <mm.h>
 
-extern void init_register_state(struct thread_registers *registers, uint64_t *entry_point);
+extern void init_register_state(thread_t *thread, uint64_t *entry_point);
 
 static unsigned int pid_counter = 0;
 static unsigned int tid_counter = 0;
@@ -50,7 +50,7 @@ thread_t* thread_create(process_t *parent, uint64_t *entry_point)
 	thread->tid = tid_counter++;
 	thread->register_state = kmalloc(sizeof(struct thread_registers));
 	memset(thread->register_state, 0, sizeof(struct thread_registers));
-	init_register_state(thread->register_state, entry_point);
+	init_register_state(thread, entry_point);
 
 	process_add_child(parent, thread);
 

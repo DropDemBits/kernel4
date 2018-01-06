@@ -1,6 +1,11 @@
 #include <sched.h>
 #include <stdio.h>
 
+extern void switch_stack(
+	struct thread_registers *new_state,
+	struct thread_registers *old_state
+);
+
 struct thread_queue
 {
 	thread_t *queue_head;
@@ -47,11 +52,18 @@ void sched_switch_thread()
 	thread_t *active_thread = thread_queue.queue_head;
 	thread_t *next_thread = thread_queue.queue_head->next;
 
-	if(next_thread == KNULL) return;
-
-	thread_queue.queue_head = next_thread;
-	active_thread->next = KNULL;
-	active_process = next_thread->parent;
-	sched_queue_thread(active_thread);
-	switch_thread(active_thread, next_thread);
+	if(next_thread == KNULL && active_thread->current_state != STATE_INITIALIZED)
+	{
+		return;
+	} else if(active_thread->current_state == STATE_INITIALIZED)
+	{
+		switch_stack(active_thread->register_state, KNULL);
+	} else
+	{
+		thread_queue.queue_head = next_thread;
+		active_thread->next = KNULL;
+		active_process = next_thread->parent;
+		sched_queue_thread(active_thread);
+		switch_stack(next_thread->register_state, active_thread->register_state);
+	}
 }

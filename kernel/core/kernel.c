@@ -23,9 +23,26 @@ void serial_write(const char* str)
 	uart_writestr(str, strlen(str));
 }
 
-void sample_thing()
+void idle_thread()
 {
-	printf("hello");
+	uint16_t divisor = 0;
+	while(1)
+	{
+		if(tty_background_dirty())
+		{
+			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+			tty_make_clean();
+		}
+		tty_reshow();
+
+		if(divisor++ >= 18)
+		{
+			printf("(%d, %d) ", sched_active_process()->pid, sched_active_thread()->tid);
+			sched_switch_thread();
+			divisor = 0;
+		}
+		asm("hlt");
+	}
 }
 
 void kmain()
@@ -100,22 +117,13 @@ void kmain()
 
 	process_t *p1 = process_create();
 	process_t *p2 = process_create();
-	thread_create(p1, sample_thing);
-	thread_create(p2, sample_thing);
-	thread_create(p1, sample_thing);
-	thread_create(p2, sample_thing);
+	thread_create(p1, (uint64_t*)idle_thread);
+	thread_create(p2, (uint64_t*)idle_thread);
+	thread_create(p1, (uint64_t*)idle_thread);
+	thread_create(p2, (uint64_t*)idle_thread);
 
-	while(1)
-	{
-		printf("(%d, %d) ", sched_active_process()->pid, sched_active_thread()->tid);
-		sched_switch_thread();
+	uint16_t divisor = 0;
 
-		if(tty_background_dirty())
-		{
-			fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0);
-			tty_make_clean();
-		}
-		tty_reshow();
-		asm("hlt");
-	}
+	// Now we are done, go to new thread.
+	sched_switch_thread();
 }

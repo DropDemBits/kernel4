@@ -30,9 +30,10 @@ typedef struct thread
 	process_t *parent;
 	struct thread *next;
 
+	enum thread_state current_state;
+
 	unsigned int tid;
 	struct thread_registers *register_state;
-	enum thread_state current_state;
 } thread_t;
 
 process_t* process_create();

@@ -37,6 +37,7 @@ struct stack_state_segs {
 struct thread_registers
 {
 	// Stack pointer (will always be first element)
+	uint32_t kernel_esp;
 	uint32_t esp;
 	// Preserved
 	uint32_t ebx;

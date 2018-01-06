@@ -35,7 +35,8 @@ struct intr_stack {
 
 struct thread_registers
 {
-	// Stack pointer (will always be first element)
+	// Stack pointers
+	uint64_t kernel_rsp;
 	uint64_t rsp;
 	// Preserved
 	uint64_t r15;

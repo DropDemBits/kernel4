@@ -34,7 +34,7 @@ void hal_init()
 	for(int i = 0; i < 16; i++)
 		irq_add_handler(i, irq_common);
 
-	timer_config_counter(0, 1000, TM_MODE_INTERVAL);
+	timer_config_counter(0, 18, TM_MODE_INTERVAL);
 
 	if(!use_apic)
 	{
