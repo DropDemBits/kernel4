@@ -85,6 +85,7 @@ idtr:
 	.word (idt_end - idt_table)
 	.quad idt_table
 
+.global tss_begin
 tss_begin:
 	.long 0
 	.quad stack_bottom       # RSP0

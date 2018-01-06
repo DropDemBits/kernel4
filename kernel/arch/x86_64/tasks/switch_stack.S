@@ -9,8 +9,8 @@
  * not change if rsi is KNULL.
  *
  * Parameters:
- * RSI: Pointer to new thread's register state
- * RDI: Pointer to old thread's register state
+ * RDI: Pointer to new thread's register state
+ * RSI: Pointer to old thread's register state
  */
 switch_stack:
 	push %rbp
@@ -21,13 +21,17 @@ switch_stack:
 	push %r15
 
 	movq $0xDEAD000000000000, %rax
-	testq %rax, %rsi
+	cmpq %rax, %rsi
 	jz 1f
 	movq %rsp, 0(%rsi)
 1:
-	testq %rax, %rdi
-	cmovnz 0(%rdi), %rsp
-
+	cmpq %rax, %rdi
+	jz 2f
+	movabsq $tss_begin, %rdx
+	movq 0(%rdi), %rdi
+	movq %rdi, 4(%rdx)
+	movq %rdi, %rsp
+2:
 	popq %r15
 	popq %r14
 	popq %r13
@@ -45,7 +49,6 @@ switch_stack:
  * RBP: pointer to thread block
  * Current stack: properly formatted iret structure
  */
-
 initialize_thread:
 	# Set thread state to running
 	movl $1, 16(%rbp)

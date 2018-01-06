@@ -124,7 +124,14 @@ gdt_begin:
 	.byte 0b11110010
 	.byte 0b11001111
 	.byte 0x00
+tss_descriptor:
 	# TSS32 Descriptor
+	.word 0x67
+	.word 0 # Base to set
+	.byte 0 # Base to set
+	.byte 0b10001001
+	.byte 0b10000000
+	.byte 0 # Base to set
 
 gdt_end:
 	.align 4096
@@ -140,6 +147,14 @@ idtr:
 	.word (idt_end - idt_table)
 	.long idt_table
 
+.global tss_begin
+tss_begin:
+	.word 0 # Previous task link
+	.word 0
+	.long stack_bottom # ESP0
+	.long 0x10 # SS0
+	.skip 4*23
+tss_end:
 
 .section .text
 .global _start, halt
@@ -206,14 +221,26 @@ done:
 	jmp *%edx
 
 cont:
+	# Fixup TSS Descriptor
+	movl $tss_begin, %edx
+	movl $tss_descriptor, %edi
+	movw %dx, 2(%edi)
+	shrl $16, %edx
+	movb %dl, 4(%edi)
+	movb %dh, 7(%edi)
+
 	# Load GDT
 	lgdt (gdtr)
+
+	# Load TSS
+	movl $0x28, %edx
+	ltr %dx
 
 	mov $0x10, %dx
 	mov %dx, %ds
 	mov %dx, %ss
 	# Setup stack
-	movl $(stack_bottom - KERNEL_VIRTUAL_BASE), %esp
+	movl $stack_bottom, %esp
 	mov %dx, %es
 	mov %dx, %fs
 	mov %dx, %gs

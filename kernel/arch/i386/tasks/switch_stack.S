@@ -2,6 +2,7 @@
 
 .global switch_stack
 .global initialize_thread
+.extern tss_begin
 
 /**
  * Switches the stack to the new pointer and saves the old into the thread's
@@ -13,6 +14,7 @@
  * 8(ESP): Pointer to old thread's register state (EDX)
  */
 switch_stack:
+	xchg %bx, %bx
 	push %ebp
 	push %edi
 	push %esi
@@ -24,10 +26,13 @@ switch_stack:
 	cmpl $0xDEADBEEF, %edx
 	jz 1f
 	movl %esp, 0(%edx)
-	1:
+1:
 	testl $0xDEADBEEF, %ecx
-	cmovnz 0(%ecx), %esp
-
+	jz 2f
+	movl 0(%ecx), %ecx
+	movl %ecx, (tss_begin+4)
+	movl %ecx, %esp
+2:
 	popl %ebx
 	popl %esi
 	popl %edi
@@ -40,7 +45,7 @@ switch_stack:
  *
  * Parameters:
  * EBP: pointer to thread block
- * Current stack: properly formatted iret structure
+ * Current stack: Properly formatted iret structure
  */
 
 initialize_thread:
@@ -56,12 +61,12 @@ initialize_thread:
 	 *  0 EIP
 	 */
 
+	cmpb $0x08, 4(%esp)
+	jnz 1f
+
 	movl 12(%esp), %eax
 	movl 8(%esp), %ecx
 	movl 0(%esp), %edx
-
-	cmpb $0x08, 4(%esp)
-	jnz 1f
 
 	subl $12, %eax
 	movl %edx, 0(%eax)
