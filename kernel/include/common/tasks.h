@@ -11,18 +11,11 @@ enum thread_state
 	STATE_BLOCKED,
 };
 
-enum process_state
-{
-	STATE_SLEEPING,
-	STATE_ACTIVE,
-};
-
 typedef struct process
 {
 	unsigned int pid;
 	uint64_t child_count;
 	struct thread **child_threads;
-	enum process_state current_state;
 } process_t;
 
 typedef struct thread
@@ -33,6 +26,7 @@ typedef struct thread
 	enum thread_state current_state;
 
 	unsigned int tid;
+	unsigned int timeslice;
 	struct thread_registers *register_state;
 } thread_t;
 

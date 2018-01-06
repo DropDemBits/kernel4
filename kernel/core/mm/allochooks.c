@@ -2,6 +2,7 @@
 #include <hal.h>
 #include <mm.h>
 #include <tty.h>
+#include <sched.h>
 
 static uint64_t heap_base = 0;
 static uint64_t heap_limit = 0;
@@ -34,7 +35,6 @@ static void free_memblocks(size_t length)
 
 void heap_init()
 {
-	putchar('b');
 	heap_base = (uint64_t) get_heap_info()->base;
 	heap_limit = (uint64_t) (get_heap_info()->length + heap_base);
 	free_base = heap_base;
@@ -50,6 +50,7 @@ void heap_init()
 int liballoc_lock()
 {
 	// TODO: Disable preemption
+	preempt_disable();
 	hal_save_interrupts();
 	return 0;
 }
@@ -63,6 +64,7 @@ int liballoc_lock()
 int liballoc_unlock()
 {
 	// TODO: Enable preemption
+	preempt_enable();
 	hal_restore_interrupts();
 	return 0;
 }

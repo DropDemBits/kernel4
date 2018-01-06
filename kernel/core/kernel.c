@@ -11,21 +11,13 @@
 #include <sched.h>
 #include <tasks.h>
 
-size_t strlen(const char* str)
-{
-    size_t len = 0;
-    while(str[len]) len++;
-    return len;
-}
-
 void serial_write(const char* str)
 {
 	uart_writestr(str, strlen(str));
 }
 
-void idle_thread()
+void refresh_thread()
 {
-	uint16_t divisor = 0;
 	while(1)
 	{
 		if(tty_background_dirty())
@@ -34,14 +26,35 @@ void idle_thread()
 			tty_make_clean();
 		}
 		tty_reshow();
+		sched_switch_thread();
+	}
+}
 
-		if(divisor++ >= 18)
-		{
-			printf("(%d, %d) ", sched_active_process()->pid, sched_active_thread()->tid);
-			sched_switch_thread();
-			divisor = 0;
-		}
-		asm("hlt");
+void cy_thread()
+{
+	while(1)
+	{
+		putchar('Y');
+		sched_switch_thread();
+	}
+}
+
+void la_thread()
+{
+	while(1)
+	{
+		putchar('a');
+		sched_switch_thread();
+	}
+}
+
+void ly_thread()
+{
+	while(1)
+	{
+		putchar('y');
+		putchar(' ');
+		sched_switch_thread();
 	}
 }
 
@@ -93,6 +106,7 @@ void kmain()
 	tty_prints("Je suis un test.\n");
 
 	hal_enable_interrupts();
+	preempt_enable();
 
 	// TODO: Wrap into a separate test file
 	uint8_t* alloc_test = kmalloc(16);
@@ -117,12 +131,10 @@ void kmain()
 
 	process_t *p1 = process_create();
 	process_t *p2 = process_create();
-	thread_create(p1, (uint64_t*)idle_thread);
-	thread_create(p2, (uint64_t*)idle_thread);
-	thread_create(p1, (uint64_t*)idle_thread);
-	thread_create(p2, (uint64_t*)idle_thread);
-
-	uint16_t divisor = 0;
+	thread_create(p1, (uint64_t*)refresh_thread);
+	thread_create(p2, (uint64_t*)cy_thread);
+	thread_create(p2, (uint64_t*)la_thread);
+	thread_create(p2, (uint64_t*)ly_thread);
 
 	// Now we are done, go to new thread.
 	sched_switch_thread();

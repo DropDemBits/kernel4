@@ -34,8 +34,6 @@ void hal_init()
 	for(int i = 0; i < 16; i++)
 		irq_add_handler(i, irq_common);
 
-	timer_config_counter(0, 18, TM_MODE_INTERVAL);
-
 	if(!use_apic)
 	{
 		// Mask PIT & RTC
@@ -49,6 +47,8 @@ void hal_init()
 		pic_unmask(0);
 		pic_unmask(8);
 	}
+
+	timer_config_counter(0, 1000, TM_MODE_INTERVAL);
 }
 
 void hal_enable_interrupts()

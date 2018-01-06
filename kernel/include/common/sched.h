@@ -10,5 +10,7 @@ void sched_queue_thread(thread_t *thread);
 process_t* sched_active_process();
 thread_t* sched_active_thread();
 void sched_switch_thread();
+void preempt_disable();
+void preempt_enable();
 
 #endif /* __SCHED_H__ */

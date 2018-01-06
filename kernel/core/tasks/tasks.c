@@ -15,7 +15,6 @@ process_t* process_create()
 
 	process->child_threads = KNULL;
 	process->pid = pid_counter++;
-	process->current_state = STATE_SLEEPING;
 	process->child_count = 0;
 
 	return process;
@@ -48,6 +47,7 @@ thread_t* thread_create(process_t *parent, uint64_t *entry_point)
 	thread->next = KNULL;
 	thread->current_state = STATE_INITIALIZED;
 	thread->tid = tid_counter++;
+	thread->timeslice = 10;
 	thread->register_state = kmalloc(sizeof(struct thread_registers));
 	memset(thread->register_state, 0, sizeof(struct thread_registers));
 	init_register_state(thread, entry_point);

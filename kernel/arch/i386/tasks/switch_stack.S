@@ -14,7 +14,6 @@
  * 8(ESP): Pointer to old thread's register state (EDX)
  */
 switch_stack:
-	xchg %bx, %bx
 	push %ebp
 	push %edi
 	push %esi
