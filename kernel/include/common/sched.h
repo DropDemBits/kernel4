@@ -11,7 +11,7 @@ void sched_set_idle_thread(thread_t *thread);
 process_t* sched_active_process();
 thread_t* sched_active_thread();
 void sched_switch_thread();
-void sched_sleep();
+void sched_set_thread_state(thread_t *thread, enum thread_state state);
 void preempt_disable();
 void preempt_enable();
 

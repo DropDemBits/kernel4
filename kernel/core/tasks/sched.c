@@ -18,6 +18,7 @@ static thread_t* active_thread = KNULL;
 static thread_t* idle_thread = KNULL;
 static struct thread_queue thread_queues[6];
 static struct thread_queue sleep_queue;
+static struct thread_queue blocked_queue;
 static bool preempt_enabled = false;
 static bool bambam = true;
 
@@ -82,6 +83,13 @@ void sched_queue_thread(thread_t *thread)
 	if(thread == KNULL) return;
 	struct thread_queue *queue = &(thread_queues[(thread->priority+2)]);
 
+	sched_queue_thread_to(thread, queue);
+}
+
+void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
+{
+	if(thread == KNULL) return;
+
 	thread->timeslice = get_timeslice(thread->priority);
 	if(queue->queue_head == KNULL)
 	{
@@ -99,17 +107,7 @@ void sched_sleep_thread(thread_t *thread)
 {
 	if(thread == KNULL) return;
 
-	thread->timeslice = get_timeslice(thread->priority);
-	if(sleep_queue.queue_head == KNULL)
-	{
-		sleep_queue.queue_head = thread;
-		sleep_queue.queue_tail = thread;
-		active_process = thread->parent;
-	} else
-	{
-		sleep_queue.queue_tail->next = thread;
-		sleep_queue.queue_tail = thread;
-	}
+	sched_queue_thread_to(thread, &sleep_queue);
 
 	struct thread_queue *queue = &(thread_queues[(thread->priority+2)]);
 	if(queue->queue_head == thread)
@@ -177,13 +175,29 @@ void sched_switch_thread()
 	}
 }
 
-void sched_sleep()
+void sched_set_thread_state(thread_t *thread, enum thread_state state)
 {
-	active_thread->current_state = STATE_SLEEPING;
-	sched_sleep_thread(active_thread);
-	active_thread = KNULL;
-	asm volatile("xchg %%bx,%%bx"::"a"(thread_queues));
-	sched_switch_thread();
+	if(thread == KNULL) return;
+
+	if(state == STATE_SLEEPING)
+	{
+		thread->current_state = state;
+		sched_sleep_thread(thread);
+	} else if(state == STATE_BLOCKED)
+	{
+		thread->current_state = state;
+		sched_queue_thread_to(thread, &blocked_queue);
+	} else if(state == STATE_RUNNING && thread->current_state == STATE_BLOCKED)
+	{
+		// TODO: Unblock thread
+		return;
+	}
+
+	if(thread == active_thread)
+	{
+		active_thread = KNULL;
+		sched_switch_thread();
+	}
 }
 
 void preempt_disable()
