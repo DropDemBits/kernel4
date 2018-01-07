@@ -58,7 +58,6 @@ static thread_t* sched_next_thread()
 
 		if(queue->queue_head != KNULL)
 		{
-			asm volatile("xchg %%bx,%%bx"::"a"(0x58584646));
 			thread_t *next_thread = queue->queue_head;
 			queue->queue_head = next_thread->next;
 			next_thread->next = KNULL;
