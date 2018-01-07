@@ -9,6 +9,19 @@ enum thread_state
 	STATE_INITIALIZED,
 	STATE_RUNNING,
 	STATE_BLOCKED,
+	STATE_SLEEPING,
+};
+
+enum thread_priority
+{
+	PRIORITY_KERNEL = 3,
+	PRIORITY_HIGHER = 2,
+	PRIORITY_HIGH = 1,
+	PRIORITY_NORMAL = 0,
+	PRIORITY_LOW = -1,
+	PRIORITY_LOWER = -2,
+	PRIORITY_COUNT = 6,
+	PRIORITY_IDLE = -3,
 };
 
 typedef struct process
@@ -27,10 +40,11 @@ typedef struct thread
 
 	unsigned int tid;
 	unsigned int timeslice;
+	enum thread_priority priority;
 	struct thread_registers *register_state;
 } thread_t;
 
 process_t* process_create();
-thread_t* thread_create(process_t *parent, uint64_t *entry_point);
+thread_t* thread_create(process_t *parent, uint64_t *entry_point, enum thread_priority priority);
 
 #endif /* __TASKS_H__ */

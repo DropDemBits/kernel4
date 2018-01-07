@@ -11,12 +11,14 @@
 #include <sched.h>
 #include <tasks.h>
 
+bool refresh_needed = false;
+
 void serial_write(const char* str)
 {
 	uart_writestr(str, strlen(str));
 }
 
-void refresh_thread()
+void idle_thread()
 {
 	while(1)
 	{
@@ -30,11 +32,31 @@ void refresh_thread()
 	}
 }
 
+void refresh_thread()
+{
+	while(1)
+	{
+		if(refresh_needed)
+		{
+			putchar('-');
+			if(tty_background_dirty())
+			{
+				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+				tty_make_clean();
+			}
+			tty_reshow();
+			refresh_needed = false;
+		}
+		sched_switch_thread();
+	}
+}
+
 void cy_thread()
 {
 	while(1)
 	{
 		putchar('Y');
+		refresh_needed = true;
 		sched_switch_thread();
 	}
 }
@@ -44,6 +66,7 @@ void la_thread()
 	while(1)
 	{
 		putchar('a');
+		refresh_needed = true;
 		sched_switch_thread();
 	}
 }
@@ -54,6 +77,7 @@ void ly_thread()
 	{
 		putchar('y');
 		putchar(' ');
+		refresh_needed = true;
 		sched_switch_thread();
 	}
 }
@@ -106,7 +130,6 @@ void kmain()
 	tty_prints("Je suis un test.\n");
 
 	hal_enable_interrupts();
-	preempt_enable();
 
 	// TODO: Wrap into a separate test file
 	uint8_t* alloc_test = kmalloc(16);
@@ -129,13 +152,20 @@ void kmain()
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
 	if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 
+	preempt_disable();
 	process_t *p1 = process_create();
 	process_t *p2 = process_create();
-	thread_create(p1, (uint64_t*)refresh_thread);
-	thread_create(p2, (uint64_t*)cy_thread);
-	thread_create(p2, (uint64_t*)la_thread);
-	thread_create(p2, (uint64_t*)ly_thread);
+	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
+	/*
+	 * The refresh thread is on the same priority as the others as there isn't
+	 * conditional wakeups.
+	 */
+	thread_create(p2, (uint64_t*)refresh_thread, PRIORITY_NORMAL);
+	thread_create(p2, (uint64_t*)cy_thread, PRIORITY_NORMAL);
+	thread_create(p2, (uint64_t*)la_thread, PRIORITY_NORMAL);
+	thread_create(p2, (uint64_t*)ly_thread, PRIORITY_NORMAL);
+	preempt_enable();
 
 	// Now we are done, go to new thread.
-	sched_switch_thread();
+	while(1) sched_switch_thread();
 }

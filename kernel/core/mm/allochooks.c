@@ -50,7 +50,7 @@ void heap_init()
 int liballoc_lock()
 {
 	// TODO: Disable preemption
-	preempt_disable();
+	//preempt_disable();
 	hal_save_interrupts();
 	return 0;
 }
@@ -64,7 +64,7 @@ int liballoc_lock()
 int liballoc_unlock()
 {
 	// TODO: Enable preemption
-	preempt_enable();
+	//preempt_enable();
 	hal_restore_interrupts();
 	return 0;
 }
