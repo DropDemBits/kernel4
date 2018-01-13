@@ -72,6 +72,11 @@ void hal_restore_interrupts()
 	asm volatile("push %%rax\n\tpopfq"::"a"(native_flags));
 }
 
+inline void busy_wait()
+{
+	asm volatile("pause");
+}
+
 void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
 {
 	pit_init_counter(id, frequency, mode);

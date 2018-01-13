@@ -20,7 +20,6 @@ static struct thread_queue thread_queues[6];
 static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
 static bool preempt_enabled = false;
-static bool bambam = true;
 
 static unsigned int get_timeslice(enum thread_priority priority)
 {

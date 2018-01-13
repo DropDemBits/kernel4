@@ -5,10 +5,10 @@
 
 #define TTY_SIZE 80*25*1
 
-uint16_t width = 0;
-uint16_t height = 0;
-uint16_t column = 0;
-uint16_t row = 0;
+int16_t width = 0;
+int16_t height = 0;
+int16_t column = 0;
+int16_t row = 0;
 // Used for offset
 uint16_t screen_row = 0;
 uint16_t uart_base = 0;
@@ -52,12 +52,30 @@ void tty_prints(const char* str)
 
 void tty_printchar(const char c)
 {
+	if(!c) return;
+	char pchar = c;
+
+	if(c == '\b')
+	{
+		pchar = '\0';
+		if(--column < 0)
+		{
+			if(row > 0) column = width-1;
+			else column = 0;
+			if(--row < 0) row = 0;
+		}
+	}
+
 	// Print char to tty window
 	size_t index = column + (row + screen_row) * width;
-	window[index].actual_char = c;
+	window[index].actual_char = pchar;
 	window[index].colour = colour;
 
-	if(c == '\n' || ++column >= width)
+	if(c == '\b')
+	{
+		background_reshow = true;
+		return;
+	} else if(c == '\n' || ++column >= width)
 	{
 		column = 0;
 		if(++row >= height)
@@ -86,6 +104,7 @@ void tty_scroll()
 	{
 		((uint16_t*)window)[x+(height-1)*width] = 0x0000;
 	}
+	uart_base -= width;
 
 	background_reshow = true;
 }

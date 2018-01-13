@@ -10,13 +10,11 @@
 #include <kfuncs.h>
 #include <sched.h>
 #include <tasks.h>
+#include <ps2.h>
+#include <keyboard.h>
+#include <keycodes.h>
 
 bool refresh_needed = false;
-
-void serial_write(const char* str)
-{
-	uart_writestr(str, strlen(str));
-}
 
 void idle_thread()
 {
@@ -38,7 +36,6 @@ void refresh_thread()
 	{
 		if(refresh_needed)
 		{
-			putchar('-');
 			if(tty_background_dirty())
 			{
 				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
@@ -51,32 +48,13 @@ void refresh_thread()
 	}
 }
 
-void cy_thread()
-{
-	while(1)
-	{
-		putchar('Y');
-		refresh_needed = true;
-		sched_switch_thread();
-	}
-}
-
-void la_thread()
-{
-	while(1)
-	{
-		putchar('a');
-		refresh_needed = true;
-		sched_switch_thread();
-	}
-}
-
 void ly_thread()
 {
 	while(1)
 	{
-		putchar('y');
-		putchar(' ');
+		char key = keyboard_read_key();
+		if(key)
+			tty_printchar(keyboard_tochar(key));
 		refresh_needed = true;
 		sched_switch_thread();
 	}
@@ -85,15 +63,24 @@ void ly_thread()
 void kmain()
 {
 	tty_init();
+	tty_prints("Initialising UART...\n");
 	uart_init();
-	tty_prints("Hello World!\n");
+	tty_prints("Parsing Multiboot info...\n");
 	multiboot_parse();
+	tty_prints("Initialising MM...\n");
 	mmu_init();
 	mm_init();
+	tty_prints("Initialising Frambuffer...\n");
 	fb_init();
 	multiboot_reclaim();
+	tty_prints("Initialising HAL...\n");
 	hal_init();
+	tty_prints("Initialising Scheduler...\n");
 	sched_init();
+	tty_prints("Initialising PS/2 controller...\n");
+	ps2_init();
+	tty_prints("Initialising keyboard driver...\n");
+	keyboard_init();
 
 	/*
 	 * TODO: Sometimes our bootloader will not fulfill our request for a video
@@ -160,10 +147,8 @@ void kmain()
 	 * The refresh thread is on the same priority as the others as there isn't
 	 * conditional wakeups.
 	 */
-	thread_create(p2, (uint64_t*)refresh_thread, PRIORITY_NORMAL);
-	thread_create(p2, (uint64_t*)cy_thread, PRIORITY_NORMAL);
-	thread_create(p2, (uint64_t*)la_thread, PRIORITY_NORMAL);
-	thread_create(p2, (uint64_t*)ly_thread, PRIORITY_NORMAL);
+	thread_create(p2, (uint64_t*)refresh_thread, PRIORITY_HIGH);
+	thread_create(p2, (uint64_t*)ly_thread, PRIORITY_HIGH);
 	preempt_enable();
 
 	// Now we are done, go to new thread.
