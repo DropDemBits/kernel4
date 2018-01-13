@@ -11,7 +11,7 @@
 #include <sched.h>
 #include <tasks.h>
 #include <ps2.h>
-#include <keyboard.h>
+#include <kbd.h>
 #include <keycodes.h>
 
 bool refresh_needed = false;
@@ -52,9 +52,9 @@ void ly_thread()
 {
 	while(1)
 	{
-		char key = keyboard_read_key();
+		char key = kbd_read();
 		if(key)
-			tty_printchar(keyboard_tochar(key));
+			tty_printchar(kbd_tochar(key));
 		refresh_needed = true;
 		sched_switch_thread();
 	}
@@ -80,7 +80,7 @@ void kmain()
 	tty_prints("Initialising PS/2 controller...\n");
 	ps2_init();
 	tty_prints("Initialising keyboard driver...\n");
-	keyboard_init();
+	kbd_init();
 
 	/*
 	 * TODO: Sometimes our bootloader will not fulfill our request for a video

@@ -14,10 +14,13 @@ typedef struct
 	char altgr_char;
 } key_mapping_t;
 
-void keyboard_init();
-uint8_t keyboard_read_key();
-void keyboard_load_map(key_mapping_t *mapping);
-char keyboard_tochar(uint8_t keycode);
+void kbd_init();
+void kbd_write(uint8_t keycode);
+uint8_t kbd_read();
+void kbd_setstate(uint8_t keycode, uint8_t state);
+uint8_t kbd_getstate(uint8_t keycode);
+void kbd_loadmap(key_mapping_t *mapping);
+char kbd_tochar(uint8_t keycode);
 
 
 #endif /* __KEYBOARD_H__ */

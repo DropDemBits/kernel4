@@ -1,4 +1,4 @@
-#include <keyboard.h>
+#include <kbd.h>
 #include <ps2.h>
 #include <hal.h>
 #include <ctype.h>
@@ -10,35 +10,32 @@
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
 
-uint8_t input_buffer[4096];
-int16_t input_off = -1;
+static uint8_t keycode_buffer[4096];
+static int16_t buffer_off = -1;
 /*
  * 0: xF0 Flag
  * 1: xE0 Flag
  * 2: xE1 Flag
  * 3: Finish Flag
  */
-uint8_t key_state_machine = 0;
+static uint8_t key_state_machine = 0;
 // 7 = shift
-uint8_t key_mods = 0;
-uint8_t key_states[0xFF];
-uint8_t ps2set2_translation[] = {PS2_SET2_MAP};
-key_mapping_t default_charmap[] = {KEYCHAR_MAP_DEFAULT};
-key_mapping_t *charmap;
+static uint8_t key_mods = 0;
+static uint8_t ps2set2_translation[] = {PS2_SET2_MAP};
 bool caps_pressed = false;
 
-static void input_push(uint8_t keycode)
+static void keycode_push(uint8_t keycode)
 {
-	if(input_off >= 4095)
-		input_off = 4095;
+	if(buffer_off >= 4095)
+		buffer_off = 4095;
 	else
-		input_buffer[++input_off] = keycode;
+		keycode_buffer[++buffer_off] = keycode;
 }
 
-static uint8_t input_pop()
+static uint8_t keycode_pop()
 {
-	if(input_off < 0) return 0;
-	return input_buffer[input_off--];
+	if(buffer_off < 0) return 0;
+	return keycode_buffer[buffer_off--];
 }
 
 static void send_command(uint8_t command, uint8_t subcommand)
@@ -102,11 +99,11 @@ isr_retval_t ps2_keyboard_isr()
 	uint8_t new_kmods = key_mods;
 	if((key_state_machine & 0b0001) == 0 || keycode == KEY_PAUSE)
 	{
-		input_push(keycode);
-		if(key_states[keycode] == KEY_STATE_PRESSED)
-			key_states[keycode] = KEY_STATE_REPEAT;
+		kbd_write(keycode);
+		if(kbd_getstate(keycode) == KEY_STATE_PRESSED)
+			kbd_setstate(keycode, KEY_STATE_REPEAT);
 		else
-			key_states[keycode] = KEY_STATE_PRESSED;
+			kbd_setstate(keycode, KEY_STATE_PRESSED);
 
 		if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
 			new_kmods |= MOD_SHIFT;
@@ -117,7 +114,8 @@ isr_retval_t ps2_keyboard_isr()
 		}
 	} else if(key_state_machine & 1)
 	{
-		key_states[keycode] = KEY_STATE_PRESSED;
+		kbd_setstate(keycode, KEY_STATE_RELEASED);
+
 		if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
 			new_kmods &= ~MOD_SHIFT;
 		else if(keycode == KEY_CAPSLOCK && (new_kmods & MOD_CAPS_LOCK) && !caps_pressed)
@@ -130,6 +128,7 @@ isr_retval_t ps2_keyboard_isr()
 	if(new_kmods != key_mods)
 	{
 		key_mods = new_kmods;
+		kbd_setmods(key_mods);
 		send_command(0xED, key_mods & 0xf);
 	}
 	key_state_machine = 0;
@@ -139,43 +138,10 @@ isr_retval_t ps2_keyboard_isr()
 	return ISR_HANDLED;
 }
 
-void keyboard_init()
+void ps2kbd_init()
 {
 	// PS2 Side
 	ps2_handle_device(0, ps2_keyboard_isr);
 	send_command(0xF0, 0x02);
 	send_command(0xED, 0x0f);
-	charmap = default_charmap;
-}
-
-uint8_t keyboard_read_key()
-{
-	return input_pop();
-}
-
-void keyboard_load_map(key_mapping_t *mapping)
-{
-	charmap = mapping;
-}
-
-char keyboard_tochar(uint8_t keycode)
-{
-	if(keycode > KEY_KPDOT) return 0;
-	
-	if(key_mods & MOD_SHIFT)
-		return charmap[keycode].shift_char;
-	else if(key_mods & MOD_CAPS_LOCK && keycode >= KEY_A && keycode <= KEY_Z)
-		return charmap[keycode].shift_char;
-	else
-		return charmap[keycode].normal_char;
-}
-
-uint8_t key_get_state(uint8_t keycode)
-{
-	if(keycode == KEY_PAUSE && key_states[keycode])
-	{
-		key_states[keycode] = KEY_STATE_RELEASED;
-		return KEY_STATE_PRESSED;
-	}
-	return key_states[keycode];
 }

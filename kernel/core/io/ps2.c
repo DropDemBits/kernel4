@@ -15,6 +15,7 @@
    extern uint8_t* ps2_device_irqs();
  */
 
+bool controller_exists = true;
 uint8_t valid_devices[2];
 
 static void send_controller_command(uint8_t command)
@@ -35,8 +36,15 @@ static uint8_t wait_read_data()
 	return ps2_read_data();
 }
 
-void ps2_init()
+static void controller_init()
 {
+	// Temporary until we can read ACPI Tables
+	if(ps2_read_status() == 0xFF)
+	{
+		controller_exists = false;
+		return;
+	}
+
 	uint8_t usable_bitmask = 0b01;
 
 	// Disable devices
@@ -91,7 +99,7 @@ void ps2_init()
 			printf("PS/2 Unable to use device 2 (code %#x)\n", retval);
 		}
 	}
-	
+
 	if(usable_bitmask == 0)
 	{
 		puts("PS/2 No usable devices");
@@ -127,6 +135,11 @@ void ps2_init()
 	wait_write_data(cfg_byte);
 }
 
+void ps2_init()
+{
+	controller_init();
+}
+
 void ps2_handle_device(int device, isr_t handler)
 {
 	if(device >= 2 || !valid_devices[device]) return;
@@ -148,4 +161,14 @@ void ps2_device_write(int device, bool wait_for, uint8_t data)
 
 	if(wait_for) wait_write_data(data);
 	else ps2_device_writeb(data);
+}
+
+void ps2_controller_set_exist(bool exist_state)
+{
+	controller_exists = exist_state;
+}
+
+bool ps2_controller_exists()
+{
+	return controller_exists;
 }
