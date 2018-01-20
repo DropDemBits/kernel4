@@ -46,7 +46,6 @@ static void send_command(uint8_t command, uint8_t subcommand)
 
 static isr_retval_t at_keyboard_isr()
 {
-	putchar('a');
 	uint8_t data = ps2_device_read(kbd_device, false);
 	if(data == 0xFA) goto keep_consume;
 

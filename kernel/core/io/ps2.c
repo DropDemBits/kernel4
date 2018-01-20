@@ -137,7 +137,6 @@ static void controller_init()
 	// Enable & reset devices
 	if(usable_bitmask & 0b01)
 	{
-		send_controller_command(0xAE);
 		ps2_device_write(0, true, 0xFF);
 		if(ps2_device_read(0, true) == 0xFC) usable_bitmask &= ~0b01;
 		else
@@ -147,7 +146,6 @@ static void controller_init()
 
 	if(usable_bitmask & 0b10)
 	{
-		send_controller_command(0xA8);
 		ps2_device_write(1, true, 0xFF);
 		if(ps2_device_read(1, true) == 0xFC) usable_bitmask &= ~0b10;
 		else
@@ -183,9 +181,9 @@ static void detect_device(int device)
 	second_byte = wait_read_data_timeout(0xFFF);
 
 	if(first_byte == 0xFF && second_byte == 0xFF) devices[device].type = TYPE_AT_KBD;
-	else if(first_byte == 0x00 && second_byte == 0xFF) devices[device].type = TYPE_2B_MOUSE;
-	else if(first_byte == 0x03 && second_byte == 0xFF) devices[device].type = TYPE_3B_MOUSE;
-	else if(first_byte == 0x04 && second_byte == 0xFF) devices[device].type = TYPE_5B_MOUSE;
+	else if(first_byte == 0x00) devices[device].type = TYPE_2B_MOUSE;
+	else if(first_byte == 0x03) devices[device].type = TYPE_3B_MOUSE;
+	else if(first_byte == 0x04) devices[device].type = TYPE_5B_MOUSE;
 	else if(first_byte == 0xAB && second_byte == 0x41) devices[device].type = TYPE_MF2_KBD_TRANS;
 	else if(first_byte == 0xAB && second_byte == 0xC1) devices[device].type = TYPE_MF2_KBD_TRANS;
 	else if(first_byte == 0xAB && second_byte == 0x83) devices[device].type = TYPE_MF2_KBD;
@@ -199,6 +197,8 @@ static void detect_device(int device)
 		devices[device].present = 0;
 	}
 	send_dev_command(device, 0xF4);
+	if(device == 0) send_controller_command(0xAE);
+	else if(device == 1) send_controller_command(0xA8);
 }
 
 void ps2_init()
