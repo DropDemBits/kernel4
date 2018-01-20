@@ -18,25 +18,42 @@ void fb_puts(void* vram, uint16_t x, uint16_t y, const char* str)
 {
 	while(*str)
 	{
-		fb_putchar(vram, x, y, *str);
+		fb_putchar(vram, x, y, *str, 0xFFFFFFFF);
 		x+=8;
 		str++;
 	}
 }
 
-void fb_putchar(void* vram, uint16_t x, uint16_t y, const char c)
+void fb_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colour)
 {
-	uint8_t *font_base = &font_bits[(size_t)(c*16)];
+	uint8_t *font_base = &font_bits[(size_t)(c)];
 
 	for(uint8_t h = 0; h < 16; h++)
 	{
 		for(uint8_t w = 0; w < 8; w++)
 		{
-			if((font_base[h] >> w) & 0x1)
+			if((*font_base >> w) & 0x1)
 			{
-				fb_plotpixel(vram, x+w, y+h, 0xFFFFFF);
+				fb_plotpixel(vram, x+w, y+h, colour);
 			}
 		}
+		font_base += 128;
+	}
+}
+void fb_fill_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colour, uint32_t bg_colour)
+{
+	uint8_t *font_base = &font_bits[(size_t)(c)];
+
+	for(uint8_t h = 0; h < 16; h++)
+	{
+		for(uint8_t w = 0; w < 8; w++)
+		{
+			if((*font_base >> w) & 0x1)
+				fb_plotpixel(vram, x+w, y+h, colour);
+			else
+				fb_plotpixel(vram, x+w, y+h, bg_colour);
+		}
+		font_base += 128;
 	}
 }
 

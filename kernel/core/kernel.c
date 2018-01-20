@@ -50,6 +50,23 @@ void refresh_thread()
 
 void ly_thread()
 {
+	tty_set_colour(0xF, 0x0);
+	for(unsigned char c = ' '; c <= 0x7F; c++)
+	{
+		tty_printchar(c);
+		if(c % 16 == 15) tty_printchar('\n');
+	}
+
+	const char* test_string = "Hello_World!Clrs!\n";
+	uint8_t colour_index = 0;
+
+	while(*test_string)
+	{
+		tty_set_colour(colour_index, 0x10-colour_index++);
+		tty_printchar(*(test_string++));
+	}
+	tty_set_colour(0xa, 0x0);
+
 	while(1)
 	{
 		char key = kbd_read();

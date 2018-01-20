@@ -17,6 +17,11 @@ tty_device_t extra_devices[2];
 tty_char_t window[TTY_SIZE];
 bool background_reshow = false;
 
+static uint32_t ega2clr[] = {
+	0x000000, 0x0000AA, 0x00AA00, 0x00AAAA, 0xAA0000, 0xAA00AA, 0xAA5500, 0xAAAAAA,
+	0x555555, 0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF,
+};
+
 static size_t strlen(const char* str)
 {
 	size_t len = 0;
@@ -158,7 +163,12 @@ void tty_reshow()
 		for(int i = 0; i < TTY_SIZE; i++)
 		{
 			if(window[i].actual_char == '\n') continue;
-			fb_putchar(extra_devices[FB_CONSOLE].base, (i % width) << 3, (i / width) << 4, window[i].actual_char);
+			fb_fill_putchar(extra_devices[FB_CONSOLE].base,
+						(i % width) << 3,
+						(i / width) << 4,
+						window[i].actual_char,
+						ega2clr[window[i].colour.fg_colour],
+						ega2clr[window[i].colour.bg_colour]);
 		}
 	}
 }
