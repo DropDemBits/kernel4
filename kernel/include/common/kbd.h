@@ -19,6 +19,8 @@ void kbd_write(uint8_t keycode);
 uint8_t kbd_read();
 void kbd_setstate(uint8_t keycode, uint8_t state);
 uint8_t kbd_getstate(uint8_t keycode);
+uint8_t kbd_getmods();
+bool kbd_handle_key(uint8_t keycode, bool released);
 void kbd_loadmap(key_mapping_t *mapping);
 char kbd_tochar(uint8_t keycode);
 

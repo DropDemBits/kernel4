@@ -4,7 +4,7 @@ COMPILERS := i686-elf-gcc x86_64-elf-gcc
 
 .PHONY: all clean geniso build-libk build-kernel clean-libk clean-kernel sysroot
 
-default: all
+default: geniso
 
 sysroot:
 	$(foreach PROJECT,$(PROJECTS),$(foreach HOST,$(HOSTS),make -C libk TARGET_ARCH=$(HOST) SYSROOT=../sysroot install &&))

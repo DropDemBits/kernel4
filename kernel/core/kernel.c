@@ -73,14 +73,6 @@ void kmain()
 	tty_prints("Initialising Frambuffer...\n");
 	fb_init();
 	multiboot_reclaim();
-	tty_prints("Initialising HAL...\n");
-	hal_init();
-	tty_prints("Initialising Scheduler...\n");
-	sched_init();
-	tty_prints("Initialising PS/2 controller...\n");
-	ps2_init();
-	tty_prints("Initialising keyboard driver...\n");
-	kbd_init();
 
 	/*
 	 * TODO: Sometimes our bootloader will not fulfill our request for a video
@@ -113,6 +105,16 @@ void kmain()
 		for(int i = 0; i < fb_info.width * fb_info.height; i++)
 			((uint16_t*)framebuffer)[i] = 0x0700;
 	}
+	tty_reshow();
+
+	tty_prints("Initialising HAL...\n");
+	hal_init();
+	tty_prints("Initialising Scheduler...\n");
+	sched_init();
+	tty_prints("Initialising PS/2 controller...\n");
+	ps2_init();
+	tty_prints("Initialising keyboard driver...\n");
+	kbd_init();
 
 	tty_prints("Je suis un test.\n");
 
