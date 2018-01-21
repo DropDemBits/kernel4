@@ -29,6 +29,13 @@ static size_t strlen(const char* str)
 	return len;
 }
 
+static void tty_refresh_cursor()
+{
+	size_t index = column + (row + screen_row) * width;
+	window[index].actual_char = '_';
+	window[index].colour = colour;
+}
+
 /*
  * Initializes TTY Constants
  */
@@ -55,14 +62,70 @@ void tty_prints(const char* str)
 	tty_reshow();
 }
 
+static void tty_tabput()
+{
+	for(int i = 0; i < 4; i++)
+	{
+		size_t index = column + (row + screen_row) * width;
+		window[index].actual_char = '\t';
+		window[index].colour = colour;
+
+		if(++column >= width)
+		{
+			column = 0;
+			if(++row >= height)
+			{
+				row = height - 1;
+				tty_scroll();
+			}
+		}
+	}
+
+	tty_refresh_cursor();
+}
+
+static void tty_tabunput()
+{
+	for(int i = 0; i < 4; i++)
+	{
+		if(--column < 0)
+		{
+			if(row > 0) column = width-1;
+			else column = 0;
+			if(--row < 0) row = 0;
+		}
+
+		size_t index = column + (row + screen_row) * width;
+		window[index].actual_char = '\0';
+		window[index].colour = colour;
+	}
+
+	tty_refresh_cursor();
+}
+
 void tty_printchar(const char c)
 {
 	if(!c) return;
 	char pchar = c;
+	size_t index = column + (row + screen_row) * width;
+
+	if(c == '\t')
+	{
+		tty_tabput();
+		return;
+	}
 
 	if(c == '\b')
 	{
 		pchar = '\0';
+
+		if(window[index-1].actual_char == '\t')
+		{
+			tty_tabunput();
+			return;
+		}
+		window[index].actual_char = '\0';
+
 		if(--column < 0)
 		{
 			if(row > 0) column = width-1;
@@ -70,15 +133,16 @@ void tty_printchar(const char c)
 			if(--row < 0) row = 0;
 		}
 	}
+	if(c == '\n') pchar = '\0';
 
 	// Print char to tty window
-	size_t index = column + (row + screen_row) * width;
+	index = column + (row + screen_row) * width;
 	window[index].actual_char = pchar;
 	window[index].colour = colour;
 
 	if(c == '\b')
 	{
-		background_reshow = true;
+		tty_refresh_cursor();
 		return;
 	} else if(c == '\n' || ++column >= width)
 	{
@@ -89,6 +153,8 @@ void tty_printchar(const char c)
 			tty_scroll();
 		}
 	}
+
+	tty_refresh_cursor();
 }
 
 void tty_scroll()

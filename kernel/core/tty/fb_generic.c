@@ -96,14 +96,41 @@ void fb_fillrect(void* vram, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uin
 	uint8_t b = (colour >> 16) & 0xFF;
 	screen += x*fb_info.bytes_pp + y*fb_info.pitch;
 
-	for (i = 0; i < h; i++)
+	if(fb_info.bits_pp == 15 || fb_info.bits_pp == 16)
 	{
-		for (j = 0; j < w; j++)
+		uint16_t word = 0;
+		word |= ((b >> 3) & 0x1F) << 0; // BLUE
+		if(fb_info.bits_pp == 15)
 		{
-			screen[j*fb_info.bytes_pp + 0] = r;
-			screen[j*fb_info.bytes_pp + 1] = g;
-			screen[j*fb_info.bytes_pp + 2] = b;
+			word |= ((g >> 3) & 0x1F) << 5;  // GREEN (5)
+			word |= ((r >> 3) & 0x1F) << 10; // RED (5)
 		}
-		screen += fb_info.pitch;
+		else
+		{
+			word |= ((g >> 2) & 0x3F) << 5;  // GREEN (6)
+			word |= ((r >> 3) & 0x1F) << 11; // RED (5)
+		}
+
+		for (i = 0; i < h; i++)
+		{
+			for (j = 0; j < w; j++)
+			{
+				screen[(j << 1) + 0] = (word >> 0) & 0xFF;
+				screen[(j << 1) + 1] = (word >> 8) & 0xFF;
+			}
+			screen += fb_info.pitch;
+		}
+	} else if(fb_info.bits_pp == 32 || fb_info.bits_pp == 24)
+	{
+		for (i = 0; i < h; i++)
+		{
+			for (j = 0; j < w; j++)
+			{
+				screen[j*fb_info.bytes_pp + 0] = r;
+				screen[j*fb_info.bytes_pp + 1] = g;
+				screen[j*fb_info.bytes_pp + 2] = b;
+			}
+			screen += fb_info.pitch;
+		}
 	}
 }

@@ -38,7 +38,7 @@ void refresh_thread()
 		{
 			if(tty_background_dirty())
 			{
-				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0x222222);
 				tty_make_clean();
 			}
 			tty_reshow();
