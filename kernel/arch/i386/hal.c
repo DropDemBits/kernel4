@@ -35,18 +35,12 @@ void hal_init()
 
 	if(!use_apic)
 	{
-		// Mask PIT & RTC
-		pic_mask(0);
-		pic_mask(8);
-		asm("sti");
-		uint8_t timeout = 0;
-		while(pic_read_irr() & ~(0x11) && ++timeout < 0xFF);
-		asm("cli");
-		pic_unmask(0);
-		pic_unmask(8);
+		for(int i = 0; i < 16; i++) pic_eoi(i);
 	}
-
 	timer_config_counter(0, 1000, TM_MODE_INTERVAL);
+
+	pic_unmask(0);
+	pic_mask(8);
 }
 
 void hal_enable_interrupts()

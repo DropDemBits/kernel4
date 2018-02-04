@@ -4,6 +4,7 @@
 #include <uart.h>
 
 #define TTY_SIZE 80*25*1
+#define EMPTY_CHAR (' ')
 
 int16_t width = 0;
 int16_t height = 0;
@@ -96,7 +97,7 @@ static void tty_tabunput()
 		}
 
 		size_t index = column + (row + screen_row) * width;
-		window[index].actual_char = '\0';
+		window[index].actual_char = EMPTY_CHAR;
 		window[index].colour = colour;
 	}
 
@@ -117,14 +118,14 @@ void tty_printchar(const char c)
 
 	if(c == '\b')
 	{
-		pchar = '\0';
+		pchar = EMPTY_CHAR;
 
+		window[index].actual_char = EMPTY_CHAR;
 		if(window[index-1].actual_char == '\t')
 		{
 			tty_tabunput();
 			return;
 		}
-		window[index].actual_char = '\0';
 
 		if(--column < 0)
 		{
@@ -133,7 +134,7 @@ void tty_printchar(const char c)
 			if(--row < 0) row = 0;
 		}
 	}
-	if(c == '\n') pchar = '\0';
+	if(c == '\n') pchar = EMPTY_CHAR;
 
 	// Print char to tty window
 	index = column + (row + screen_row) * width;
@@ -218,8 +219,10 @@ void tty_reshow()
 		uint16_t* console_base = (uint16_t*)extra_devices[VGA_CONSOLE].base;
 		for(int i = 0; i < TTY_SIZE; i++)
 		{
-			if(window[i].actual_char < ' ') continue;
-			console_base[i] = (window[i].colour.bg_colour << 12) | (window[i].colour.fg_colour << 8) | window[i].actual_char;
+			char pchar = window[i].actual_char;
+			if(pchar == '\t') pchar = EMPTY_CHAR;
+			if(pchar < ' ' && pchar != 0) continue;
+			console_base[i] = (window[i].colour.bg_colour << 12) | (window[i].colour.fg_colour << 8) | pchar;
 		}
 	}
 
@@ -228,7 +231,7 @@ void tty_reshow()
 	{
 		for(int i = 0; i < TTY_SIZE; i++)
 		{
-			if(window[i].actual_char == '\n') continue;
+			if(window[i].actual_char == '\n' || window[i].actual_char == 0) continue;
 			fb_fill_putchar(extra_devices[FB_CONSOLE].base,
 						(i % width) << 3,
 						(i / width) << 4,

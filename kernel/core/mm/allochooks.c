@@ -10,7 +10,6 @@ static uint64_t free_base = 0;
 
 static uint64_t alloc_memblocks(size_t length)
 {
-	printf("Allocating %d block(s)\n", length);
 	if(free_base + (length << 12) > heap_limit) return 0;
 	size_t retval = free_base;
 

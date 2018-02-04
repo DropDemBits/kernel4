@@ -3,6 +3,7 @@
 #ifndef __PS2_H__
 #define __PS2_H__
 
+extern void ps2_wait();
 extern void ps2_controller_writeb(uint8_t data);
 extern void ps2_device_writeb(uint8_t data);
 extern uint8_t ps2_read_status();

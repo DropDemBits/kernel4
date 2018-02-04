@@ -38,7 +38,14 @@ void refresh_thread()
 		{
 			if(tty_background_dirty())
 			{
-				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0x222222);
+				if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
+				{
+					fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0x222222);
+				} else
+				{
+					for(int i = 0; i < fb_info.width * fb_info.height; i++)
+						((uint16_t*)get_fb_address())[i] = 0x0700;
+				}
 				tty_make_clean();
 			}
 			tty_reshow();
@@ -80,14 +87,14 @@ void ly_thread()
 void kmain()
 {
 	tty_init();
-	tty_prints("Initialising UART...\n");
+	tty_prints("Initialising UART\n");
 	uart_init();
-	tty_prints("Parsing Multiboot info...\n");
+	tty_prints("Parsing Multiboot info\n");
 	multiboot_parse();
-	tty_prints("Initialising MM...\n");
+	tty_prints("Initialising MM\n");
 	mmu_init();
 	mm_init();
-	tty_prints("Initialising Frambuffer...\n");
+	tty_prints("Initialising Framebuffer\n");
 	fb_init();
 	multiboot_reclaim();
 
@@ -124,20 +131,18 @@ void kmain()
 	}
 	tty_reshow();
 
-	tty_prints("Initialising HAL...\n");
+	tty_prints("Initialising HAL\n");
 	hal_init();
-	tty_prints("Initialising Scheduler...\n");
+	hal_enable_interrupts();
+	tty_prints("Initialising Scheduler\n");
 	sched_init();
-	tty_prints("Initialising PS/2 controller...\n");
+	tty_prints("Initialising PS/2 controller\n");
 	ps2_init();
-	tty_prints("Initialising keyboard driver...\n");
+	tty_prints("Initialising keyboard driver\n");
 	kbd_init();
 
-	tty_prints("Je suis un test.\n");
-
-	hal_enable_interrupts();
-
 	// TODO: Wrap into a separate test file
+#ifdef ENABLE_TESTS
 	uint8_t* alloc_test = kmalloc(16);
 	printf("Alloc test: %#p\n", (uintptr_t)alloc_test);
 	kfree(alloc_test);
@@ -157,6 +162,7 @@ void kmain()
 	mmu_map(laddr);
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
 	if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
+#endif
 
 	preempt_disable();
 	process_t *p1 = process_create();

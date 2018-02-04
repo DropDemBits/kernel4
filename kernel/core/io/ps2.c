@@ -4,10 +4,28 @@
 
 #define STATUS_READREADY 0x01
 #define STATUS_WRITEREADY 0x02
+/* Corresponds to 5ms */
+#define DEFAULT_TIMEOUT 5
+
+#define WAIT_TIMEOUT_CHECK(condition, timeout, timedout) \
+do { \
+	int cval = (timeout); \
+	do { \
+		ps2_wait(); \
+	} while((condition) && --cval); \
+	if(!cval) (timedout) = true; \
+} while(0); \
+
+#define WAIT_TIMEOUT(condition, timeout) \
+do { \
+	bool unused = false; \
+	WAIT_TIMEOUT_CHECK(condition, timeout, unused) \
+} while(0); \
 
 /*
    External methods
 
+   extern void ps2_wait();
    extern void ps2_controller_writeb(uint8_t data);
    extern void ps2_device_writeb(uint8_t data);
    extern uint8_t ps2_read_status();
@@ -33,7 +51,7 @@ struct ps2_device devices[2];
 
 static void send_controller_command(uint8_t command)
 {
-	while((ps2_read_status() & STATUS_WRITEREADY) == 1) busy_wait();
+	WAIT_TIMEOUT((ps2_read_status() & STATUS_WRITEREADY), DEFAULT_TIMEOUT)
 	ps2_controller_writeb(command);
 }
 
@@ -45,20 +63,21 @@ static void send_dev_command(int device, uint8_t command)
 
 static void wait_write_data(uint8_t data)
 {
-	while((ps2_read_status() & STATUS_WRITEREADY) == 1) busy_wait();
+	WAIT_TIMEOUT((ps2_read_status() & STATUS_WRITEREADY), DEFAULT_TIMEOUT)
 	ps2_device_writeb(data);
 }
 
 static uint8_t wait_read_data()
 {
-	while((ps2_read_status() & STATUS_READREADY) == 0) busy_wait();
+	WAIT_TIMEOUT((ps2_read_status() & STATUS_READREADY) == 0, DEFAULT_TIMEOUT)
 	return ps2_read_data();
 }
 
-static uint8_t wait_read_data_timeout(uint16_t cycle_val)
+static uint8_t wait_read_data_timeout()
 {
-	while((ps2_read_status() & STATUS_READREADY) == 0 && --cycle_val >= 1) busy_wait();
-	if(cycle_val == 0)
+	bool timedout = false;
+	WAIT_TIMEOUT_CHECK((ps2_read_status() & STATUS_READREADY) == 0, DEFAULT_TIMEOUT, timedout)
+	if(timedout)
 		return 0xFF;
 	return ps2_read_data();
 }
@@ -114,7 +133,7 @@ static void controller_init()
 	if(retval != 0x00)
 	{
 		usable_bitmask &= ~0b01;
-		printf("PS/2 Unable to use device 1 (code %#x)\n", retval);
+		printf("PS/2 Unable to use device on port 1 (code %#x)\n", retval);
 	}
 
 	if(usable_bitmask & 0b10)
@@ -124,7 +143,7 @@ static void controller_init()
 		if(retval != 0x00)
 		{
 			usable_bitmask &= ~0b10;
-			printf("PS/2 Unable to use device 2 (code %#x)\n", retval);
+			printf("PS/2 Unable to use device on port 2 (code %#x)\n", retval);
 		}
 	}
 
@@ -176,18 +195,19 @@ static void detect_device(int device)
 	}
 
 	uint16_t first_byte = 0xFF, second_byte = 0xFF;
+	printf("Identifying device on port %d\n", device + 1);
 	send_dev_command(device, 0xF2);
-	first_byte = wait_read_data_timeout(0xFFF);
-	second_byte = wait_read_data_timeout(0xFFF);
+	first_byte = wait_read_data_timeout();
+	second_byte = wait_read_data_timeout();
 
-	if(first_byte == 0xFF && second_byte == 0xFF) devices[device].type = TYPE_AT_KBD;
-	else if(first_byte == 0x00) devices[device].type = TYPE_2B_MOUSE;
-	else if(first_byte == 0x03) devices[device].type = TYPE_3B_MOUSE;
-	else if(first_byte == 0x04) devices[device].type = TYPE_5B_MOUSE;
+	if(first_byte == 0xFA && second_byte == 0xFF) devices[device].type = TYPE_AT_KBD;
+	else if(first_byte == 0x00 && second_byte == 0xFF) devices[device].type = TYPE_2B_MOUSE;
+	else if(first_byte == 0x03 && second_byte == 0xFF) devices[device].type = TYPE_3B_MOUSE;
+	else if(first_byte == 0x04 && second_byte == 0xFF) devices[device].type = TYPE_5B_MOUSE;
 	else if(first_byte == 0xAB && second_byte == 0x41) devices[device].type = TYPE_MF2_KBD_TRANS;
 	else if(first_byte == 0xAB && second_byte == 0xC1) devices[device].type = TYPE_MF2_KBD_TRANS;
 	else if(first_byte == 0xAB && second_byte == 0x83) devices[device].type = TYPE_MF2_KBD;
-	else printf("Identified unknown device %d: %#x %#x\n", device, first_byte, second_byte);
+	else printf("Identified unknown device on port %d: %#x %#x\n", device+1, first_byte, second_byte);
 
 	// The following combination isn't possible
 	if((devices[device].type == TYPE_MF2_KBD_TRANS || devices[device].type == TYPE_AT_KBD) &&
@@ -196,7 +216,7 @@ static void detect_device(int device)
 		devices[device].type = TYPE_NONE;
 		devices[device].present = 0;
 	}
-	send_dev_command(device, 0xF4);
+
 	if(device == 0) send_controller_command(0xAE);
 	else if(device == 1) send_controller_command(0xA8);
 }
@@ -223,8 +243,8 @@ void ps2_init()
 			atkbd_init(active_device);
 		}
 		else
-			printf("Device %d not initialized (%s)\n",
-				active_device,
+			printf("Device on port %d not initialized (%s)\n",
+				active_device+1,
 				type2name[devices[active_device].type]);
 	}
 }

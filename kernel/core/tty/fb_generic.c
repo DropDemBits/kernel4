@@ -8,10 +8,7 @@ struct framebuffer_info fb_info;
 void fb_init()
 {
 	// TODO: If this is an indexed palette framebuffer, calculate a colour
-	// TODO: quantization table.
-	if(fb_info.bits_pp) tty_prints("fb_info.bits_pp is not 0\n");
-	if(fb_info.bytes_pp) tty_prints("fb_info.bytes_pp is not 0\n");
-	if(fb_info.pitch) tty_prints("fb_info.pitch is not 0\n");
+	// quantization table.
 }
 
 void fb_puts(void* vram, uint16_t x, uint16_t y, const char* str)

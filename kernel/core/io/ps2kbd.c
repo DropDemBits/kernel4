@@ -107,6 +107,7 @@ void ps2kbd_init(int device)
 {
 	// PS2 Side
 	kbd_device = device;
+	ps2_device_write(kbd_device, true, 0xF4);
 	ps2_handle_device(kbd_device, ps2_keyboard_isr);
 	send_command(0xF0, 0x02);
 	send_command(0xED, 0x00);

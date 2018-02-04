@@ -27,3 +27,9 @@ uint8_t* ps2_device_irqs()
 {
 	return irqs;
 }
+
+void ps2_wait()
+{
+	io_wait();
+	asm("hlt");
+}
