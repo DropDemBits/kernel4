@@ -13,7 +13,11 @@
 #include <ps2.h>
 #include <kbd.h>
 #include <keycodes.h>
+#include <vfs.h>
+#include <tarfs.h>
 
+extern uint32_t initrd_start;
+extern uint32_t initrd_size;
 bool refresh_needed = false;
 
 void idle_thread()
@@ -163,6 +167,20 @@ void kmain()
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
 	if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 #endif
+
+	if(initrd_start != 0xDEADBEEF)
+	{
+		puts("VFS-TEST");
+		vfs_mount(tarfs_init((void*)initrd_start, initrd_size), "/");
+
+		vfs_inode_t *root = vfs_getrootnode("/");
+		struct vfs_dirent *dirent;
+		int i = 0;
+		while((dirent = vfs_readdir(root, i++)) != KNULL)
+		{
+			printf("%s: %d\n", dirent->name, dirent->inode);
+		}
+	}
 
 	preempt_disable();
 	process_t *p1 = process_create();

@@ -1,3 +1,4 @@
+#include <string.h>
 #include <types.h>
 #include <mm.h>
 #include <fb.h>
@@ -19,8 +20,9 @@ size_t multiboot_size = 0;
 uint32_t mb_mem_lower;
 uint32_t mb_mem_upper;
 
-uint32_t mb_mods_count;
-uint32_t mb_mods_addr;
+// Will always be 32bit ints
+uint32_t initrd_start = 0xDEADBEEF;
+uint32_t initrd_size = 0;
 
 /* Forward Declerations */
 void parse_mb1();
@@ -72,8 +74,14 @@ void parse_mb1()
 	if(flags & MULTIBOOT_INFO_MODS)
 	{
 		// Module information
-		mb_mods_count = mb1->mods_count;
-		mb_mods_addr = mb1->mods_addr;
+		struct multiboot_mod_list *module = (struct multiboot_mod_list*)mb1->mods_addr;
+
+		if(strcmp(module->cmdline,"initrd.tar") == 0)
+		{
+			initrd_start = module->mod_start;
+			initrd_size = module->mod_end - initrd_start;
+			tty_prints("Loaded initrd.tar\n");
+		}
 	}
 
 	if(flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)
@@ -124,6 +132,10 @@ void parse_mb1()
 				mm_add_region(	multiboot_base,
 								multiboot_size,
 								MULTIBOOT_MEMORY_RESERVED);
+								// Reserve initrd
+				mm_add_region(	initrd_start,
+								initrd_size,
+								MULTIBOOT_MEMORY_RESERVED);
 				first_iter = false;
 			}
 
@@ -157,8 +169,12 @@ void parse_mb2()
 				mb_mem_upper = ((struct multiboot_tag_basic_meminfo*) tag)->mem_upper;
 				break;
 			case MULTIBOOT_TAG_TYPE_MODULE:
-				mb_mods_addr = ((struct multiboot_tag_module *) tag)->mod_start;
-				mb_mods_count++;
+				if(strcmp(((struct multiboot_tag_module *) tag)->cmdline,"initrd.tar") == 0)
+				{
+					initrd_start = ((struct multiboot_tag_module *) tag)->mod_start;
+					initrd_size = ((struct multiboot_tag_module *) tag)->mod_end - initrd_start;
+					tty_prints("Loaded initrd.tar\n");
+				}
 				break;
 			case MULTIBOOT_TAG_TYPE_MMAP:
 				// Walk through later
@@ -223,6 +239,10 @@ void parse_mb2()
 			multiboot_size = info_size;
 			mm_add_region(	multiboot_base,
 							multiboot_size,
+							MULTIBOOT_MEMORY_RESERVED);
+			// Reserve initrd
+			mm_add_region(	initrd_start,
+							initrd_size,
 							MULTIBOOT_MEMORY_RESERVED);
 
 			first_iter = false;
