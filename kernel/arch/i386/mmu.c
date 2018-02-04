@@ -133,7 +133,7 @@ int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
 	// Check PDE Presence
 	if(check_and_map_entry(get_pde_entry(address), address))
 	{
-		uint64_t pte_base = ((uintptr_t)address >> PTT_SHIFT) & (PTE_MASK & ~0x2FF);
+		uint64_t pte_base = ((uintptr_t)address >> PTT_SHIFT) & (PTE_MASK & ~0x3FF);
 		memset(&(pte_lookup[pte_base]), 0x00, 0x1000);
 	}
 	else if(get_pde_entry(address)->frame == KMEM_POISON)
@@ -148,7 +148,7 @@ int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
 	get_pte_entry(address)->rw = 1;
 	get_pte_entry(address)->frame = ((physical_addr_t)mapping >> 12);
 
-	if((uintptr_t)address < 0x800000000)
+	if((uintptr_t)address < 0x80000000)
 		get_pte_entry(address)->su = 1;
 	else
 		get_pte_entry(address)->su = 0;
