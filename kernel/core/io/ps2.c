@@ -4,8 +4,8 @@
 
 #define STATUS_READREADY 0x01
 #define STATUS_WRITEREADY 0x02
-/* Corresponds to 5ms */
-#define DEFAULT_TIMEOUT 5
+/* Corresponds to 10ms */
+#define DEFAULT_TIMEOUT 10
 
 #define WAIT_TIMEOUT_CHECK(condition, timeout, timedout) \
 do { \

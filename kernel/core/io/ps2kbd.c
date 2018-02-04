@@ -36,12 +36,13 @@ static uint8_t keycode_pop()
 	return keycode_buffer[buffer_off--];
 }
 
-static void send_command(uint8_t command, uint8_t subcommand)
+static bool send_command(uint8_t command, uint8_t subcommand)
 {
 	ps2_device_write(kbd_device, true, command);
-	if(ps2_device_read(kbd_device, true) != 0xFA) return;
+	if(ps2_device_read(kbd_device, true) != 0xFA) return false;
 	ps2_device_write(kbd_device, true, subcommand);
-	if(ps2_device_read(kbd_device, true) != 0xFA) return;
+	if(ps2_device_read(kbd_device, true) != 0xFA) return false;
+	return true;
 }
 
 static isr_retval_t ps2_keyboard_isr()
@@ -108,7 +109,11 @@ void ps2kbd_init(int device)
 	// PS2 Side
 	kbd_device = device;
 	ps2_device_write(kbd_device, true, 0xF4);
+	if(ps2_device_read(kbd_device, true) != 0xFA)
+		puts("[KBD] Scanning enable failed");
+
 	ps2_handle_device(kbd_device, ps2_keyboard_isr);
 	send_command(0xF0, 0x02);
+	send_command(0xF3, 0x2B);
 	send_command(0xED, 0x00);
 }
