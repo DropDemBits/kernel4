@@ -44,7 +44,7 @@ void refresh_thread()
 			{
 				if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
 				{
-					fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0x222222);
+					fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
 				} else
 				{
 					for(int i = 0; i < fb_info.width * fb_info.height; i++)
@@ -173,13 +173,26 @@ void kmain()
 		puts("VFS-TEST");
 		vfs_mount(tarfs_init((void*)initrd_start, initrd_size), "/");
 
+		uint8_t *buffer = kmalloc(256);
 		vfs_inode_t *root = vfs_getrootnode("/");
 		struct vfs_dirent *dirent;
 		int i = 0;
 		while((dirent = vfs_readdir(root, i++)) != KNULL)
 		{
-			printf("%s: %d\n", dirent->name, dirent->inode);
+			vfs_inode_t* node = vfs_finddir(root, dirent->name);
+			printf("%s ", dirent->name);
+			switch (node->type & 0x7) {
+				case VFS_TYPE_DIRECTORY:
+					puts("(Directory)");
+					break;
+				default:
+				{
+					ssize_t len = vfs_read(node, 0, 256, buffer);
+					printf("(Read Len %d):\n%s\n", len, buffer);
+				}
+			}
 		}
+		kfree(buffer);
 	}
 
 	preempt_disable();

@@ -65,6 +65,24 @@ static unsigned int getsize(const char *in)
 	return size;
 }
 
+static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, uint8_t* buffer)
+{
+	uint8_t* data = (uint8_t*)(node_data[node->inode] + 1);
+	size_t size = getsize(node_data[node->inode]->size);
+	if(size == 0)
+		return -1;
+	else if(off >= size) // Offset exceeding bounds
+		return 0;
+
+	size_t read_len = 0;
+	for(read_len = 0; read_len < len; read_len++)
+	{
+		buffer[read_len] = data[off+read_len];
+	}
+
+	return read_len;
+}
+
 static struct vfs_dirent* tarfs_readdir(vfs_inode_t *node, size_t index)
 {
 	if(index >= num_nodes)
@@ -101,12 +119,12 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
 		node_list[finode].inode = finode;
 		node_list[finode].size = size;
 		node_list[finode].ptr = KNULL;
-		node_list[finode].read = KNULL;
+		node_list[finode].read = tarfs_read;
 		node_list[finode].write = KNULL;
 		node_list[finode].open = KNULL;
 		node_list[finode].close = KNULL;
 		node_list[finode].readdir = tarfs_readdir;
-		node_list[finode].finddir = KNULL;
+		node_list[finode].finddir = tarfs_finddir;
 		switch(tar_file->typeflag[0])
 		{
 			case 0:
@@ -143,7 +161,7 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
 	root_node->inode = 0;
 	root_node->size = root_node->uid = root_node->gid = root_node->impl_specific = 0;
 	root_node->ptr = KNULL;
-	root_node->read = KNULL;
+	root_node->read = tarfs_read;
 	root_node->write = KNULL;
 	root_node->open = KNULL;
 	root_node->close = KNULL;
