@@ -173,10 +173,12 @@ void kmain()
 		puts("VFS-TEST");
 		vfs_mount(tarfs_init((void*)initrd_start, initrd_size), "/");
 
-		uint8_t *buffer = kmalloc(256);
+		uint8_t *buffer = kmalloc(257);
 		vfs_inode_t *root = vfs_getrootnode("/");
 		struct vfs_dirent *dirent;
 		int i = 0;
+
+		memset(buffer, 0, 257);
 		while((dirent = vfs_readdir(root, i++)) != KNULL)
 		{
 			vfs_inode_t* node = vfs_finddir(root, dirent->name);
@@ -188,6 +190,8 @@ void kmain()
 				default:
 				{
 					ssize_t len = vfs_read(node, 0, 256, buffer);
+					if(len < 0) continue;
+					buffer[len] = '\0';
 					printf("(Read Len %d):\n%s\n", len, buffer);
 				}
 			}

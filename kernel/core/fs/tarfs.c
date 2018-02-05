@@ -75,7 +75,7 @@ static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, uint8_t* bu
 		return 0;
 
 	size_t read_len = 0;
-	for(read_len = 0; read_len < len; read_len++)
+	for(read_len = 0; read_len < len && read_len < size; read_len++)
 	{
 		buffer[read_len] = data[off+read_len];
 	}
