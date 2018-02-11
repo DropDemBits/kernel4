@@ -18,7 +18,6 @@
 
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
-bool refresh_needed = false;
 
 void idle_thread()
 {
@@ -30,38 +29,9 @@ void idle_thread()
 			tty_make_clean();
 		}
 		tty_reshow();
+		sched_gc();
 		sched_switch_thread();
 	}
-}
-
-void refresh_thread()
-{
-	while(1)
-	{
-		if(refresh_needed)
-		{
-			if(tty_background_dirty())
-			{
-				if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
-				{
-					fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
-				} else
-				{
-					for(int i = 0; i < fb_info.width * fb_info.height; i++)
-						((uint16_t*)get_fb_address())[i] = 0x0700;
-				}
-				tty_make_clean();
-			}
-			tty_reshow();
-			refresh_needed = false;
-		}
-		sched_switch_thread();
-	}
-}
-
-void request_refresh()
-{
-	refresh_needed = true;
 }
 
 void kmain()
@@ -179,12 +149,7 @@ void kmain()
 	process_t *p1 = process_create();
 	process_t *p2 = process_create();
 	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
-	/*
-	 * The refresh thread is on the same priority as the others as there isn't
-	 * conditional wakeups.
-	 */
-	thread_create(p2, (uint64_t*)refresh_thread, PRIORITY_HIGH);
-	thread_create(p2, (uint64_t*)kshell_main, PRIORITY_HIGH);
+	thread_create(p2, (uint64_t*)kshell_main, PRIORITY_NORMAL);
 	preempt_enable();
 
 	// Now we are done, go to new thread.

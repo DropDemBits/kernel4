@@ -42,3 +42,14 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	// General registers
 	registers->rip = (uint64_t) entry_point;
 }
+
+void cleanup_register_state(thread_t *thread)
+{
+	struct thread_registers *registers = thread->register_state;
+
+	for(uint64_t i = 0; i < 4; i++)
+	{
+		mmu_unmap((uint64_t*)((registers->kernel_rsp & ~0xFFF) - (i << 12)));
+		mmu_unmap((uint64_t*)((registers->rsp & ~0xFFF) - (i << 12)));
+	}
+}

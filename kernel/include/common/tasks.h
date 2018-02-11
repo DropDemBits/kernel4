@@ -10,6 +10,7 @@ enum thread_state
 	STATE_RUNNING,
 	STATE_BLOCKED,
 	STATE_SLEEPING,
+	STATE_EXITED,
 };
 
 enum thread_priority
@@ -46,5 +47,6 @@ typedef struct thread
 
 process_t* process_create();
 thread_t* thread_create(process_t *parent, uint64_t *entry_point, enum thread_priority priority);
+void thread_destroy(thread_t *thread);
 
 #endif /* __TASKS_H__ */

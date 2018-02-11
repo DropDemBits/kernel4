@@ -5,6 +5,9 @@
 #include <tty.h>
 #include <mm.h>
 #include <ctype.h>
+#include <sched.h>
+#include <fb.h>
+#include <mb2parse.h>
 #include <kshell/kshell.h>
 
 /*
@@ -24,8 +27,40 @@ extern void request_refresh();
 static char* input_buffer = KNULL;
 static int index = 0;
 static bool input_done = false;
+static bool should_run = true;
 static uint8_t shell_text_clr = 0x7;
 static uint8_t shell_bg_clr = 0x0;
+bool refresh_needed = false;
+
+void refresh_task()
+{
+	while(1)
+	{
+		if(refresh_needed)
+		{
+			if(tty_background_dirty())
+			{
+				if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
+				{
+					fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+				} else
+				{
+					for(int i = 0; i < fb_info.width * fb_info.height; i++)
+						((uint16_t*)get_fb_address())[i] = 0x0700;
+				}
+				tty_make_clean();
+			}
+			tty_reshow();
+			refresh_needed = false;
+		}
+		sched_switch_thread();
+	}
+}
+
+void request_refresh()
+{
+	refresh_needed = true;
+}
 
 size_t strspn(const char* str, const char* delim)
 {
@@ -168,12 +203,17 @@ static bool shell_parse()
 		return true;
 	} else if(is_command("help", command) || is_command("?", command))
 	{
-		puts("Kshell version 0.1\n");
+		puts("Kshell version 0.2\n");
 		puts("Available commands (slashes = aliases, square brackets = arguments):");
 		puts("\thelp/?:          \tShows this information");
 		puts("\thelloworld/hw:   \tShows an example string");
 		puts("\tclear/cls:       \tClears the screen");
 		puts("\techo [thistext]: \tShows [thistext]");
+		puts("\texit:            \tExits the console (requires reboot to bring back shell)");
+		return true;
+	} else if(is_command("exit", command))
+	{
+		should_run = false;
 		return true;
 	}
 
@@ -182,13 +222,22 @@ static bool shell_parse()
 
 void kshell_main()
 {
+	/*
+	 * The refresh thread is on the same priority as kshell as there isn't
+	 * conditional wakeups yet.
+	 */
+	thread_t* refresh_thread = thread_create(
+		sched_active_process(),
+		(uint64_t*)refresh_task,
+		PRIORITY_NORMAL);
+
 	tty_set_colour(0xF, 0x0);
 	printf("Welcome to K4!\n");
 	tty_set_colour(0x7, 0x0);
 	input_buffer = kmalloc(INPUT_SIZE+1);
 	memset(input_buffer, 0x00, INPUT_SIZE+1);
 
-	while(1)
+	while(should_run)
 	{
 		shell_readline();
 		if(!shell_parse())
@@ -201,4 +250,7 @@ void kshell_main()
 		request_refresh();
 	}
 
+	puts("kshell is exiting, nothing left to do");
+	sched_set_thread_state(refresh_thread, STATE_EXITED);
+	sched_set_thread_state(sched_active_thread(), STATE_EXITED);
 }

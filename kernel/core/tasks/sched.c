@@ -1,5 +1,5 @@
 #include <sched.h>
-#include <stdio.h>
+#include <kfuncs.h>
 #include <hal.h>
 
 extern void switch_stack(
@@ -19,6 +19,8 @@ static thread_t* idle_thread = KNULL;
 static struct thread_queue thread_queues[6];
 static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
+static struct thread_queue exit_queue;
+static bool cleanup_needed = false;
 static bool preempt_enabled = false;
 
 static unsigned int get_timeslice(enum thread_priority priority)
@@ -58,6 +60,12 @@ static thread_t* sched_next_thread()
 		if(queue->queue_head != KNULL)
 		{
 			thread_t *next_thread = queue->queue_head;
+			while(next_thread->current_state > STATE_RUNNING)
+			{
+				next_thread = next_thread->next;
+				if(next_thread == KNULL) return KNULL;
+			}
+
 			queue->queue_head = next_thread->next;
 			next_thread->next = KNULL;
 			return next_thread;
@@ -73,15 +81,28 @@ void sched_init()
 		thread_queues[i].queue_head = KNULL;
 		thread_queues[i].queue_tail = KNULL;
 	}
+	exit_queue.queue_head = KNULL;
+	exit_queue.queue_tail = KNULL;
 	irq_add_handler(0, sched_timer);
 }
 
-void sched_queue_thread(thread_t *thread)
+void sched_gc()
 {
-	if(thread == KNULL) return;
-	struct thread_queue *queue = &(thread_queues[(thread->priority+2)]);
+	if(!cleanup_needed) return;
 
-	sched_queue_thread_to(thread, queue);
+	cleanup_needed = false;
+	struct thread_queue *queue = &exit_queue;
+
+	if(queue->queue_head != KNULL)
+	{
+		thread_t *next_thread = queue->queue_head;
+
+		while(next_thread != KNULL)
+		{
+			thread_destroy(next_thread);
+			next_thread = next_thread->next;
+		}
+	}
 }
 
 void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
@@ -99,6 +120,14 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 		queue->queue_tail->next = thread;
 		queue->queue_tail = thread;
 	}
+}
+
+void sched_queue_thread(thread_t *thread)
+{
+	if(thread == KNULL) return;
+	struct thread_queue *queue = &(thread_queues[(thread->priority+2)]);
+
+	sched_queue_thread_to(thread, queue);
 }
 
 void sched_sleep_thread(thread_t *thread)
@@ -146,6 +175,25 @@ void sched_switch_thread()
 		}
 	}
 
+	if(active_thread->current_state > STATE_RUNNING)
+	{
+		thread_t *old_thread = active_thread;
+		active_thread = sched_next_thread();
+
+		if(active_thread == KNULL && idle_thread != KNULL)
+		{
+			preempt_enable();
+			switch_stack(idle_thread->register_state, old_thread->register_state);
+		} else if(idle_thread == KNULL)
+		{
+			return;
+		}
+
+		active_process = active_thread->parent;
+		preempt_enable();
+		switch_stack(active_thread->register_state, old_thread->register_state);
+	}
+
 	thread_t *old_thread = active_thread;
 	if(old_thread->current_state == STATE_INITIALIZED)
 	{
@@ -154,12 +202,14 @@ void sched_switch_thread()
 	}
 
 	thread_t *next_thread = sched_next_thread();
-	if(next_thread->priority != active_thread->priority)
+	if(next_thread != KNULL && next_thread->priority != active_thread->priority)
 	{
+		// FIXME: What is this suppossed to be doing?
 		sched_queue_thread(active_thread);
+		kpanic("How does something get here?\n");
 	}
 
-	if(next_thread == KNULL && old_thread->current_state != STATE_INITIALIZED)
+	if(next_thread == KNULL && old_thread->current_state == STATE_RUNNING)
 	{
 		preempt_enable();
 		return;
@@ -189,13 +239,15 @@ void sched_set_thread_state(thread_t *thread, enum thread_state state)
 	{
 		// TODO: Unblock thread
 		return;
+	} else if(state == STATE_EXITED)
+	{
+		thread->current_state = state;
+		cleanup_needed = true;
+		sched_queue_thread_to(thread, &exit_queue);
 	}
 
 	if(thread == active_thread)
-	{
-		active_thread = KNULL;
 		sched_switch_thread();
-	}
 }
 
 void preempt_disable()
