@@ -21,6 +21,7 @@
  */
 
 #define INPUT_SIZE 255
+#define ARG_DELIM (" \t")
 
 extern void request_refresh();
 
@@ -171,11 +172,12 @@ static bool shell_parse()
 	if(!index) return true; // Nothing to parse
 
 	char* saveptr;
-	char* command = strtok_r(input_buffer, " ", &saveptr);
+	char* command = strtok_r(input_buffer, ARG_DELIM, &saveptr);
+	if(command == NULL) return true; // Nothing to parse
 
 	if(is_command("echo", command))
 	{
-		printf("%s\n", strspn(saveptr, " ") + saveptr);
+		printf("%s\n", strspn(saveptr, ARG_DELIM) + saveptr);
 		return true;
 	} else if(is_command("clear", command) || is_command("cls", command))
 	{
@@ -209,11 +211,22 @@ static bool shell_parse()
 		puts("\thelloworld/hw:   \tShows an example string");
 		puts("\tclear/cls:       \tClears the screen");
 		puts("\techo [thistext]: \tShows [thistext]");
-		puts("\texit:            \tExits the console (requires reboot to bring back shell)");
+		puts("\texit:            \tExits the console (reboot to bring back shell)");
+		puts("\tfonttest:        \tShows all charachters supported by the current font");
 		return true;
 	} else if(is_command("exit", command))
 	{
 		should_run = false;
+		return true;
+	} else if(is_command("fonttest", command))
+	{
+		for(unsigned int i = 0; i < 256; i++)
+		{
+			if(i == '\t' || i == '\n' || i == '\r' || i == '\b') putchar('\0');
+			else putchar(i);
+
+			if(i % 16 == 15) putchar('\n');
+		}
 		return true;
 	}
 

@@ -34,7 +34,7 @@ void fb_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colou
 				fb_plotpixel(vram, x+w, y+h, colour);
 			}
 		}
-		font_base += 128;
+		font_base += 256;
 	}
 }
 void fb_fill_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colour, uint32_t bg_colour)
@@ -50,7 +50,7 @@ void fb_fill_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t 
 			else
 				fb_plotpixel(vram, x+w, y+h, bg_colour);
 		}
-		font_base += 128;
+		font_base += 256;
 	}
 }
 
