@@ -10,7 +10,6 @@ void kabort()
 void kputchar(int ic)
 {
 	tty_printchar(ic);
-	if(ic == '\n') tty_reshow();
 }
 
 void kexit(int status)

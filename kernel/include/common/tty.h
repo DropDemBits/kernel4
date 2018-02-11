@@ -32,5 +32,6 @@ void tty_reshow();
 void tty_add_output(enum OutputType type, size_t base);
 bool tty_background_dirty();
 void tty_make_clean();
+void tty_clear();
 
 #endif /* __TTY_H__ */

@@ -48,11 +48,7 @@ void tty_init()
 	extra_devices[0].base = (size_t)KNULL;
 	extra_devices[1].base = (size_t)KNULL;
 	// TODO: memset tty_window
-	for(int i = 0; i < TTY_SIZE; i++)
-	{
-		window[i].colour = colour;
-		window[i].actual_char = 0x00;
-	}
+	tty_clear();
 }
 
 void tty_prints(const char* str)
@@ -268,4 +264,19 @@ bool tty_background_dirty()
 void tty_make_clean()
 {
 	background_reshow = false;
+}
+
+void tty_clear()
+{
+	for(int i = 0; i < TTY_SIZE; i++)
+	{
+		window[i].colour = colour;
+		window[i].actual_char = 0x00;
+	}
+
+	column = 0;
+	row = 0;
+	uart_base = 0;
+	screen_row = 0;
+	background_reshow = true;
 }

@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <ctype.h>
+#include <string.h>
 #include <mm.h>
 #include <fb.h>
 #include <hal.h>
@@ -12,9 +12,9 @@
 #include <tasks.h>
 #include <ps2.h>
 #include <kbd.h>
-#include <keycodes.h>
 #include <vfs.h>
 #include <tarfs.h>
+#include <kshell/kshell.h>
 
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
@@ -59,33 +59,9 @@ void refresh_thread()
 	}
 }
 
-void ly_thread()
+void request_refresh()
 {
-	tty_set_colour(0xF, 0x0);
-	for(unsigned char c = ' '; c <= 0x7F; c++)
-	{
-		tty_printchar(c);
-		if(c % 16 == 15) tty_printchar('\n');
-	}
-
-	const char* test_string = "Hello_World!Clrs!\n";
-	uint8_t colour_index = 0;
-
-	while(*test_string)
-	{
-		tty_set_colour(colour_index, 0x10-colour_index++);
-		tty_printchar(*(test_string++));
-	}
-	tty_set_colour(0xa, 0x0);
-
-	while(1)
-	{
-		char key = kbd_read();
-		if(key)
-			tty_printchar(kbd_tochar(key));
-		refresh_needed = true;
-		sched_switch_thread();
-	}
+	refresh_needed = true;
 }
 
 void kmain()
@@ -208,7 +184,7 @@ void kmain()
 	 * conditional wakeups.
 	 */
 	thread_create(p2, (uint64_t*)refresh_thread, PRIORITY_HIGH);
-	thread_create(p2, (uint64_t*)ly_thread, PRIORITY_HIGH);
+	thread_create(p2, (uint64_t*)kshell_main, PRIORITY_HIGH);
 	preempt_enable();
 
 	// Now we are done, go to new thread.
