@@ -23,6 +23,7 @@ void idle_thread()
 {
 	while(1)
 	{
+		preempt_disable();
 		if(tty_background_dirty())
 		{
 			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
@@ -30,6 +31,7 @@ void idle_thread()
 		}
 		tty_reshow();
 		sched_gc();
+		preempt_enable();
 		sched_switch_thread();
 	}
 }
