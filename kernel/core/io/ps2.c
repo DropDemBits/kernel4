@@ -95,6 +95,7 @@ static void controller_init()
 	bool modify_cfg = true;
 
 	// Disable devices
+	while(ps2_read_status() & 0x1) ps2_read_data();
 	send_controller_command(0xAD); // Device 1
 	send_controller_command(0xA7); // Device 2
 
@@ -158,18 +159,27 @@ static void controller_init()
 	{
 		ps2_device_write(0, true, 0xFF);
 		if(ps2_device_read(0, true) == 0xFC) usable_bitmask &= ~0b01;
-		else
-			devices[0].present = 1;
-		if(devices[0].present) puts("PS/2 Device exists on port 1.");
+		else devices[0].present = 1;
+
+		if(devices[0].present)
+		{
+			puts("PS/2 Device exists on port 1");
+			//while(ps2_read_status() & 0x1) ps2_read_data();
+			//send_dev_command(0, 0xF5);
+			//while(ps2_read_status() & 0x1) ps2_read_data();
+		}
 	}
 
 	if(usable_bitmask & 0b10)
 	{
 		ps2_device_write(1, true, 0xFF);
 		if(ps2_device_read(1, true) == 0xFC) usable_bitmask &= ~0b10;
-		else
-			devices[1].present = 1;
-		if(devices[1].present) puts("PS/2 Device exists on port 2.");
+		else devices[1].present = 1;
+
+		if(devices[1].present)
+		{
+			puts("PS/2 Device exists on port 2");
+		}
 	}
 
 	if(!modify_cfg) return;
@@ -186,7 +196,9 @@ static void controller_init()
 static void detect_device(int device)
 {
 	// Disable Scanning
+	while(ps2_read_status() & 0x1) ps2_read_data();
 	send_dev_command(device, 0xF5);
+	while(ps2_read_status() & 0x1) ps2_read_data();
 
 	if(device >= 2 || device < 0 || !devices[device].present)
 	{
@@ -196,6 +208,7 @@ static void detect_device(int device)
 
 	uint16_t first_byte = 0xFF, second_byte = 0xFF;
 	printf("Identifying device on port %d\n", device + 1);
+	while(ps2_read_status() & 0x1) ps2_read_data();
 	send_dev_command(device, 0xF2);
 	first_byte = wait_read_data_timeout();
 	second_byte = wait_read_data_timeout();
