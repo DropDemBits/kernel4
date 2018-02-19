@@ -1,8 +1,10 @@
 *.o
 *.a
+*.sw*
 k4*.kern
 isodir/
 bochsrc
 k4*.iso
 sysroot
+pxedest
 initrd/initrd/*.tar

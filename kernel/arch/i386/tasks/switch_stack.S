@@ -49,7 +49,7 @@ switch_stack:
 
 initialize_thread:
 	# Set thread state to running
-	movl $1, 8(%ebp)
+	movl $1, 12(%ebp)
 	xor %ebp, %ebp
 
 	/*

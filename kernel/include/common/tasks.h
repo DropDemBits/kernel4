@@ -36,6 +36,7 @@ typedef struct thread
 {
 	process_t *parent;
 	struct thread *next;
+	struct thread *prev;
 
 	enum thread_state current_state;
 

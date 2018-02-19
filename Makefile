@@ -26,9 +26,16 @@ clean: clean-libk clean-kernel
 	@$(foreach HOST,$(HOSTS),rm -f k4-$(HOST).iso;)
 	rm -rf isodir
 	rm -rf sysroot
+	rm -rf pxedest
 
 initrd/initrd/initrd.tar: $(INITRD_FILES)
 	@scripts/gen_initrd.sh
 
 geniso: build-libk build-kernel initrd/initrd/initrd.tar
 	@$(foreach HOST,$(HOSTS),/bin/bash scripts/gen_iso.sh $(HOST) &&) echo Done
+
+pxeboot: build-libk build-kernel initrd/initrd/initrd.tar
+	mkdir -p pxedest
+	@$(foreach HOST,$(HOSTS),cp kernel/bin/$(HOST)/k4-$(HOST).kern pxedest/ &&) echo Done
+	cp initrd/initrd/initrd.tar pxedest/
+	gksu cp pxedest/* /var/lib/tftpboot/

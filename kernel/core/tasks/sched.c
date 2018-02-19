@@ -51,6 +51,15 @@ static isr_retval_t sched_timer()
 	return ISR_HANDLED;
 }
 
+static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
+{
+	if(thread->prev != KNULL) thread->prev->next = thread->next;
+	if(thread->next != KNULL) thread->next->prev = thread->prev;
+	if(queue->queue_tail == thread) queue->queue_tail = thread->prev;
+	thread->prev = KNULL;
+	thread->next = KNULL;
+}
+
 static thread_t* sched_next_thread()
 {
 	for(int i = 0; i < 6; i++)
@@ -66,8 +75,15 @@ static thread_t* sched_next_thread()
 				if(next_thread == KNULL) return KNULL;
 			}
 
-			queue->queue_head = next_thread->next;
-			next_thread->next = KNULL;
+			if(next_thread == queue->queue_head)
+			{
+				queue->queue_head = next_thread->next;
+				next_thread->next = KNULL;
+			} else
+			{
+				sched_queue_remove(next_thread, queue);
+			}
+
 			return next_thread;
 		}
 	}
@@ -118,6 +134,7 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 	} else
 	{
 		queue->queue_tail->next = thread;
+		thread->prev = queue->queue_tail;
 		queue->queue_tail = thread;
 	}
 }
@@ -139,7 +156,7 @@ void sched_sleep_thread(thread_t *thread)
 	struct thread_queue *queue = &(thread_queues[(thread->priority+2)]);
 	if(queue->queue_head == thread)
 	{
-		queue->queue_head = KNULL;
+		queue->queue_head = thread->next;
 	}
 }
 
@@ -202,13 +219,6 @@ void sched_switch_thread()
 	}
 
 	thread_t *next_thread = sched_next_thread();
-	if(next_thread != KNULL && next_thread->priority != active_thread->priority)
-	{
-		// FIXME: What is this suppossed to be doing?
-		sched_queue_thread(active_thread);
-		kpanic("How does something get here?\n");
-	}
-
 	if(next_thread == KNULL && old_thread->current_state == STATE_RUNNING)
 	{
 		preempt_enable();
@@ -229,22 +239,24 @@ void sched_set_thread_state(thread_t *thread, enum thread_state state)
 
 	if(state == STATE_SLEEPING)
 	{
-		thread->current_state = state;
 		sched_sleep_thread(thread);
-	} else if(state == STATE_BLOCKED)
-	{
-		thread->current_state = state;
-		sched_queue_thread_to(thread, &blocked_queue);
-	} else if(state == STATE_RUNNING && thread->current_state == STATE_BLOCKED)
-	{
-		// TODO: Unblock thread
-		return;
 	} else if(state == STATE_EXITED)
 	{
-		thread->current_state = state;
 		cleanup_needed = true;
 		sched_queue_thread_to(thread, &exit_queue);
+	} else if(state == STATE_BLOCKED)
+	{
+		sched_queue_thread_to(thread, &blocked_queue);
+	} else if(state == STATE_RUNNING)
+	{
+		if (thread->current_state == STATE_SLEEPING)
+			sched_queue_remove(thread, &sleep_queue);
+		else if (thread->current_state == STATE_BLOCKED)
+			sched_queue_remove(thread, &blocked_queue);
+		sched_queue_thread(thread);
 	}
+
+	thread->current_state = state;
 
 	if(thread == active_thread)
 		sched_switch_thread();

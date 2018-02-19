@@ -46,6 +46,7 @@ thread_t* thread_create(process_t *parent, uint64_t *entry_point, enum thread_pr
 
 	thread->parent = parent;
 	thread->next = KNULL;
+	thread->prev = KNULL;
 	thread->current_state = STATE_INITIALIZED;
 	thread->tid = tid_counter++;
 	thread->priority = priority;

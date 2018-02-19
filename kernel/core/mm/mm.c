@@ -130,15 +130,8 @@ typedef union
 {
 	struct
 	{
-		uint16_t bit_index64 : 6;
+		uint16_t bit_index : 6;
 		uint16_t qword_index : 9;
-		uint16_t sign64 : 1;
-	};
-	struct
-	{
-		uint16_t bit_index32 : 5;
-		uint16_t dword_index : 10;
-		uint16_t sign32 : 1;
 	};
 	uint16_t value;
 } bm_index_t;
@@ -149,7 +142,6 @@ typedef union
 	{
 		uint16_t padding : 9;
 		uint16_t bit_index : 6;
-		uint16_t sign : 1;
 	};
 	uint16_t value;
 } sbm_index_t;
@@ -166,39 +158,17 @@ static void bm_set_bit(mem_region_t* mem_block, size_t index)
 	bm_index_t bm_index = {.value = index};
 	sbm_index_t sbm_index = {.value = index};
 
-	if(sizeof(uint64_t*) == 8)
+	mem_block->bitmap[bm_index.qword_index] |= (1ULL << bm_index.bit_index);
+
+	// Check superblocks
+	bool sbi_full = true;
+	for(uint16_t i = 0; i < 0b111; i++)
 	{
-		mem_block->bitmap[bm_index.qword_index] |= (1ULL << bm_index.bit_index64);
-
-		// Check superblocks
-		bool sbi_full = true;
-		for(uint16_t i = 0; i < 0b111; i++)
-		{
-			if(mem_block->bitmap[(bm_index.qword_index & ~0x7ULL) + i] != ~0ULL)
-			{
-				sbi_full = false;
-				break;
-			}
-		}
-
-		if(sbi_full) mem_block->super_map |= (1ULL << sbm_index.bit_index);
-	} else
-	{
-		mem_block->bitmap[bm_index.dword_index] |= (1 << bm_index.bit_index32);
-
-		// Check superblocks
-		bool sbi_full = true;
-		for(uint16_t i = 0; i < 0b1111; i++)
-		{
-			if(mem_block->bitmap[(bm_index.dword_index & ~0xF) + i] != ~0)
-			{
-				sbi_full = false;
-				break;
-			}
-		}
-
-		if(sbi_full) mem_block->super_map |= (1ULL << sbm_index.bit_index);
+		if(mem_block->bitmap[(bm_index.qword_index & ~0x7ULL) + i] != ~0ULL)
+			return;
 	}
+
+	if(sbi_full) mem_block->super_map |= (1ULL << sbm_index.bit_index);
 }
 
 static void bm_clear_bit(mem_region_t* mem_block, size_t index)
@@ -213,15 +183,8 @@ static void bm_clear_bit(mem_region_t* mem_block, size_t index)
 	bm_index_t bm_index = {.value = index};
 	sbm_index_t sbm_index = {.value = index};
 
-	if(sizeof(uint64_t*) == 8)
-	{
-		mem_block->bitmap[bm_index.qword_index] &= ~(1ULL << bm_index.bit_index64);
-		mem_block->super_map &= ~(1ULL << sbm_index.bit_index);
-	} else
-	{
-		mem_block->bitmap[bm_index.dword_index] &= ~(1 << bm_index.bit_index32);
-		mem_block->super_map &= ~(1ULL << sbm_index.bit_index);
-	}
+	mem_block->bitmap[bm_index.qword_index] &= ~(1ULL << bm_index.bit_index);
+	mem_block->super_map &= ~(1ULL << sbm_index.bit_index);
 }
 
 static uint8_t bm_get_bit(mem_region_t* mem_block, size_t index)
@@ -234,13 +197,7 @@ static uint8_t bm_get_bit(mem_region_t* mem_block, size_t index)
 	}
 
 	bm_index_t bm_index = {.value = index};
-	if(sizeof(uint64_t*) == 8)
-	{
-		return (uint8_t) (mem_block->bitmap[bm_index.qword_index] >> (bm_index.bit_index64)) & 0x1;
-	} else
-	{
-		return (uint8_t) (mem_block->bitmap[bm_index.dword_index] >> (bm_index.bit_index32)) & 0x1;
-	}
+	return (uint8_t) (mem_block->bitmap[bm_index.qword_index] >> (bm_index.bit_index)) & 0x1;
 }
 
 static uint8_t bm_test_bit(uint64_t bitmap, size_t index)
@@ -260,18 +217,20 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
 		if(bm_test_bit(mem_block->super_map, sb_index) == 0)
 		{
 			sbm_index.bit_index = sb_index;
-			index.value = sbm_index.value;
+			index.value = sbm_index.bit_index;
 
 			for(size_t i = 0; i < 512; i++)
 			{
-				index.bit_index64 = i & 0x3FULL;
-				index.qword_index |= (i >> 6ULL) & 0x7ULL;
+				index.bit_index = i & 0x3F;
+				index.qword_index = (i >> 6) | sbm_index.value;
 
 				if(bm_get_bit(mem_block, index.value) == 0)
 				{
 					if(++num_free_bits >= size) break;
 				} else
+				{
 					num_free_bits = 0;
+				}
 			}
 		}
 
@@ -350,7 +309,7 @@ void mm_init()
 			mmu_map_direct(block_pointer, block->bitmap);
 			block->bitmap = block_pointer;
 
-			block_pointer += (0x1000 / sizeof(size_t));
+			block_pointer += (0x1000 >> 3);
 			block = block->next;
 		}
 

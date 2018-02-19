@@ -31,36 +31,43 @@ static bool input_done = false;
 static bool should_run = true;
 static uint8_t shell_text_clr = 0x7;
 static uint8_t shell_bg_clr = 0x0;
-bool refresh_needed = false;
+static thread_t *test_wakeup = KNULL;
+static thread_t *refresh_thread = KNULL;
+
+void wakeup_task()
+{
+	while(1)
+	{
+		puts("I'M AWAKE NOW");
+		request_refresh();
+		sched_set_thread_state(test_wakeup, STATE_SLEEPING);
+	}
+}
 
 void refresh_task()
 {
 	while(1)
 	{
-		if(refresh_needed)
+		if(tty_background_dirty())
 		{
-			if(tty_background_dirty())
+			if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
 			{
-				if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
-				{
-					fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
-				} else
-				{
-					for(int i = 0; i < fb_info.width * fb_info.height; i++)
-						((uint16_t*)get_fb_address())[i] = 0x0700;
-				}
-				tty_make_clean();
+				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+			} else
+			{
+				for(int i = 0; i < fb_info.width * fb_info.height; i++)
+					((uint16_t*)get_fb_address())[i] = 0x0700;
 			}
-			tty_reshow();
-			refresh_needed = false;
+			tty_make_clean();
 		}
-		sched_switch_thread();
+		tty_reshow();
+		sched_set_thread_state(refresh_thread, STATE_SLEEPING);
 	}
 }
 
 void request_refresh()
 {
-	refresh_needed = true;
+	sched_set_thread_state(refresh_thread, STATE_RUNNING);
 }
 
 size_t strspn(const char* str, const char* delim)
@@ -213,6 +220,7 @@ static bool shell_parse()
 		puts("\techo [thistext]: \tShows [thistext]");
 		puts("\texit:            \tExits the console (reboot to bring back shell)");
 		puts("\tfonttest:        \tShows all charachters supported by the current font");
+		puts("\twakeup:          \tWake up a test thread to show a string");
 		return true;
 	} else if(is_command("exit", command))
 	{
@@ -228,6 +236,11 @@ static bool shell_parse()
 			if(i % 16 == 15) putchar('\n');
 		}
 		return true;
+	} else if(is_command("wakeup", command))
+	{
+		if(test_wakeup != KNULL)
+			sched_set_thread_state(test_wakeup, STATE_RUNNING);
+		return true;
 	}
 
 	return false;
@@ -239,10 +252,16 @@ void kshell_main()
 	 * The refresh thread is on the same priority as kshell as there isn't
 	 * conditional wakeups yet.
 	 */
-	thread_t* refresh_thread = thread_create(
+	refresh_thread = thread_create(
 		sched_active_process(),
 		(uint64_t*)refresh_task,
+		PRIORITY_HIGH);
+
+	test_wakeup = thread_create(
+		sched_active_process(),
+		(uint64_t*)wakeup_task,
 		PRIORITY_NORMAL);
+	sched_set_thread_state(test_wakeup, STATE_SLEEPING);
 
 	tty_set_colour(0xF, 0x0);
 	printf("Welcome to K4!\n");

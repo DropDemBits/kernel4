@@ -149,9 +149,8 @@ void kmain()
 
 	preempt_disable();
 	process_t *p1 = process_create();
-	process_t *p2 = process_create();
 	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
-	thread_create(p2, (uint64_t*)kshell_main, PRIORITY_NORMAL);
+	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL);
 	preempt_enable();
 
 	// Now we are done, go to new thread.

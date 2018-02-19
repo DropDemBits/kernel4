@@ -51,7 +51,7 @@ switch_stack:
  */
 initialize_thread:
 	# Set thread state to running
-	movl $1, 16(%rbp)
+	movl $1, 24(%rbp)
 
 	# Cleanup registers
 	xor %rbp, %rbp
