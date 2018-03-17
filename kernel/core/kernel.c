@@ -114,7 +114,6 @@ void kmain()
 	mmu_map(laddr);
 	printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
 	if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
-#endif
 
 	if(initrd_start != 0xDEADBEEF)
 	{
@@ -146,6 +145,7 @@ void kmain()
 		}
 		kfree(buffer);
 	}
+#endif
 
 	preempt_disable();
 	process_t *p1 = process_create();
