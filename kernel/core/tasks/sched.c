@@ -243,6 +243,7 @@ void sched_switch_thread()
 	thread_t *next_thread = sched_next_thread();
 	if(next_thread != KNULL && next_thread->priority < old_thread->priority)
 	{
+		if(old_thread->timeslice == 0) old_thread->timeslice = get_timeslice(old_thread->priority);
 		preempt_enable();
 		return;
 	}
