@@ -7,6 +7,7 @@ LIBS :=
 BUILD_OBJ :=
 SYSROOT ?=
 PREFIX ?=/usr/local
+# Note: add -D__NO_OPTIMIZE__ when using -O0
 CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude/common \
  -I$(SYSROOT)$(PREFIX)/include -O2
 LFLAGS := -ffreestanding -nostdlib -lgcc
