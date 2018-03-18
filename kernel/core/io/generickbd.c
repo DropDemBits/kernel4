@@ -12,6 +12,8 @@
 
 uint8_t input_buffer[4096];
 int16_t input_off = -1;
+uint16_t read_head = 0;
+uint16_t write_head = 0;
 uint8_t key_mods = 0;
 uint8_t key_states[0xFF];
 key_mapping_t default_charmap[] = {KEYCHAR_MAP_DEFAULT};
@@ -20,16 +22,15 @@ static bool caps_pressed = false;
 
 static void input_push(uint8_t keycode)
 {
-	if(input_off >= 4095)
-		input_off = 4095;
-	else
-		input_buffer[++input_off] = keycode;
+	if(write_head >= 4096) write_head = 0;
+	input_buffer[write_head++] = keycode;
 }
 
 static uint8_t input_pop()
 {
-	if(input_off < 0) return 0;
-	return input_buffer[input_off--];
+	if(read_head == write_head) return 0;
+	else if(read_head >= 4096) read_head = 0;
+	return input_buffer[read_head++];
 }
 
 void kbd_init()
