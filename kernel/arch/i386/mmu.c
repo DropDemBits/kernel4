@@ -113,7 +113,7 @@ isr_retval_t pf_handler(struct intr_stack *frame)
 		tty_add_output(VGA_CONSOLE, (size_t)KNULL);
 	}
 
-	kpanic_intr(frame, "Error: Page fault at %#p (error code %x)", address, page_error);
+	kpanic_intr(frame, "Page fault at %#p (error code %x)", address, page_error);
 	// This shouldn't be reached
 	return ISR_HANDLED;
 }
