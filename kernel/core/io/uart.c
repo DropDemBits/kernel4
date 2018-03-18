@@ -1,5 +1,24 @@
-#include <uart.h>
-#include <io.h>
+/**
+ * Copyright (C) 2018 DropDemBits
+ * 
+ * This file is part of Kernel4.
+ * 
+ * Kernel4 is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * Kernel4 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+
+#include <common/uart.h>
 
 extern void uart_writeb(uint8_t device, uint8_t offset, uint8_t data);
 extern uint8_t uart_readb(uint8_t device, uint8_t offset);
@@ -43,12 +62,12 @@ static uint8_t init_com_device(uint8_t device, uint16_t divisor)
 
 static void wait_read(uint8_t device)
 {
-	while((uart_readb(device, LINE_STATUS) & 0b00000001) == 0x0) asm("pause");
+	while((uart_readb(device, LINE_STATUS) & 0b00000001) == 0x0);// asm("pause");
 }
 
 static void wait_write(uint8_t device)
 {
-	while((uart_readb(device, LINE_STATUS) & 0b00100000) == 0x0) asm("pause");
+	while((uart_readb(device, LINE_STATUS) & 0b00100000) == 0x0);// asm("pause");
 }
 
 void uart_init()

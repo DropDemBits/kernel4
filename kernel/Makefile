@@ -8,14 +8,14 @@ BUILD_OBJ :=
 SYSROOT ?=
 PREFIX ?=/usr/local
 # Note: add -D__NO_OPTIMIZE__ when using -O0
-CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude/common \
+CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude \
  -I$(SYSROOT)$(PREFIX)/include -O2
 LFLAGS := -ffreestanding -nostdlib -lgcc
 HAS_LOADER := n
 
 ifdef TARGET_ARCH
 include arch/$(TARGET_ARCH)/make.config
-CFLAGS += $(ARCH_CFLAGS) -D _$(TARGET_ARCH)_ -Iinclude/$(TARGET_ARCH)
+CFLAGS += $(ARCH_CFLAGS) -D _$(TARGET_ARCH)_
 CFLAGS += -L$(SYSROOT)$(PREFIX)/lib
 LFLAGS += $(ARCH_LFLAGS)
 LFLAGS += -L$(SYSROOT)$(PREFIX)/lib

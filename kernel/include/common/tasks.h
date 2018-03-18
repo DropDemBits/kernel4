@@ -1,5 +1,4 @@
-#include <types.h>
-#include <stack_state.h>
+#include <common/types.h>
 
 #ifndef __TASKS_H__
 #define __TASKS_H__

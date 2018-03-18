@@ -1,5 +1,26 @@
-#include <tasks.h>
-#include <mm.h>
+/**
+ * Copyright (C) 2018 DropDemBits
+ * 
+ * This file is part of Kernel4.
+ * 
+ * Kernel4 is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * Kernel4 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+
+#include <common/tasks.h>
+#include <common/mm.h>
+#include <i386/stack_state.h>
 
 extern void initialize_thread();
 
@@ -15,6 +36,9 @@ uint32_t alloc_address()
 
 void init_register_state(thread_t *thread, uint64_t *entry_point)
 {
+	thread->register_state = kmalloc(sizeof(struct thread_registers));
+	memset(thread->register_state, 0, sizeof(struct thread_registers));
+	
 	uint32_t *kernel_stack = (uint32_t*) alloc_address();
 	struct thread_registers *registers = thread->register_state;
 

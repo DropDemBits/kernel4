@@ -1,11 +1,31 @@
+/**
+ * Copyright (C) 2018 DropDemBits
+ * 
+ * This file is part of Kernel4.
+ * 
+ * Kernel4 is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * Kernel4 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+
 #include <stdio.h>
 
-#include <sched.h>
-#include <hal.h>
-#include <pic.h>
-#include <pit.h>
-#include <idt.h>
-#include <stack_state.h>
+#include <common/sched.h>
+#include <common/hal.h>
+#include <i386/pic.h>
+#include <i386/pit.h>
+#include <i386/idt.h>
+#include <i386/stack_state.h>
 
 extern void irq_common(struct intr_stack *frame);
 

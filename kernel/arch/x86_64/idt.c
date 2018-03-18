@@ -1,8 +1,28 @@
-#include <hal.h>
-#include <idt.h>
-#include <kfuncs.h>
-#include <mm.h>
-#include <stack_state.h>
+/**
+ * Copyright (C) 2018 DropDemBits
+ * 
+ * This file is part of Kernel4.
+ * 
+ * Kernel4 is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * Kernel4 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+
+#include <common/hal.h>
+#include <common/kfuncs.h>
+#include <common/mm.h>
+#include <x86_64/idt.h>
+#include <x86_64/stack_state.h>
 
 #define IDT_TYPE_INTERRUPT	0xE
 #define IDT_TYPE_TRAP 		0xF

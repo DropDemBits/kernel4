@@ -1,4 +1,4 @@
-#include <types.h>
+#include <i386/types.h>
 
 #ifndef __PIC_H__
 #define __PIC_H__

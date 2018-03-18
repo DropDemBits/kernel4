@@ -1,4 +1,4 @@
-#include <types.h>
+#include <common/types.h>
 
 #ifndef __TTY_H__
 #define __TTY_H__

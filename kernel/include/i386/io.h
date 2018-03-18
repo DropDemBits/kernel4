@@ -1,4 +1,4 @@
-#include <types.h>
+#include <stdint.h>
 
 #ifndef __IO_H__
 #define __IO_H__ 1

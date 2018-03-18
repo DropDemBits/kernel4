@@ -1,4 +1,4 @@
-#include <hal.h>
+#include <common/hal.h>
 
 #ifndef __PIT_H__
 #define __PIT_H__

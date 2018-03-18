@@ -1,8 +1,29 @@
-#include <tasks.h>
-#include <sched.h>
+/**
+ * Copyright (C) 2018 DropDemBits
+ * 
+ * This file is part of Kernel4.
+ * 
+ * Kernel4 is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * Kernel4 is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+
 #include <string.h>
 #include <stdio.h>
-#include <mm.h>
+
+#include <common/tasks.h>
+#include <common/sched.h>
+#include <common/mm.h>
 
 extern void init_register_state(thread_t *thread, uint64_t *entry_point);
 extern void cleanup_register_state(thread_t *thread);
@@ -50,8 +71,7 @@ thread_t* thread_create(process_t *parent, uint64_t *entry_point, enum thread_pr
 	thread->current_state = STATE_INITIALIZED;
 	thread->tid = tid_counter++;
 	thread->priority = priority;
-	thread->register_state = kmalloc(sizeof(struct thread_registers));
-	memset(thread->register_state, 0, sizeof(struct thread_registers));
+	thread->register_state = KNULL;
 	init_register_state(thread, entry_point);
 
 	process_add_child(parent, thread);

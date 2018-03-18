@@ -17,25 +17,18 @@
  * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
+#include <stdbool.h>
+#include <stdint.h>
 
-#include <x86_64/io.h>
+#ifndef __TYPES_COMMON__
+#define __TYPES_COMMON__
 
-enum
-{
-	COM1 = 0x3F8,
-	COM2 = 0x2F8,
-	COM3 = 0x3E8,
-	COM4 = 0x2E8,
-};
-static uint16_t ports[] = {COM1, COM2, COM3, COM4};
+#ifdef _i386_
+#include <i386/types.h>
+#endif
 
-void uart_writeb(uint8_t device, uint8_t offset, uint8_t data)
-{
-	if(device >= 4) return;
-	outb(ports[device] + offset, data);
-}
+#ifdef _x86_64_
+#include <x86_64/types.h>
+#endif
 
-uint8_t uart_readb(uint8_t device, uint8_t offset)
-{
-	return inb(ports[device] + offset);
-}
+#endif

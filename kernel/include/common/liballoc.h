@@ -1,5 +1,5 @@
 /** Additional includes */
-#include <types.h>
+#include <common/types.h>
 
 #ifndef _LIBALLOC_H
 #define _LIBALLOC_H
