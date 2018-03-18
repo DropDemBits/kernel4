@@ -36,6 +36,20 @@ void idle_thread()
 	}
 }
 
+void low_priothread()
+{
+	while(1)
+	{
+		tty_prints("I am a running low priority thread\n");
+		if(tty_background_dirty())
+		{
+			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+			tty_make_clean();
+			tty_reshow();
+		}
+	}
+}
+
 void kmain()
 {
 	tty_init();
@@ -150,6 +164,7 @@ void kmain()
 	preempt_disable();
 	process_t *p1 = process_create();
 	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
+	thread_create(p1, (uint64_t*)low_priothread, PRIORITY_LOWER);
 	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL);
 	preempt_enable();
 

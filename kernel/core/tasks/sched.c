@@ -53,10 +53,17 @@ static isr_retval_t sched_timer()
 
 static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 {
+	if(thread == queue->queue_head)
+	{
+		queue->queue_head = thread->next;
+	} else
+	{
 	if(thread->prev != KNULL) thread->prev->next = thread->next;
 	if(thread->next != KNULL) thread->next->prev = thread->prev;
 	if(queue->queue_tail == thread) queue->queue_tail = thread->prev;
 	thread->prev = KNULL;
+	}
+
 	thread->next = KNULL;
 }
 
@@ -72,18 +79,10 @@ static thread_t* sched_next_thread()
 			while(next_thread->current_state > STATE_RUNNING)
 			{
 				next_thread = next_thread->next;
-				if(next_thread == KNULL) return KNULL;
+				if(next_thread == KNULL) break;
 			}
 
-			if(next_thread == queue->queue_head)
-			{
-				queue->queue_head = next_thread->next;
-				next_thread->next = KNULL;
-			} else
-			{
-				sched_queue_remove(next_thread, queue);
-			}
-
+			if(next_thread == KNULL) continue;
 			return next_thread;
 		}
 	}
@@ -190,6 +189,8 @@ void sched_switch_thread()
 		{
 			return;
 		}
+
+		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority+2]));
 	}
 
 	if(active_thread->current_state > STATE_RUNNING)
@@ -206,6 +207,7 @@ void sched_switch_thread()
 			return;
 		}
 
+		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority+2]));
 		active_process = active_thread->parent;
 		preempt_enable();
 		switch_stack(active_thread->register_state, old_thread->register_state);
@@ -219,12 +221,19 @@ void sched_switch_thread()
 	}
 
 	thread_t *next_thread = sched_next_thread();
+	if(next_thread != KNULL && next_thread->priority < old_thread->priority)
+	{
+		preempt_enable();
+		return;
+	}
+
 	if(next_thread == KNULL && old_thread->current_state == STATE_RUNNING)
 	{
 		preempt_enable();
 		return;
 	} else
 	{
+		sched_queue_remove(next_thread, &(thread_queues[next_thread->priority+2]));
 		active_process = next_thread->parent;
 		sched_queue_thread(old_thread);
 		active_thread = next_thread;
