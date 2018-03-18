@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <sched.h>
 #include <hal.h>
 #include <pic.h>
 #include <idt.h>
@@ -119,6 +120,22 @@ struct heap_info* get_heap_info()
 void dump_registers(struct intr_stack *stack)
 {
 	printf("***BEGIN REGISTER DUMP***\n");
-	printf("RIP: %#p, RSP: %#p, RBP: %#p\n", stack->rip, stack->rsp, stack->rbp);
-	printf("Error code: %x", stack->err_code);
+	printf("RAX: %#p, RBX: %#p, RCX: %#p, RDX: %#p\n", stack->rax, stack->rbx, stack->rcx, stack->rdx);
+    printf("RSI: %#p, RDI: %#p, RSP: %#p, RBP: %#p\n", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
+    printf("RIP: %#p\n", stack->rip);
+    printf("Error code: %x\n", stack->err_code);
+    thread_t* at = sched_active_thread();
+    printf("Current Thread: %#p\n", at);
+    if(at != KNULL)
+    {
+        printf("\tID: %d\n", at->tid);
+        printf("\tRegisters: %#p\n", at->register_state);
+        printf("\tPriority: %d\n", at->priority);
+
+        if(at->register_state != KNULL)
+            printf("\tKRSP: %#p, RSP: %#p", at->register_state->kernel_rsp, at->register_state->rsp);
+    } else
+	{
+		puts("(idle_thread)");
+	}
 }
