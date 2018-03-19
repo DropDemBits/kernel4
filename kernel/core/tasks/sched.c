@@ -33,6 +33,13 @@ struct thread_queue
 	thread_t *queue_tail;
 };
 
+struct sleep_node
+{
+	thread_t *thread;
+	uint64_t delta;
+	struct sleep_node* next;
+};
+
 static process_t* active_process = KNULL;
 static thread_t* active_thread = KNULL;
 static thread_t* idle_thread = KNULL;
@@ -40,6 +47,7 @@ static struct thread_queue thread_queues[6];
 static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
 static struct thread_queue exit_queue;
+static struct sleep_node* sleepers = KNULL;
 static bool cleanup_needed = false;
 static bool preempt_enabled = false;
 
@@ -61,6 +69,31 @@ static isr_retval_t sched_timer()
 {
 	// We may not return to this thing here before we exit.
 	ic_eoi(0);
+
+	if(sleepers != KNULL)
+	{
+		if(sleepers->delta > 0)
+		{
+			sleepers->delta--;
+		} else
+		{
+			int max_priority = 0;
+
+			while(sleepers != KNULL && sleepers->delta == 0)
+			{
+				if(sleepers->thread->priority > max_priority)
+					max_priority = sleepers->thread->priority;
+				
+				sched_set_thread_state(sleepers->thread, STATE_RUNNING);
+				// TODO: Cleanup sleepers
+				sleepers = sleepers->next;
+			}
+
+			if(active_thread == KNULL || (active_thread->priority < max_priority))
+				sched_switch_thread();
+		}
+	}
+
 	if(preempt_enabled)
 	{
 		if(active_thread != KNULL && active_thread->timeslice > 0)
@@ -144,7 +177,9 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 {
 	if(thread == KNULL) return;
 
-	thread->timeslice = get_timeslice(thread->priority);
+	if(thread->timeslice == 0)
+		thread->timeslice = get_timeslice(thread->priority);
+
 	if(queue->queue_head == KNULL)
 	{
 		queue->queue_head = thread;
@@ -177,6 +212,50 @@ void sched_sleep_thread(thread_t *thread)
 	{
 		queue->queue_head = thread->next;
 	}
+}
+
+void sched_sleep_millis(uint64_t millis)
+{
+	if(active_thread == KNULL)
+		// Can't sleep in idle thread
+		return;
+
+	struct sleep_node* node = kmalloc(sizeof(struct sleep_node));
+	node->next = KNULL;
+	node->delta = millis;
+	node->thread = active_thread;
+	
+	if(sleepers == KNULL)
+	{
+		sleepers = node;
+	} else
+	{
+		// There are some sleeping threads.
+		struct sleep_node* last_node = KNULL;
+		struct sleep_node* next_node = sleepers;
+
+		while(next_node != KNULL && node->delta > next_node->delta)
+		{
+			node->delta -= next_node->delta;
+			last_node = next_node;
+			next_node = next_node->next;
+		}
+
+		if(next_node == KNULL)
+		{
+			last_node->next = node;
+		} else if(node->delta <= next_node->delta)
+		{
+			if(last_node != KNULL) last_node->next = node;
+			else sleepers = node;
+			node->next = next_node;
+
+			// Adjust delta of larger node
+			next_node->delta = next_node->delta - node->delta;
+		}
+	}
+
+	sched_set_thread_state(active_thread, STATE_SLEEPING);
 }
 
 void sched_set_idle_thread(thread_t *thread)

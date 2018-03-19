@@ -54,6 +54,7 @@ switch_stack:
 	popl %esi
 	popl %edi
 	popl %ebp
+	sti
 	ret
 
 /**

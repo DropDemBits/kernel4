@@ -60,7 +60,7 @@ void low_priothread()
 {
 	while(1)
 	{
-		tty_prints("I am a running low priority thread\n");
+		tty_prints("t");
 		if(tty_background_dirty())
 		{
 			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);

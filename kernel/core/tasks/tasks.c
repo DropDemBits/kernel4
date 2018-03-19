@@ -64,6 +64,7 @@ void process_add_child(process_t *parent, thread_t *child)
 thread_t* thread_create(process_t *parent, uint64_t *entry_point, enum thread_priority priority)
 {
 	thread_t *thread = kmalloc(sizeof(thread_t));
+	memset(thread, 0, sizeof(thread_t));
 
 	thread->parent = parent;
 	thread->next = KNULL;

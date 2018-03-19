@@ -57,6 +57,7 @@ switch_stack:
 	popq %rbx
 	popq %rbp
 	xorq %rax, %rax
+	sti
 	ret
 
 /**

@@ -32,6 +32,7 @@ process_t* sched_active_process();
 thread_t* sched_active_thread();
 void sched_switch_thread();
 void sched_set_thread_state(thread_t *thread, enum thread_state state);
+void sched_sleep_millis(uint64_t millis);
 void sched_gc();
 void preempt_disable();
 void preempt_enable();

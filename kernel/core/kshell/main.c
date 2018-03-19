@@ -151,6 +151,32 @@ char* strtok_r(char* str, const char* delim, char** lasts)
 	return token;
 }
 
+long int atol(const char* str)
+{
+	// Skip whitespace
+	while(*str)
+	{
+		if(*str == '\0') return 0;
+		if(!isspace(*str)) break;
+		str++;
+	}
+
+	long int retval = 0;
+
+	while(*str)
+	{
+		if(*str == '\0') return 0;
+		if(!isdigit(*str)) break;
+
+		retval *= 10;
+		retval += *str - '0';
+
+		str++;
+	}
+
+	return retval;
+}
+
 static void shell_readline()
 {
 	printf("> ");
@@ -262,6 +288,22 @@ static bool shell_parse()
 		if(test_wakeup != KNULL)
 			sched_set_thread_state(test_wakeup, STATE_RUNNING);
 		return true;
+	} else if(is_command("sleep", command))
+	{
+		char* sleep_time = strtok_r(NULL, ARG_DELIM, &saveptr);
+		long int sleep_for = atol(sleep_time);
+
+		if(sleep_for < 0)
+		{
+			puts("sleep: Sleep time can't be negative!");
+
+			// Parsing was correct, but the args weren't
+			return true;
+		}
+
+		printf("Sleeping for %ld milliseconds\n", sleep_for);
+		sched_sleep_millis(sleep_for);
+		return true;
 	}
 
 	return false;
@@ -269,10 +311,6 @@ static bool shell_parse()
 
 void kshell_main()
 {
-	/*
-	 * The refresh thread is on the same priority as kshell as there isn't
-	 * conditional wakeups yet.
-	 */
 	refresh_thread = thread_create(
 		sched_active_process(),
 		(uint64_t*)refresh_task,
