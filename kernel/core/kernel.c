@@ -39,6 +39,8 @@
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
 
+void core_fini();
+
 void idle_thread()
 {
 	while(1)
@@ -122,6 +124,18 @@ void kmain()
 	hal_enable_interrupts();
 	tty_prints("Initialising Scheduler\n");
 	sched_init();
+	
+	// Resume init in other thread
+	process_t *p1 = process_create();
+	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
+	thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL);
+
+	preempt_enable();
+	while(1) sched_switch_thread();
+}
+
+void core_fini()
+{
 	tty_prints("Initialising PS/2 controller\n");
 	ps2_init();
 	tty_prints("Initialising keyboard driver\n");
@@ -183,11 +197,10 @@ void kmain()
 
 	preempt_disable();
 	process_t *p1 = process_create();
-	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
 	thread_create(p1, (uint64_t*)low_priothread, PRIORITY_LOWER);
 	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL);
 	preempt_enable();
 
-	// Now we are done, go to new thread.
-	while(1) sched_switch_thread();
+	// Now we are done, exit thread.
+	sched_set_thread_state(sched_active_thread(), STATE_EXITED);
 }
