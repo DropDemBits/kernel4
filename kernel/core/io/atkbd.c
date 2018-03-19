@@ -19,6 +19,8 @@
  */
 
 #include <ctype.h>
+
+#include <common/sched.h>
 #include <common/kbd.h>
 #include <common/ps2.h>
 #include <common/hal.h>
@@ -30,8 +32,10 @@
 #define MOD_SHIFT 0x80
 
 static uint8_t keycode_buffer[4096];
-static int16_t buffer_off = -1;
+static uint16_t read_head = 0;
+static uint16_t write_head = 0;
 static int kbd_device = 0;
+static thread_t* decoder_thread;
 /*
  * 0: Special Flag
  * 1: xE0 Flag
@@ -43,16 +47,15 @@ static uint8_t ps2set1_translation[] = {PS2_SET1_MAP};
 
 static void keycode_push(uint8_t keycode)
 {
-	if(buffer_off >= 4095)
-		buffer_off = 4095;
-	else
-		keycode_buffer[++buffer_off] = keycode;
+	if(write_head >= 4096) write_head = 0;
+	keycode_buffer[write_head++] = keycode;
 }
 
 static uint8_t keycode_pop()
 {
-	if(buffer_off < 0) return 0;
-	return keycode_buffer[buffer_off--];
+	if(read_head == write_head) return 0;
+	else if(read_head >= 4096) read_head = 0;
+	return keycode_buffer[read_head++];
 }
 
 static void send_command(uint8_t command, uint8_t subcommand)
@@ -66,78 +69,93 @@ static void send_command(uint8_t command, uint8_t subcommand)
 static isr_retval_t at_keyboard_isr()
 {
 	uint8_t data = ps2_device_read(kbd_device, false);
-	if(data == 0xFA) goto keep_consume;
+	keycode_push(data);
+	sched_set_thread_state(decoder_thread, STATE_RUNNING);
 
-	switch(data)
-	{
-		case 0xE0: key_state_machine |= 0b0010; break;
-		case 0xE1: key_state_machine |= 0b0100; break;
-		// Print screen
-		case 0x2A:
-			if(key_state_machine & 0b0010)
-			{
-				key_state_machine |= 0b0001;
-				break;
-			}
-		case 0xB7:
-			if(key_state_machine & 0b0010)
-			{
-				key_state_machine |= 0b0001;
-				break;
-			}
-		// Pause
-		case 0x1D:
-			if(key_state_machine & 0b0100)
-			{
-				key_state_machine = 0b0111;
-				break;
-			}
-		case 0xC5:
-			if(key_state_machine == 0b0111)
-			{
-				key_state_machine |= 0b1000;
-				break;
-			}
-		default:
-			if((key_state_machine & 0b0110) < 0b0100)
-				key_state_machine |= 0b1000;
-			break;
-	}
-
-	if((key_state_machine & 0b1000) == 0) goto keep_consume;
-
-	uint8_t keycode = KEY_RESERVED;
-	if(key_state_machine == 0xa)
-	{
-		keycode = ps2set1_translation[(data & 0x7F) + 0x50];
-	}
-	else if(key_state_machine == 0xf)
-	{
-		keycode = ps2set1_translation[data];
-	}
-	else if(key_state_machine == 0xb)
-	{
-		if(data == 0xAA) data = 0xB7;
-		keycode = ps2set1_translation[(data & 0x7F) + 0x90];
-	}
-	else
-	{
-		keycode = ps2set1_translation[(data & 0x7F) + 0x00];
-	}
-	key_state_machine = 0;
-
-	if(kbd_handle_key(keycode, data & 0x80))
-		send_command(0xED, kbd_getmods() & 0xf);
-
-	keep_consume:
 	ic_eoi(ps2_device_irqs()[kbd_device]);
 	return ISR_HANDLED;
+}
+
+static void keycode_decoder()
+{
+	uint8_t data = 0;
+	while(1)
+	{
+		keep_consume:
+		data = keycode_pop();
+
+		if(data == 0x00)
+			sched_set_thread_state(sched_active_thread(), STATE_SLEEPING);
+
+		switch(data)
+		{
+			case 0xE0: key_state_machine |= 0b0010; break;
+			case 0xE1: key_state_machine |= 0b0100; break;
+			// Print screen
+			case 0x2A:
+				if(key_state_machine & 0b0010)
+				{
+					key_state_machine |= 0b0001;
+					break;
+				}
+			case 0xB7:
+				if(key_state_machine & 0b0010)
+				{
+					key_state_machine |= 0b0001;
+					break;
+				}
+			// Pause
+			case 0x1D:
+				if(key_state_machine & 0b0100)
+				{
+					key_state_machine = 0b0111;
+					break;
+				}
+			case 0xC5:
+				if(key_state_machine == 0b0111)
+				{
+					key_state_machine |= 0b1000;
+					break;
+				}
+			default:
+				if((key_state_machine & 0b0110) < 0b0100)
+					key_state_machine |= 0b1000;
+				break;
+		}
+
+		if((key_state_machine & 0b1000) == 0) goto keep_consume;
+
+		uint8_t keycode = KEY_RESERVED;
+		if(key_state_machine == 0xa)
+		{
+			keycode = ps2set1_translation[(data & 0x7F) + 0x50];
+		}
+		else if(key_state_machine == 0xf)
+		{
+			keycode = ps2set1_translation[data];
+		}
+		else if(key_state_machine == 0xb)
+		{
+			if(data == 0xAA) data = 0xB7;
+			keycode = ps2set1_translation[(data & 0x7F) + 0x90];
+		}
+		else
+		{
+			keycode = ps2set1_translation[(data & 0x7F) + 0x00];
+		}
+
+		if(kbd_handle_key(keycode, data & 0x80))
+			send_command(0xED, kbd_getmods() & 0xf);
+		key_state_machine = 0;
+	}
 }
 
 void atkbd_init(int device)
 {
 	// PS2 Side
 	kbd_device = device;
+	decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_HIGH);
+
 	ps2_device_write(kbd_device, true, 0xF4);
 	if(ps2_device_read(kbd_device, true) != 0xFA)
 		puts("[KBD] Scanning enable failed");
@@ -145,4 +163,8 @@ void atkbd_init(int device)
 	send_command(0xF0, 0x01);
 	send_command(0xF3, 0x20);
 	send_command(0xED, 0x00);
+
+	// Reset heads
+	read_head = 0;
+	write_head = 0;
 }

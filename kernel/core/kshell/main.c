@@ -314,7 +314,7 @@ void kshell_main()
 	refresh_thread = thread_create(
 		sched_active_process(),
 		(uint64_t*)refresh_task,
-		PRIORITY_HIGH);
+		PRIORITY_HIGHER);
 
 	test_wakeup = thread_create(
 		sched_active_process(),

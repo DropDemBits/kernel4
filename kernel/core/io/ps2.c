@@ -134,7 +134,7 @@ static void controller_init()
 	send_controller_command(0x20);
 	if(wait_read_data() != cfg_byte)
 	{
-		puts("PS/2 Unable to change config byte");
+		puts("[PS/2] Unable to change config byte");
 		modify_cfg = false;
 		goto device_init;
 	}
@@ -143,7 +143,7 @@ static void controller_init()
 	send_controller_command(0xAA);
 	if(wait_read_data() == 0xFC)
 	{
-		puts("PS/2 Self test failed");
+		puts("[PS/2] Self test failed");
 		return;
 	}
 
@@ -154,7 +154,7 @@ static void controller_init()
 	if(retval != 0x00)
 	{
 		usable_bitmask &= ~0b01;
-		printf("PS/2 Unable to use device on port 1 (code %#x)\n", retval);
+		printf("[PS/2] Unable to use device on port 1 (code %#x)\n", retval);
 	}
 
 	if(usable_bitmask & 0b10)
@@ -164,13 +164,13 @@ static void controller_init()
 		if(retval != 0x00)
 		{
 			usable_bitmask &= ~0b10;
-			printf("PS/2 Unable to use device on port 2 (code %#x)\n", retval);
+			printf("[PS/2] Unable to use device on port 2 (code %#x)\n", retval);
 		}
 	}
 
 	if(usable_bitmask == 0)
 	{
-		puts("PS/2 No usable devices");
+		puts("[PS/2] No usable devices");
 		return;
 	}
 
@@ -183,10 +183,7 @@ static void controller_init()
 
 		if(devices[0].present)
 		{
-			puts("PS/2 Device exists on port 1");
-			//while(ps2_read_status() & 0x1) ps2_read_data();
-			//send_dev_command(0, 0xF5);
-			//while(ps2_read_status() & 0x1) ps2_read_data();
+			puts("[PS/2] Detected PS/2 device on port 1");
 		}
 	}
 
@@ -198,7 +195,7 @@ static void controller_init()
 
 		if(devices[1].present)
 		{
-			puts("PS/2 Device exists on port 2");
+			puts("[PS/2] Detected PS/2 device on port 2");
 		}
 	}
 
@@ -227,7 +224,7 @@ static void detect_device(int device)
 	}
 
 	uint16_t first_byte = 0xFF, second_byte = 0xFF;
-	printf("Identifying device on port %d\n", device + 1);
+	printf("[PS/2] Identifying device on port %d\n", device + 1);
 	while(ps2_read_status() & 0x1) ps2_read_data();
 	send_dev_command(device, 0xF2);
 	first_byte = wait_read_data_timeout();
@@ -267,16 +264,16 @@ void ps2_init()
 
 		if(devices[active_device].type == TYPE_MF2_KBD)
 		{
-			printf("Initialising MF2 keyboard\n");
+			printf("[PS/2] Initialising MF2 keyboard\n");
 			ps2kbd_init(active_device);
 		} else if(devices[active_device].type == TYPE_MF2_KBD_TRANS ||
 				devices[active_device].type == TYPE_AT_KBD)
 		{
-			printf("Initialising AT/Translated MF2 keyboard\n");
+			printf("[PS/2] Initialising AT/Translated MF2 keyboard\n");
 			atkbd_init(active_device);
 		}
 		else
-			printf("Device on port %d not initialized (%s)\n",
+			printf("[PS/2] Device on port %d not initialized (%s)\n",
 				active_device+1,
 				type2name[devices[active_device].type]);
 	}

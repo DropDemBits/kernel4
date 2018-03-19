@@ -31,15 +31,15 @@
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
 
-uint8_t input_buffer[4096];
-int16_t input_off = -1;
-uint16_t read_head = 0;
-uint16_t write_head = 0;
+static uint8_t input_buffer[4096];
+static uint16_t read_head = 0;
+static uint16_t write_head = 0;
 uint8_t key_mods = 0;
 uint8_t key_states[0xFF];
 key_mapping_t default_charmap[] = {KEYCHAR_MAP_DEFAULT};
 key_mapping_t *charmap;
 static bool caps_pressed = false;
+static bool is_inited = false;
 
 static void input_push(uint8_t keycode)
 {
@@ -57,6 +57,7 @@ static uint8_t input_pop()
 void kbd_init()
 {
 	charmap = default_charmap;
+	is_inited = true;
 }
 
 void kbd_write(uint8_t keycode)
@@ -66,7 +67,12 @@ void kbd_write(uint8_t keycode)
 
 uint8_t kbd_read()
 {
-	return input_pop();
+	uint8_t keycode = input_pop();
+	if(keycode == 0)
+	{
+		// Do we need to block thread?
+	}
+	return keycode;
 }
 
 void kbd_setstate(uint8_t keycode, uint8_t state)
@@ -96,6 +102,8 @@ void kbd_loadmap(key_mapping_t *mapping)
 
 bool kbd_handle_key(uint8_t keycode, bool released)
 {
+	if(!is_inited) return false;
+
 	uint8_t new_kmods = key_mods;
 	if(!released || keycode == KEY_PAUSE)
 	{
