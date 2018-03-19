@@ -259,7 +259,7 @@ static bool shell_parse()
 		return true;
 	} else if(is_command("help", command) || is_command("?", command))
 	{
-		puts("Kshell version 0.2\n");
+		puts("Kshell version 0.3\n");
 		puts("Available commands (slashes = aliases, square brackets = arguments):");
 		puts("\thelp/?:          \tShows this information");
 		puts("\thelloworld/hw:   \tShows an example string");
@@ -268,6 +268,7 @@ static bool shell_parse()
 		puts("\texit:            \tExits the console (reboot to bring back shell)");
 		puts("\tfonttest:        \tShows all charachters supported by the current font");
 		puts("\twakeup:          \tWake up a test thread to show a string");
+		puts("\tsleep [time]:    \tSleeps the shell for [time] milliseconds");
 		return true;
 	} else if(is_command("exit", command))
 	{
