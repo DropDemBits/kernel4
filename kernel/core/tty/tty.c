@@ -32,7 +32,7 @@ int16_t column = 0;
 int16_t row = 0;
 // Used for offset
 uint16_t screen_row = 0;
-uint16_t uart_base = 0;
+uint16_t last_draw = 0;
 tty_colour_t colour = {.fg_colour=0x7,.bg_colour=0x0};
 tty_device_t extra_devices[2];
 tty_char_t window[TTY_SIZE];
@@ -191,7 +191,7 @@ void tty_scroll()
 	{
 		((uint16_t*)window)[x+(height-1)*width] = 0x0000;
 	}
-	uart_base -= width;
+	last_draw -= width;
 
 	background_reshow = true;
 }
@@ -207,8 +207,10 @@ void tty_set_colour(uint8_t fg, uint8_t bg)
  */
 void tty_reshow()
 {
+	uint16_t current_draw = (column + (row + screen_row) * width);
+
 	// Write to UART
-	for(; uart_base < (column + (row + screen_row) * width); uart_base++)
+	for(uint16_t uart_base = last_draw; uart_base < current_draw; uart_base++)
 	{
 		if(	window[uart_base].actual_char < ' ' &&
 			window[uart_base].actual_char != '\n' &&
@@ -232,27 +234,58 @@ void tty_reshow()
 	{
 		// EGA Textmode console
 		uint16_t* console_base = (uint16_t*)extra_devices[VGA_CONSOLE].base;
-		for(int i = 0; i < TTY_SIZE; i++)
+		int i = 0;
+
+		if(background_reshow) i = 0;
+		else i = last_draw;
+
+		for(; i < current_draw; i++)
 		{
 			unsigned char pchar = window[i].actual_char;
-			if( window[i].actual_char == '\n' ||
-				window[i].actual_char == '\t' ||
+			if( window[i].actual_char == '\t' ||
 				window[i].actual_char == 0)
+			{
 				pchar = EMPTY_CHAR;
+			}
+			else if(window[i].actual_char == '\n')
+			{
+				// Skip 0 bytes
+				i -= i % width - (width - 1);
+				continue;
+			}
 			console_base[i] = (window[i].colour.bg_colour << 12) | (window[i].colour.fg_colour << 8) | pchar;
+		}
+
+		// Erase extra charachters
+		for(int i = current_draw; i < last_draw && last_draw > current_draw; i++)
+		{
+			console_base[i] = (window[i].colour.bg_colour << 12) | (window[i].colour.fg_colour << 8) | EMPTY_CHAR;
 		}
 	}
 
 	if(extra_devices[FB_CONSOLE].base != (size_t)KNULL &&
 		mmu_is_usable((size_t*)extra_devices[FB_CONSOLE].base))
 	{
-		for(int i = 0; i < TTY_SIZE; i++)
+		int i = 0;
+		if(background_reshow) i = 0;
+		else i = last_draw;
+
+		for(; i < current_draw; i++)
 		{
 			unsigned char pchar = window[i].actual_char;
-			if( pchar == '\n' ||
-				pchar == '\t')
-				pchar = ' ';
-			else if(pchar == 0) continue;
+			if(	pchar == '\t')
+			{
+				pchar = EMPTY_CHAR;
+			}
+			else if(window[i].actual_char == '\n')
+			{
+				i -= i % width - (width - 1);
+				continue;
+			}
+			else if(pchar == 0)
+			{
+				continue;
+			}
 
 			fb_fill_putchar(extra_devices[FB_CONSOLE].base,
 						(i % width) << 3,
@@ -261,7 +294,20 @@ void tty_reshow()
 						ega2clr[window[i].colour.fg_colour],
 						ega2clr[window[i].colour.bg_colour]);
 		}
+
+		// Erase extra charachters
+		for(int i = current_draw; i < last_draw && last_draw > current_draw; i++)
+		{
+			fb_fill_putchar(extra_devices[FB_CONSOLE].base,
+						(i % width) << 3,
+						(i / width) << 4,
+						EMPTY_CHAR,
+						ega2clr[window[i].colour.fg_colour],
+						ega2clr[window[i].colour.bg_colour]);
+		}
 	}
+
+	last_draw = current_draw;
 }
 
 /*
@@ -302,7 +348,7 @@ void tty_clear()
 
 	column = 0;
 	row = 0;
-	uart_base = 0;
+	last_draw = 0;
 	screen_row = 0;
 	background_reshow = true;
 }

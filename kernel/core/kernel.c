@@ -49,9 +49,9 @@ void idle_thread()
 		if(tty_background_dirty())
 		{
 			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
-			tty_make_clean();
 		}
 		tty_reshow();
+		tty_make_clean();
 		sched_gc();
 		preempt_enable();
 		sched_switch_thread();
@@ -66,8 +66,8 @@ void low_priothread()
 		if(tty_background_dirty())
 		{
 			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
-			tty_make_clean();
 			tty_reshow();
+			tty_make_clean();
 		}
 	}
 }

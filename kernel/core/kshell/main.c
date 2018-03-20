@@ -79,9 +79,9 @@ void refresh_task()
 				for(int i = 0; i < fb_info.width * fb_info.height; i++)
 					((uint16_t*)get_fb_address())[i] = 0x0700;
 			}
-			tty_make_clean();
 		}
 		tty_reshow();
+		tty_make_clean();
 		sched_set_thread_state(refresh_thread, STATE_SLEEPING);
 	}
 }
