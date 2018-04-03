@@ -254,12 +254,9 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
 			}
 		}
 
-		uart_writec('n');
-
 		if(num_free_bits == 0) index.value = 0xFFFF;
 		else if(num_free_bits >= size) break;
 	}
-	uart_writec(' ');
 
 	return (size_t)index.value;
 }
