@@ -223,7 +223,7 @@ static uint8_t bm_get_bit(mem_region_t* mem_block, size_t index)
 static uint8_t bm_test_bit(uint64_t bitmap, size_t index)
 {
 	if(index > 64) return 1;
-	return (uint8_t) (bitmap >> index) & 0x1;
+	return (uint8_t) ((bitmap >> index) & 0x1);
 }
 
 static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
@@ -242,7 +242,7 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
 			for(size_t i = 0; i < 512; i++)
 			{
 				index.bit_index = i & 0x3F;
-				index.qword_index = (i >> 6) | sbm_index.value;
+				index.qword_index = (i >> 6) | (sbm_index.value >> 6);
 
 				if(bm_get_bit(mem_block, index.value) == 0)
 				{
@@ -254,16 +254,19 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
 			}
 		}
 
+		uart_writec('n');
+
 		if(num_free_bits == 0) index.value = 0xFFFF;
 		else if(num_free_bits >= size) break;
 	}
+	uart_writec(' ');
 
 	return (size_t)index.value;
 }
 
 /*
  * Creates a region block and appends it to list_head.
- * Base to be passed should be base >> 27.
+ * Base to be passed should be base >> 27 (size of region coverage).
  */
 static mem_region_t* mm_create_region(mem_region_t* list_head,
 									 uint64_t base)
@@ -451,7 +454,11 @@ void* mm_alloc(size_t size)
 		}
 
 		// Check if a block was actually found
-		if(region == KNULL && bit_index == 0xFFFF) return KNULL;
+		if(region == KNULL && bit_index == 0xFFFF)
+		{
+			kpanic("Out of Memory");
+			return KNULL;
+		}
 
 		// Set bits in bitmap
 		for(size_t i = 0; i < size; i++)
