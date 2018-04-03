@@ -24,6 +24,7 @@
 #include <common/kbd.h>
 #include <common/ps2.h>
 #include <common/hal.h>
+#include <common/sched.h>
 #include <common/keycodes.h>
 
 #define MOD_SCROLL_LOCK 0x01
@@ -40,6 +41,7 @@ key_mapping_t default_charmap[] = {KEYCHAR_MAP_DEFAULT};
 key_mapping_t *charmap;
 static bool caps_pressed = false;
 static bool is_inited = false;
+static bool has_data = false;
 
 static void input_push(uint8_t keycode)
 {
@@ -62,15 +64,23 @@ void kbd_init()
 
 void kbd_write(uint8_t keycode)
 {
+	has_data = true;
 	input_push(keycode);
 }
 
 uint8_t kbd_read()
 {
-	uint8_t keycode = input_pop();
+	uint8_t keycode = 0;
+
+	recheck:
+	keycode = input_pop();
 	if(keycode == 0)
 	{
-		// Do we need to block thread?
+		// TODO: Either add "interruptable" sleep, or add thread to wakeup queue
+		has_data = false;
+		//while(!has_data) sched_sleep_millis(0);
+
+		//goto recheck;
 	}
 	return keycode;
 }

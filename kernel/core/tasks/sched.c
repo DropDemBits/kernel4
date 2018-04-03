@@ -21,6 +21,7 @@
 #include <common/sched.h>
 #include <common/kfuncs.h>
 #include <common/hal.h>
+#include <common/liballoc.h>
 
 extern void switch_stack(
 	struct thread_registers *new_state,
@@ -88,7 +89,7 @@ static isr_retval_t sched_timer()
 				// TODO: Cleanup sleepers
 				sleepers = sleepers->next;
 			}
-
+			
 			if(active_thread == KNULL || (active_thread->priority < max_priority))
 				sched_switch_thread();
 		}

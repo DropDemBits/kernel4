@@ -185,7 +185,7 @@ static void shell_readline()
 	request_refresh();
 
 	while(1)
-	{
+	{	
 		char kcode = kbd_read();
 		char kchr = kbd_tochar(kcode);
 

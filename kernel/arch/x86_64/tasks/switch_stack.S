@@ -38,7 +38,7 @@ switch_stack:
 	push %r14
 	push %r15
 
-	movq $0xDEAD000000000000, %rax
+	movq $0xFFFFDEAD00000000, %rax
 	cmpq %rax, %rsi
 	jz 1f
 	movq %rsp, 0(%rsi)

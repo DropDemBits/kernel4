@@ -4,7 +4,7 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__ 1
 
-#define KNULL (void*)0xDEAD000000000000ULL
+#define KNULL (void*)0xFFFFDEAD00000000ULL
 #define KMEM_POISON 0xDEADCEED5ULL
 
 typedef enum

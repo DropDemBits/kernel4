@@ -32,12 +32,22 @@ static uint64_t alloc_memblocks(size_t length)
 {
 	if(free_base + (length << 12) > heap_limit) return 0;
 	size_t retval = free_base;
+	bool errored = false;
 
 	for(; length > 0; length--)
 	{
 		if(mmu_map((linear_addr_t*) free_base) != 0)
+		{
+			errored = true;
 			break;
+		}
 		free_base += 0x1000;
+	}
+
+	if(errored)
+	{
+		// Various places don't check for a null pointer, so just panic
+		kpanic("Could not allocate heap memory (Out of memory?)");
 	}
 
 	return retval;
