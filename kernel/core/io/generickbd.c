@@ -78,7 +78,7 @@ uint8_t kbd_read()
 	{
 		// TODO: Either add "interruptable" sleep, or add thread to wakeup queue
 		has_data = false;
-		//while(!has_data) sched_sleep_millis(0);
+		/*while(!has_data)*/ sched_sleep_millis(10);
 
 		//goto recheck;
 	}

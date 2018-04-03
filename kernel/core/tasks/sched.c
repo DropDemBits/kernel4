@@ -49,7 +49,10 @@ static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
 static struct thread_queue exit_queue;
 static struct sleep_node* sleepers = KNULL;
+static struct sleep_node* done_sleepers = KNULL;
+static struct sleep_node* tail_sleepers = KNULL;
 static bool cleanup_needed = false;
+static bool clean_sleepers = false;
 static bool preempt_enabled = false;
 
 static unsigned int get_timeslice(enum thread_priority priority)
@@ -86,7 +89,20 @@ static isr_retval_t sched_timer()
 					max_priority = sleepers->thread->priority;
 				
 				sched_set_thread_state(sleepers->thread, STATE_RUNNING);
-				// TODO: Cleanup sleepers
+
+				if(done_sleepers == KNULL)
+				{
+					done_sleepers = sleepers;
+					tail_sleepers = sleepers;
+				} else
+				{
+					tail_sleepers->next = sleepers;
+					tail_sleepers = sleepers;
+				}
+
+				tail_sleepers->next = KNULL;
+				
+				clean_sleepers = true;
 				sleepers = sleepers->next;
 			}
 			
@@ -157,20 +173,37 @@ void sched_init()
 
 void sched_gc()
 {
-	if(!cleanup_needed) return;
-
-	cleanup_needed = false;
-	struct thread_queue *queue = &exit_queue;
-
-	if(queue->queue_head != KNULL)
+	if(cleanup_needed)
 	{
-		thread_t *next_thread = queue->queue_head;
+		cleanup_needed = false;
+		struct thread_queue *queue = &exit_queue;
 
-		while(next_thread != KNULL)
+		if(queue->queue_head != KNULL)
 		{
-			thread_destroy(next_thread);
-			next_thread = next_thread->next;
+			thread_t *next_thread = queue->queue_head;
+
+			while(next_thread != KNULL)
+			{
+				thread_destroy(next_thread);
+				next_thread = next_thread->next;
+			}
 		}
+	}
+
+	if(done_sleepers != KNULL && clean_sleepers)
+	{
+		clean_sleepers = false;
+		struct sleep_node* node = done_sleepers;
+
+		do
+		{
+			kfree(node);
+			node = node->next;
+		}
+		while(node != KNULL);
+
+		done_sleepers = KNULL;
+		tail_sleepers = KNULL;
 	}
 }
 
