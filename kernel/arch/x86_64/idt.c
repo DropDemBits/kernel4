@@ -69,6 +69,8 @@ extern void irq13_entry();
 extern void irq14_entry();
 extern void irq15_entry();
 
+extern void syscall_entry();
+
 typedef struct
 {
 	uint16_t offset_low0;
@@ -204,7 +206,7 @@ void setup_idt()
 	create_descriptor(12, (uint64_t)isr12_entry, 0x08, IDT_TYPE_INTERRUPT, 1);
 	create_descriptor(13, (uint64_t)isr13_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
 	// #PF uses a separate stack to handle the exception
-	create_descriptor(14, (uint64_t)isr14_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+	create_descriptor(14, (uint64_t)isr14_entry, 0x08, IDT_TYPE_INTERRUPT, 1);
 	// RSV 15
 	create_descriptor(16, (uint64_t)isr16_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
 	create_descriptor(17, (uint64_t)isr17_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
@@ -235,4 +237,7 @@ void setup_idt()
 	create_descriptor(46, (uint64_t)irq14_entry, 0x08, IDT_TYPE_TRAP, 0);
 	// Spurious #2 (normal in APIC)
 	create_descriptor(47, (uint64_t)irq15_entry, 0x08, IDT_TYPE_TRAP, 0);
+
+	// Interrupt syscall
+	create_descriptor(0x80, (uint64_t)syscall_entry, 0x0B, IDT_TYPE_TRAP, 0);
 }

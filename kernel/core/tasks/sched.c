@@ -128,7 +128,7 @@ static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 		queue->queue_head = thread->next;
 	} else
 	{
-		if(thread->prev != KNULL) thread->prev->next = thread->next;
+		if(thread->prev != KNULL && thread->prev != NULL) thread->prev->next = thread->next;
 		if(thread->next != KNULL) thread->next->prev = thread->prev;
 		if(queue->queue_tail == thread) queue->queue_tail = thread->prev;
 		thread->prev = KNULL;
@@ -221,7 +221,8 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 		active_process = thread->parent;
 	} else
 	{
-		queue->queue_tail->next = thread;
+		if(queue->queue_tail != KNULL && queue->queue_tail != NULL)
+			queue->queue_tail->next = thread;
 		thread->prev = queue->queue_tail;
 		queue->queue_tail = thread;
 	}

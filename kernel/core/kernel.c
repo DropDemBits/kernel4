@@ -34,6 +34,7 @@
 #include <common/kbd.h>
 #include <common/vfs.h>
 #include <common/tarfs.h>
+#include <common/syscall.h>
 #include <common/kshell/kshell.h>
 
 extern uint32_t initrd_start;
@@ -80,8 +81,8 @@ void kmain()
 	tty_prints("Parsing Multiboot info\n");
 	multiboot_parse();
 	tty_prints("Initialising MM\n");
-	mmu_init();
 	mm_init();
+	mmu_init();
 	tty_prints("Initialising Framebuffer\n");
 	fb_init();
 	multiboot_reclaim();
@@ -140,6 +141,8 @@ void core_fini()
 	ps2_init();
 	tty_prints("Initialising keyboard driver\n");
 	kbd_init();
+	tty_prints("Setting up system calls\n");
+	syscall_init();
 
 	// TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS

@@ -142,6 +142,7 @@ void mmu_init()
 {
 	// Set CR3
 	asm volatile("movl %%cr3, %%eax\n\t"
+				 "movl %%eax, %%cr3\n\t"
 		: "=a"(cr3));
 	isr_add_handler(14, (isr_t)pf_handler);
 }

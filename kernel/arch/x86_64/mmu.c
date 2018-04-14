@@ -136,7 +136,7 @@ static bool check_and_map_entry(page_entry_t* entry, linear_addr_t* address)
 			entry->frame = frame >> 12;
 			entry->p = 1;
 			entry->rw = 1;
-			entry->xd = 1;
+			entry->xd = 0;
 			entry->rsv = 0;
 
 			if((uintptr_t)address < 0xFFFF800000000000)
@@ -164,16 +164,27 @@ isr_retval_t pf_handler(struct intr_stack *frame)
 		tty_add_output(VGA_CONSOLE, (size_t)KNULL);
 	}
 
-	kpanic_intr(frame, "Page fault at %#p (error code %x)", address, page_error);
+	if(address < 0x400000)
+	{
+		kpanic_intr(frame, "Null pointer of offset %#p", address);
+	} else
+	{
+		kpanic_intr(frame, "Page fault at %#p (error code %x)", address, page_error);
+	}
 	return ISR_HANDLED;
 }
 
 void mmu_init()
 {
-	// Set CR3
-	asm volatile("movq %%cr3, %%rax\n\t":
-		"=a"(cr3));
+	// Kill identity mapping
+	uint64_t* ptr = (uint64_t*)0xFFFFFFFFFFFFF000;
+	*ptr = 0;
+
 	isr_add_handler(14, (isr_t)pf_handler);
+	// Set CR3
+	asm volatile("movq %%cr3, %%rax\n\t"
+				 "movq %%rax, %%cr3\n\t":
+		"=a"(cr3));
 }
 
 int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
@@ -213,7 +224,7 @@ int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
 		return -1;
 
 	// This is an unmapped address, so map it
-	get_pte_entry(address)->xd = 1;
+	get_pte_entry(address)->xd = 0;
 	get_pte_entry(address)->rsv = 0;
 	get_pte_entry(address)->p = 1;
 	get_pte_entry(address)->rw = 1;

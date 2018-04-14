@@ -17,6 +17,7 @@
 // 
 
 .extern isr_common
+.extern syscall_common
 
 .macro isr_err_entry int_num
 .globl isr\int_num\()_entry
@@ -94,6 +95,65 @@ irq_entry 13
 irq_entry 14
 spur_irq_entry 15
 
+.extern tss_begin
+.extern set_rsp0
+.globl syscall_entry
+syscall_entry:
+	# Push other regs
+	push %rbp
+	push %rbx
+	push %r12
+	push %r13
+	push %r14
+	push %r15
+
+	movq %cr2, %rbx
+	push %rbx
+
+	push %rcx
+	push %rdx
+	push %rax
+	push %rsi
+	push %rdi
+	push %r8
+	push %r9
+	push %r10
+	push %r11
+
+	# Call syscall_common
+	movq %rsp, %rdi
+	movq %rsp, %r11
+	//xchg %bx, %bx
+	call syscall_common
+	
+	# Update TSS RSP0
+	#movq %r11, %rdi
+	#addq $(21*8), %rdi
+	#call set_rsp0
+
+	# Restore registers
+	popq %r11
+	popq %r10
+	popq %r9
+	popq %r8
+	popq %rdi
+	popq %rsi
+	popq %rax
+	popq %rdx
+	popq %rcx
+
+	popq %rbx
+	movq %rbx, %cr2
+
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %rbx
+	popq %rbp
+
+	iretq
+
 isr_entry:
 	# Push other regs
 	push %rbp
@@ -118,7 +178,12 @@ isr_entry:
 
 	# Call isr_common
 	movq %rsp, %rdi
+	movq %rsp, %r11
 	call isr_common
+
+	#movq %r11, %rdi
+	#addq $(23*8), %rdi
+	#call set_rsp0
 
 	# Restore registers
 	popq %r11
