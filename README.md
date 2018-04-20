@@ -19,4 +19,4 @@
 -->
 
 # Kernel4
-This is my fourth attempt at making a kernel (hence Kernel4), and this is built upon knowledge gathered in making CondorFOS
+Yet another kernel project. Woo...
