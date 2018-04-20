@@ -162,11 +162,18 @@ long int atol(const char* str)
 	}
 
 	long int retval = 0;
+	bool is_negative = false;
 
 	while(*str)
 	{
 		if(*str == '\0') return 0;
 		if(!isdigit(*str)) break;
+		
+		if(*str == '-')
+		{
+			if(is_negative) break;
+			is_negative = true;
+		}
 
 		retval *= 10;
 		retval += *str - '0';
@@ -174,6 +181,7 @@ long int atol(const char* str)
 		str++;
 	}
 
+	if(is_negative) retval *= -1;
 	return retval;
 }
 
