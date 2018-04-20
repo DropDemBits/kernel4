@@ -167,13 +167,14 @@ long int atol(const char* str)
 	while(*str)
 	{
 		if(*str == '\0') return 0;
-		if(!isdigit(*str)) break;
 		
 		if(*str == '-')
 		{
 			if(is_negative) break;
 			is_negative = true;
 		}
+		
+		if(!isdigit(*str)) break;
 
 		retval *= 10;
 		retval += *str - '0';
