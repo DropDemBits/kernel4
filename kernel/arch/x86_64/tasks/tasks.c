@@ -29,8 +29,9 @@ static uint64_t alloc_base = 0x00007FFFFFFFF000;
 
 uint64_t alloc_address()
 {
+	alloc_base -= 0x1000; // 4KiB guard page
 	uint64_t retval = alloc_base;
-	alloc_base -= 0x5000; // 16KiB store, 4KiB guard page
+	alloc_base -= 0x4000; // 16KiB store
 	return retval;
 }
 
@@ -50,9 +51,10 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 		mmu_map((uint64_t*)(registers->rsp - (i << 12)));
 	}
 
-	// IRET structure (Right now we only have kernel space threads)
+	// IRET structure
+	registers->kernel_rsp = kernel_stack;
 	*(kernel_stack--) = 0x00; // SS
-	*(kernel_stack--) = registers->rsp; // RSP
+	*(kernel_stack--) = registers->kernel_rsp; // RSP
 	*(kernel_stack--) = 0x0202; // RFLAGS
 	*(kernel_stack--) = 0x08; // CS
 	*(kernel_stack--) = (uint64_t) entry_point; // RIP

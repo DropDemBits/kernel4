@@ -73,6 +73,47 @@ void low_priothread()
 	}
 }
 
+extern void enter_usermode(uint64_t* register_state, uint64_t* entry_addr);
+extern void usermode_code();
+
+void usermode_entry()
+{
+	uint64_t* retaddr = (uint64_t*)0x400000;
+	uint64_t* copy = (uint64_t*)&usermode_code;
+
+	mmu_map(retaddr);
+	memcpy(retaddr, copy, 4096);
+
+	enter_usermode(sched_active_thread()->register_state, retaddr);
+	while(1);
+}
+
+void kentry()
+{
+	while(1)
+	{
+		putchar('h');
+		tty_reshow();
+		sched_sleep_millis(10);
+	}
+}
+
+void time_nomnoms()
+{
+	while(1)
+	{
+		if(tty_background_dirty())
+		{
+			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+			tty_reshow();
+			tty_make_clean();
+		}
+		tty_reshow();
+
+		putchar('p');
+	}
+}
+
 void kmain()
 {
 	tty_init();
@@ -130,6 +171,9 @@ void kmain()
 	process_t *p1 = process_create();
 	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
 	thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL);
+	//thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL);
+	//thread_create(p1, (uint64_t*)low_priothread, PRIORITY_NORMAL);
+	//thread_create(p1, (uint64_t*)kentry, PRIORITY_NORMAL);
 
 	preempt_enable();
 	while(1) sched_switch_thread();
@@ -201,9 +245,11 @@ void core_fini()
 	preempt_disable();
 	process_t *p1 = process_create();
 	thread_create(p1, (uint64_t*)low_priothread, PRIORITY_LOWER);
+	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL);
+	// thread_create(p1, (uint64_t*)time_nomnoms, PRIORITY_NORMAL);
 	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL);
 	preempt_enable();
 
 	// Now we are done, exit thread.
-	sched_set_thread_state(sched_active_thread(), STATE_EXITED);
+	sched_set_thread_state(sched_active_thread(), STATE_SLEEPING);
 }

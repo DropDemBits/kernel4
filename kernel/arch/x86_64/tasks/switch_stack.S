@@ -85,3 +85,56 @@ initialize_thread:
 	xor %rcx, %rcx
 
 	iretq
+
+/**
+ * Enters Ring 3.
+ * 
+ * Parameters:
+ * RDI: Thread register block
+ * RSI: Actual usermode entry point
+ */
+.global enter_usermode
+enter_usermode:
+	movq %rdi, %r11
+
+	#movq 0(%r11), %rdi
+	movq %rsp, %rdi
+	addq $(2*8), %rdi
+	movq %rdi, 0(%r11)
+	call set_rsp0
+
+	# Construct IRET Stack
+	# 0x1B = R3 Code, 0x23 = R3 Data
+
+	#push $0x23 # SS
+	push $0x10
+	push 8(%r11) # CPL3_RSP
+
+	pushf # RFLAGS
+	#push $0x1B # CS
+	push $0x08
+	push %rsi # RIP
+	xchg %bx, %bx
+	iretq
+
+.extern tss_begin
+.global set_rsp0
+/**
+ * Sets RSP0 in the TSS.
+ * Trashes rdx
+ *
+ * Parameters:
+ * RDI: new RSP value
+ */
+set_rsp0:
+	movabsq $tss_begin, %rdx
+	movq %rdi, 4(%rdx)
+	ret
+
+.global usermode_code
+usermode_code:
+	xor %rax, %rax
+	int $0x80
+	jmp usermode_code
+endcode:
+	.skip 4096 - (endcode - usermode_code)

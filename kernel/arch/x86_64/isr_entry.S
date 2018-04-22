@@ -122,14 +122,12 @@ syscall_entry:
 
 	# Call syscall_common
 	movq %rsp, %rdi
-	movq %rsp, %r11
-	//xchg %bx, %bx
 	call syscall_common
 	
 	# Update TSS RSP0
-	#movq %r11, %rdi
-	#addq $(21*8), %rdi
-	#call set_rsp0
+	movq %rsp, %rdi
+	addq $(22*8), %rdi
+	call set_rsp0
 
 	# Restore registers
 	popq %r11
@@ -178,12 +176,11 @@ isr_entry:
 
 	# Call isr_common
 	movq %rsp, %rdi
-	movq %rsp, %r11
 	call isr_common
 
-	#movq %r11, %rdi
-	#addq $(23*8), %rdi
-	#call set_rsp0
+	movq %rsp, %rdi
+	addq $(24*8), %rdi
+	call set_rsp0
 
 	# Restore registers
 	popq %r11

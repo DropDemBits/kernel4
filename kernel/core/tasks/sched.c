@@ -259,7 +259,7 @@ void sched_sleep_millis(uint64_t millis)
 	node->next = KNULL;
 	node->delta = millis;
 	node->thread = active_thread;
-	
+
 	if(sleepers == KNULL)
 	{
 		sleepers = node;

@@ -98,3 +98,12 @@ initialize_thread:
 	xor %ecx, %ecx
 	xor %edx, %edx
 	iret
+
+// Stub functions
+.global enter_usermode
+enter_usermode:
+	ud2
+
+.global usermode_code
+usermode_code:
+	ud2

@@ -29,8 +29,9 @@ static uint32_t alloc_base = 0x7FFFF000;
 
 uint32_t alloc_address()
 {
+	alloc_base -= 0x1000; // 4KiB guard page
 	uint32_t retval = alloc_base;
-	alloc_base -= 0x5000; // 16KiB store, 4KiB guard page
+	alloc_base -= 0x4000; // 16KiB store
 	return retval;
 }
 
@@ -50,9 +51,10 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 		mmu_map((uint32_t*)(registers->esp - (i << 12)));
 	}
 
-	// IRET structure (Right now we only have kernel space threads)
+	// IRET structure
+	registers->kernel_esp = kernel_stack;
 	*(kernel_stack--) = 0x10; // SS
-	*(kernel_stack--) = registers->esp; // ESP
+	*(kernel_stack--) = registers->kernel_esp; // ESP
 	*(kernel_stack--) = 0x0202; // EFLAGS
 	*(kernel_stack--) = 0x08; // CS
 	*(kernel_stack--) = (uint32_t) entry_point; // EIP

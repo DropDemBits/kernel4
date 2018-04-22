@@ -5,9 +5,7 @@ uint64_t syscalls[NR_SYSCALLS];
 
 void yield_syscall()
 {
-    //uart_writec('a');
     sched_switch_thread();
-    //sched_sleep_millis(1);
 }
 
 void syscall_init()
