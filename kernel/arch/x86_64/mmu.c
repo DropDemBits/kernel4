@@ -20,6 +20,7 @@
 
 #include <string.h>
 
+#include <common/fb.h>
 #include <common/mm.h>
 #include <common/tty.h>
 #include <common/kfuncs.h>
@@ -154,7 +155,7 @@ static bool check_and_map_entry(page_entry_t* entry, linear_addr_t* address)
 
 isr_retval_t pf_handler(struct intr_stack *frame)
 {
-	struct PageError *page_error = (struct PageError*)frame->err_code;
+	struct PageError *page_error = (struct PageError*)&frame->err_code;
 	uint64_t address = frame->cr2;
 
 	if(frame->cr2 >= 0xFFFFE00000000000 && frame->cr2 < 0xFFFFF00000000000)
@@ -162,14 +163,28 @@ isr_retval_t pf_handler(struct intr_stack *frame)
 		// Our visual output devices are bork'd, so fall back onto serial.
 		tty_add_output(FB_CONSOLE, (size_t)KNULL);
 		tty_add_output(VGA_CONSOLE, (size_t)KNULL);
+		tty_reshow_full();
+	} else
+	{
+		// Redo tty thing
+		if(tty_background_dirty())
+		{
+			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+		}
 	}
 
 	if(address < 0x400000)
 	{
-		kpanic_intr(frame, "Null pointer of offset %#p", address);
+		if(page_error->was_instruction_fetch)
+		{
+			kpanic_intr(frame, "Jump to null of offset %#p", address);
+		} else
+		{
+			kpanic_intr(frame, "Null pointer of offset %#p", address);
+		}
 	} else
 	{
-		kpanic_intr(frame, "Page fault at %#p (error code %x)", address, page_error);
+		kpanic_intr(frame, "Page fault at %#p (error code %x)", address, frame->err_code);
 	}
 	return ISR_HANDLED;
 }

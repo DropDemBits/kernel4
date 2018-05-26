@@ -76,11 +76,8 @@ uint8_t kbd_read()
 	keycode = input_pop();
 	if(keycode == 0)
 	{
-		// TODO: Either add "interruptable" sleep, or add thread to wakeup queue
-		has_data = false;
-		/*while(!has_data)*/ sched_sleep_millis(10);
-
-		//goto recheck;
+		// We only block usermode-type threads, so remove this later
+		sched_sleep_millis(10);
 	}
 	return keycode;
 }

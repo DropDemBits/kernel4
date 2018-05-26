@@ -43,8 +43,8 @@ struct sleep_node
 
 static process_t* active_process = KNULL;
 static thread_t* active_thread = KNULL;
-static thread_t* idle_thread = KNULL;
-static struct thread_queue thread_queues[6];
+thread_t* idle_thread = KNULL;
+static struct thread_queue thread_queues[PRIORITY_COUNT];
 static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
 static struct thread_queue exit_queue;
@@ -54,6 +54,7 @@ static struct sleep_node* tail_sleepers = KNULL;
 static bool cleanup_needed = false;
 static bool clean_sleepers = false;
 static bool preempt_enabled = false;
+static bool idle_entry = false;
 
 static unsigned int get_timeslice(enum thread_priority priority)
 {
@@ -128,7 +129,7 @@ static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 		queue->queue_head = thread->next;
 	} else
 	{
-		if(thread->prev != KNULL && thread->prev != NULL) thread->prev->next = thread->next;
+		if(thread->prev != KNULL) thread->prev->next = thread->next;
 		if(thread->next != KNULL) thread->next->prev = thread->prev;
 		if(queue->queue_tail == thread) queue->queue_tail = thread->prev;
 		thread->prev = KNULL;
@@ -139,9 +140,9 @@ static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 
 static thread_t* sched_next_thread()
 {
-	for(int i = 0; i < 6; i++)
+	for(int i = 0; i < PRIORITY_COUNT; i++)
 	{
-		struct thread_queue *queue = &(thread_queues[5-i]);
+		struct thread_queue *queue = &(thread_queues[PRIORITY_COUNT-1-i]);
 
 		if(queue->queue_head != KNULL)
 		{
@@ -161,13 +162,15 @@ static thread_t* sched_next_thread()
 
 void sched_init()
 {
-	for(int i = 0; i < 6; i++)
+	for(int i = 0; i < PRIORITY_COUNT; i++)
 	{
 		thread_queues[i].queue_head = KNULL;
 		thread_queues[i].queue_tail = KNULL;
 	}
 	exit_queue.queue_head = KNULL;
 	exit_queue.queue_tail = KNULL;
+	sleep_queue.queue_head = KNULL;
+	sleep_queue.queue_tail = KNULL;
 	irq_add_handler(0, sched_timer);
 }
 
@@ -221,8 +224,10 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 		active_process = thread->parent;
 	} else
 	{
-		if(queue->queue_tail != KNULL && queue->queue_tail != NULL)
+		if(queue->queue_tail != KNULL)
 			queue->queue_tail->next = thread;
+		
+		// Link pointers together
 		thread->prev = queue->queue_tail;
 		queue->queue_tail = thread;
 	}
@@ -231,22 +236,9 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 void sched_queue_thread(thread_t *thread)
 {
 	if(thread == KNULL) return;
-	struct thread_queue *queue = &(thread_queues[(thread->priority+2)]);
+	struct thread_queue *queue = &(thread_queues[(thread->priority)]);
 
 	sched_queue_thread_to(thread, queue);
-}
-
-void sched_sleep_thread(thread_t *thread)
-{
-	if(thread == KNULL) return;
-
-	sched_queue_thread_to(thread, &sleep_queue);
-
-	struct thread_queue *queue = &(thread_queues[(thread->priority+2)]);
-	if(queue->queue_head == thread)
-	{
-		queue->queue_head = thread->next;
-	}
 }
 
 void sched_sleep_millis(uint64_t millis)
@@ -318,13 +310,22 @@ void sched_switch_thread()
 		if(active_thread == KNULL && idle_thread != KNULL)
 		{
 			preempt_enable();
-			switch_stack(idle_thread->register_state, KNULL);
+
+			if(!idle_entry)
+			{
+				idle_entry = true;
+				switch_stack(idle_thread->register_state, KNULL);
+			} else
+			{
+				return;
+			}
 		} else if(idle_thread == KNULL)
 		{
 			return;
 		}
+		idle_entry = false;
 
-		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority+2]));
+		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority]));
 	}
 
 	if(active_thread->current_state > STATE_RUNNING)
@@ -335,13 +336,22 @@ void sched_switch_thread()
 		if(active_thread == KNULL && idle_thread != KNULL)
 		{
 			preempt_enable();
-			switch_stack(idle_thread->register_state, old_thread->register_state);
+
+			if(!idle_entry)
+			{
+				idle_entry = true;
+				switch_stack(idle_thread->register_state, old_thread->register_state);
+			} else
+			{
+				return;
+			}
 		} else if(idle_thread == KNULL)
 		{
 			return;
 		}
+		idle_entry = false;
 
-		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority+2]));
+		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority]));
 		active_process = active_thread->parent;
 		preempt_enable();
 		switch_stack(active_thread->register_state, old_thread->register_state);
@@ -368,9 +378,9 @@ void sched_switch_thread()
 		return;
 	} else
 	{
-		sched_queue_remove(next_thread, &(thread_queues[next_thread->priority+2]));
-		active_process = next_thread->parent;
+		sched_queue_remove(next_thread, &(thread_queues[next_thread->priority]));
 		sched_queue_thread(old_thread);
+		active_process = next_thread->parent;
 		active_thread = next_thread;
 		preempt_enable();
 		switch_stack(active_thread->register_state, old_thread->register_state);
@@ -383,13 +393,20 @@ void sched_set_thread_state(thread_t *thread, enum thread_state state)
 
 	if(state == STATE_SLEEPING)
 	{
-		sched_sleep_thread(thread);
+		/*
+		 * We remove the thread from it's run queue first to ensure that it isn't
+		 * taking other threads off the run queue.
+	 	 */
+		sched_queue_remove(thread, &(thread_queues[thread->priority]));
+		sched_queue_thread_to(thread, &sleep_queue);
 	} else if(state == STATE_EXITED)
 	{
 		cleanup_needed = true;
+		sched_queue_remove(thread, &(thread_queues[thread->priority]));
 		sched_queue_thread_to(thread, &exit_queue);
 	} else if(state == STATE_BLOCKED)
 	{
+		sched_queue_remove(thread, &(thread_queues[thread->priority]));
 		sched_queue_thread_to(thread, &blocked_queue);
 	} else if(state == STATE_RUNNING)
 	{

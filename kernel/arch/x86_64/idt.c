@@ -239,5 +239,5 @@ void setup_idt()
 	create_descriptor(47, (uint64_t)irq15_entry, 0x08, IDT_TYPE_TRAP, 0);
 
 	// Interrupt syscall
-	create_descriptor(0x80, (uint64_t)syscall_entry, 0x0B, IDT_TYPE_TRAP, 0);
+	create_descriptor(0x80, (uint64_t)syscall_entry, 0x0B, IDT_TYPE_INTERRUPT, 0);
 }

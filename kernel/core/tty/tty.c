@@ -316,12 +316,14 @@ void tty_reshow()
 void tty_add_output(enum OutputType type, size_t base)
 {
 	switch (type) {
+#ifndef __K4_VISUAL_STACK__
 		case VGA_CONSOLE:
 			extra_devices[VGA_CONSOLE].base = base;
 			break;
 		case FB_CONSOLE:
 			extra_devices[FB_CONSOLE].base = base;
 			break;
+#endif
 		case SERIAL: // Serial is always enabled
 		default:
 			break;
@@ -351,4 +353,13 @@ void tty_clear()
 	last_draw = 0;
 	screen_row = 0;
 	background_reshow = true;
+}
+
+/**
+ * Redraws the entire display to output devices
+ */
+void tty_reshow_full()
+{
+	last_draw = 0;
+	tty_reshow();
 }

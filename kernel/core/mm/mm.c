@@ -473,7 +473,8 @@ void mm_free(void* addr, size_t size)
 	if(addr == KNULL || size == 0 || size >= 32768) return;
 
 	mem_region_t* region = list_search_block(region_list, (size_t)addr);
-	if(region == KNULL) return; // None of the mappings contain this address
+	if(region == KNULL)
+		return; // None of the mappings contain this address
 
 	size_t frame_ptr = (((size_t)addr) >> 12) & 0x7FFF;
 

@@ -25,7 +25,11 @@
 extern void initialize_thread();
 
 /****SUPER TEMPORARY ADDRESS ALLOCATION****/
+#ifndef __K4_VISUAL_STACK__
 static uint64_t alloc_base = 0x00007FFFFFFFF000;
+#else
+static uint64_t alloc_base = 0xFFFFE00000080000;
+#endif
 
 uint64_t alloc_address()
 {

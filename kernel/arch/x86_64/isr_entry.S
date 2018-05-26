@@ -16,6 +16,7 @@
 // along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
 // 
 
+.section .text
 .extern isr_common
 .extern syscall_common
 
@@ -99,6 +100,9 @@ spur_irq_entry 15
 .extern set_rsp0
 .globl syscall_entry
 syscall_entry:
+	push $0
+	push $0x80
+
 	# Push other regs
 	push %rbp
 	push %rbx
@@ -120,13 +124,11 @@ syscall_entry:
 	push %r10
 	push %r11
 
-	# Call syscall_common
 	movq %rsp, %rdi
 	call syscall_common
 	
-	# Update TSS RSP0
 	movq %rsp, %rdi
-	addq $(22*8), %rdi
+	addq $(24*8), %rdi
 	call set_rsp0
 
 	# Restore registers
@@ -149,6 +151,8 @@ syscall_entry:
 	popq %r12
 	popq %rbx
 	popq %rbp
+
+	addq $16, %rsp
 
 	iretq
 
@@ -177,7 +181,7 @@ isr_entry:
 	# Call isr_common
 	movq %rsp, %rdi
 	call isr_common
-
+	
 	movq %rsp, %rdi
 	addq $(24*8), %rdi
 	call set_rsp0

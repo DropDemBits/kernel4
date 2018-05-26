@@ -57,7 +57,6 @@ switch_stack:
 	popq %rbx
 	popq %rbp
 	xorq %rax, %rax
-	sti
 	ret
 
 /**
@@ -106,15 +105,30 @@ enter_usermode:
 	# Construct IRET Stack
 	# 0x1B = R3 Code, 0x23 = R3 Data
 
-	#push $0x23 # SS
-	push $0x10
+	push $0x23 # SS
 	push 8(%r11) # CPL3_RSP
 
 	pushf # RFLAGS
-	#push $0x1B # CS
-	push $0x08
+	push $0x1B # CS
 	push %rsi # RIP
-	xchg %bx, %bx
+
+	# Cleanup Registers
+	xor %r15, %r15
+	xor %r14, %r14
+	xor %r13, %r13
+	xor %r12, %r12
+	xor %r11, %r11
+	xor %r10, %r10
+	xor %r9, %r9
+	xor %r8, %r8
+	xor %rbp, %rbp
+	xor %rdi, %rdi
+	xor %rsi, %rsi
+	xor %rdx, %rdx
+	xor %rcx, %rcx
+	xor %rbx, %rbx
+	xor %rax, %rax
+
 	iretq
 
 .extern tss_begin

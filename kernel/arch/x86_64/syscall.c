@@ -7,9 +7,9 @@ void syscall_common(struct intr_stack *frame)
 {
     if(frame->rax < NR_SYSCALLS && syscalls[frame->rax] != KNULL)
     {
-        void (*syscall_entry)(void);
-        syscall_entry = syscalls[frame->rax];
+        void (*syscall_handler)(void);
+        syscall_handler = syscalls[frame->rax];
 
-        syscall_entry();
+        syscall_handler();
     }
 }

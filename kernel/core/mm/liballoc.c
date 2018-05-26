@@ -52,7 +52,7 @@
 #if defined DEBUG || defined INFO
 #include <stdio.h>
 
-#define FLUSH()		/*fflush( stdout ) Changed*/
+#define FLUSH()		/*fflush( stdout ) Changed*/ tty_reshow()
 
 #endif
 

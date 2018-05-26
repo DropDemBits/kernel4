@@ -29,6 +29,7 @@ void tty_prints(const char* str);
 void tty_printchar(const char c);
 void tty_set_colour(uint8_t fg, uint8_t bg);
 void tty_reshow();
+void tty_reshow_full();
 void tty_add_output(enum OutputType type, size_t base);
 bool tty_background_dirty();
 void tty_make_clean();

@@ -137,11 +137,15 @@ struct heap_info* get_heap_info()
 	return &heap_context;
 }
 
+extern thread_t* idle_thread;
+
 void dump_registers(struct intr_stack *stack)
 {
 	printf("***BEGIN REGISTER DUMP***\n");
-	printf("RAX: %#p, RBX: %#p, RCX: %#p, RDX: %#p\n", stack->rax, stack->rbx, stack->rcx, stack->rdx);
-    printf("RSI: %#p, RDI: %#p, RSP: %#p, RBP: %#p\n", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
+	puts("RAX RBX RCX RDX");
+	printf("%#p %#p %#p %#p\n", stack->rax, stack->rbx, stack->rcx, stack->rdx);
+	puts("RSI RDI RSP RBP");
+    printf("%#p %#p %#p %#p\n", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
     printf("RIP: %#p\n", stack->rip);
     printf("Error code: %x\n", stack->err_code);
     thread_t* at = sched_active_thread();
@@ -156,6 +160,14 @@ void dump_registers(struct intr_stack *stack)
             printf("\tKRSP: %#p, RSP: %#p", at->register_state->kernel_rsp, at->register_state->rsp);
     } else
 	{
-		puts("(idle_thread)");
+		at = idle_thread;
+		printf("\tID: %d (idle_thread)\n", at->tid);
+        printf("\tRegisters: %#p\n", at->register_state);
+        printf("\tPriority: %d\n", at->priority);
+		printf("\t%#p, %#p\n", at->next, at->prev);
+
+        if(at->register_state != KNULL)
+            printf("\tKRSP: %#p, RSP: %#p\n", at->register_state->kernel_rsp, at->register_state->rsp);
+			printf("\tRIP: %#p", at->register_state->rip);
 	}
 }

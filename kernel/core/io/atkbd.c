@@ -154,7 +154,7 @@ void atkbd_init(int device)
 {
 	// PS2 Side
 	kbd_device = device;
-	decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_HIGH);
+	decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_HIGH, "keydecoder1");
 
 	ps2_device_write(kbd_device, true, 0xF4);
 	if(ps2_device_read(kbd_device, true) != 0xFA)

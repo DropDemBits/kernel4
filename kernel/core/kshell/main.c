@@ -203,7 +203,7 @@ static void shell_readline()
 	request_refresh();
 
 	while(1)
-	{	
+	{
 		char kcode = kbd_read();
 		char kchr = kbd_tochar(kcode);
 
@@ -333,12 +333,14 @@ void kshell_main()
 	refresh_thread = thread_create(
 		sched_active_process(),
 		(uint64_t*)refresh_task,
-		PRIORITY_HIGHER);
+		PRIORITY_HIGHER,
+		"refresh_thread");
 
 	test_wakeup = thread_create(
 		sched_active_process(),
 		(uint64_t*)wakeup_task,
-		PRIORITY_NORMAL);
+		PRIORITY_NORMAL,
+		"test_wakeup");
 	sched_set_thread_state(test_wakeup, STATE_SLEEPING);
 
 	tty_set_colour(0xF, 0x0);

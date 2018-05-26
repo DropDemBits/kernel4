@@ -42,7 +42,7 @@ extern uint32_t initrd_size;
 
 void core_fini();
 
-void idle_thread()
+void idle_loop()
 {
 	while(1)
 	{
@@ -70,6 +70,7 @@ void low_priothread()
 			tty_reshow();
 			tty_make_clean();
 		}
+
 	}
 }
 
@@ -88,16 +89,6 @@ void usermode_entry()
 	while(1);
 }
 
-void kentry()
-{
-	while(1)
-	{
-		putchar('h');
-		tty_reshow();
-		sched_sleep_millis(10);
-	}
-}
-
 void time_nomnoms()
 {
 	while(1)
@@ -110,7 +101,31 @@ void time_nomnoms()
 		}
 		tty_reshow();
 
+		tty_set_colour(0x7, 0x0);
 		putchar('p');
+		sched_switch_thread();
+	}
+}
+
+void a_print()
+{
+	while(1)
+	{
+		tty_set_colour(0xF, 0xC);
+		putchar('a');
+		// tty_reshow();
+		sched_switch_thread();
+	}
+}
+
+void b_print()
+{
+	while(1)
+	{
+		tty_set_colour(0x0, 0x2);
+		putchar('b');
+		// tty_reshow();
+		sched_switch_thread();
 	}
 }
 
@@ -169,11 +184,8 @@ void kmain()
 	
 	// Resume init in other thread
 	process_t *p1 = process_create();
-	thread_create(p1, (uint64_t*)idle_thread, PRIORITY_IDLE);
-	thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL);
-	//thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL);
-	//thread_create(p1, (uint64_t*)low_priothread, PRIORITY_NORMAL);
-	//thread_create(p1, (uint64_t*)kentry, PRIORITY_NORMAL);
+	thread_create(p1, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
+	thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
 
 	preempt_enable();
 	while(1) sched_switch_thread();
@@ -242,14 +254,15 @@ void core_fini()
 	}
 #endif
 
+	tty_prints("Finished Initialisation\n");
+
 	preempt_disable();
 	process_t *p1 = process_create();
-	thread_create(p1, (uint64_t*)low_priothread, PRIORITY_LOWER);
-	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL);
-	// thread_create(p1, (uint64_t*)time_nomnoms, PRIORITY_NORMAL);
-	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL);
+	thread_create(p1, (uint64_t*)low_priothread, PRIORITY_LOWER, "lowprio");
+	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL, "kshell");
+	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
 	preempt_enable();
 
 	// Now we are done, exit thread.
-	sched_set_thread_state(sched_active_thread(), STATE_SLEEPING);
+	sched_set_thread_state(sched_active_thread(), STATE_EXITED);
 }
