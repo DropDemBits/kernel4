@@ -154,6 +154,11 @@ void dump_registers(struct intr_stack *stack)
             printf("\tKESP: %#p, ESP: %#p", at->register_state->kernel_esp, at->register_state->esp);
     } else
 	{
-		puts("(idle_thread)");
+		puts("(Pre-scheduler)");
 	}
+}
+
+void intr_wait()
+{
+	asm("hlt");
 }

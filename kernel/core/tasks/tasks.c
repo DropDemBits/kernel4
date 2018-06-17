@@ -78,10 +78,7 @@ thread_t* thread_create(process_t *parent, uint64_t *entry_point, enum thread_pr
 
 	process_add_child(parent, thread);
 
-	if(priority != PRIORITY_IDLE)
-		sched_queue_thread(thread);
-	else
-		sched_set_idle_thread(thread);
+	sched_queue_thread(thread);
 	return thread;
 }
 
@@ -91,18 +88,21 @@ void thread_destroy(thread_t *thread)
 	cleanup_register_state(thread);
 	bool shiftback = false;
 
-	for(int i = 0; i < thread->parent->child_count; i++)
+	if(thread->parent != KNULL)
 	{
-		if(shiftback)
+		for(int i = 0; i < thread->parent->child_count; i++)
 		{
-			thread->parent->child_threads[i-1] = thread->parent->child_threads[i];
-		} else if(thread->parent->child_threads[i] == thread)
-		{
-			thread->parent->child_threads[i] = NULL;
-			shiftback = true;
+			if(shiftback)
+			{
+				thread->parent->child_threads[i-1] = thread->parent->child_threads[i];
+			} else if(thread->parent->child_threads[i] == thread)
+			{
+				thread->parent->child_threads[i] = NULL;
+				shiftback = true;
+			}
 		}
+		thread->parent->child_count--;
 	}
-	thread->parent->child_count--;
 
 	kfree((void*)thread->register_state);
 	kfree(thread);

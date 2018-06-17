@@ -137,8 +137,6 @@ struct heap_info* get_heap_info()
 	return &heap_context;
 }
 
-extern thread_t* idle_thread;
-
 void dump_registers(struct intr_stack *stack)
 {
 	printf("***BEGIN REGISTER DUMP***\n");
@@ -152,7 +150,7 @@ void dump_registers(struct intr_stack *stack)
     printf("Current Thread: %#p\n", at);
     if(at != KNULL)
     {
-        printf("\tID: %d\n", at->tid);
+        printf("\tID: %d (%s)\n", at->tid, at->name);
         printf("\tRegisters: %#p\n", at->register_state);
         printf("\tPriority: %d\n", at->priority);
 
@@ -160,14 +158,11 @@ void dump_registers(struct intr_stack *stack)
             printf("\tKRSP: %#p, RSP: %#p", at->register_state->kernel_rsp, at->register_state->rsp);
     } else
 	{
-		at = idle_thread;
-		printf("\tID: %d (idle_thread)\n", at->tid);
-        printf("\tRegisters: %#p\n", at->register_state);
-        printf("\tPriority: %d\n", at->priority);
-		printf("\t%#p, %#p\n", at->next, at->prev);
-
-        if(at->register_state != KNULL)
-            printf("\tKRSP: %#p, RSP: %#p\n", at->register_state->kernel_rsp, at->register_state->rsp);
-			printf("\tRIP: %#p", at->register_state->rip);
+		puts("(Pre-scheduler)");
 	}
+}
+
+void intr_wait()
+{
+	asm("hlt");
 }
