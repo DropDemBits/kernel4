@@ -69,7 +69,7 @@ static unsigned int get_timeslice(enum thread_priority priority)
 	}
 }
 
-static isr_retval_t sched_timer()
+static void sched_timer()
 {
 	// We may not return to this thing here before we exit, so eoi early.
 	ic_eoi(0);
@@ -125,7 +125,6 @@ static isr_retval_t sched_timer()
 		else
 			sched_switch_thread();
 	}
-	return ISR_HANDLED;
 }
 
 static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)

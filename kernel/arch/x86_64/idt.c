@@ -122,7 +122,7 @@ const char* fault_names[] = {
 	"SVM Security Exception",       // Intel Reserved
 	"Reserved Fault",
 };
-isr_function_t function_table[256];
+isr_t function_table[256];
 
 static void create_descriptor(	uint8_t index,
 								uint64_t base,
@@ -142,7 +142,7 @@ static void create_descriptor(	uint8_t index,
 
 void isr_common(struct intr_stack *frame)
 {
-	if(function_table[frame->int_num].pointer == KNULL && frame->int_num < 32)
+	if(function_table[frame->int_num] == KNULL && frame->int_num < 32)
 	{
 		if(tty_background_dirty())
 		{
@@ -153,47 +153,28 @@ void isr_common(struct intr_stack *frame)
 		kpanic_intr(frame, fault_names[frame->int_num]);
 	} else
 	{
-		isr_function_t *function = &(function_table[frame->int_num]);
-		while(function != KNULL)
-		{
-			if(function->pointer != KNULL)
-				if(function->pointer(frame) != ISR_NOT_HANDLED) break;
-			function = function->next;
-		}
+		isr_t function = function_table[frame->int_num];
+		
+		if(function != KNULL)
+			function(frame);
 	}
 }
 
-isr_retval_t irq_common(struct intr_stack *frame)
+void irq_common(struct intr_stack *frame)
 {
 	ic_eoi(frame->int_num - 32);
-	return ISR_HANDLED;
 }
 
 void isr_add_handler(uint8_t index, isr_t function)
 {
-	isr_function_t* tail = &(function_table[index]);
-
-	if(tail->next == KNULL && (tail->pointer == KNULL || tail->pointer == (isr_t)irq_common))
-	{
-		tail->pointer = function;
-	} else
-	{
-		isr_function_t* node = kmalloc(sizeof(isr_function_t));
-
-		while(tail->next != KNULL) tail = tail->next;
-
-		node->pointer = function;
-		node->next = KNULL;
-		tail->next = node;
-	}
+	function_table[index] = function;
 }
 
 void setup_idt()
 {
 	for(int i = 0; i < 256; i++)
 	{
-		function_table[i].pointer = KNULL;
-		function_table[i].next = KNULL;
+		function_table[i] = KNULL;
 	}
 
 	create_descriptor( 0, (uint64_t) isr0_entry, 0x08, IDT_TYPE_INTERRUPT, 0);

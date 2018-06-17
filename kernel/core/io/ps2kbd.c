@@ -73,7 +73,7 @@ static bool send_command(uint8_t command, uint8_t subcommand)
 	return true;
 }
 
-static isr_retval_t ps2_keyboard_isr()
+static void ps2_keyboard_isr()
 {
 	uint8_t data = ps2_device_read(kbd_device, false);
 	
@@ -99,7 +99,6 @@ static isr_retval_t ps2_keyboard_isr()
 	}
 	
 	ic_eoi(ps2_device_irqs()[kbd_device]);
-	return ISR_HANDLED;
 }
 
 static void keycode_decoder()

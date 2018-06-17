@@ -153,7 +153,7 @@ static bool check_and_map_entry(page_entry_t* entry, linear_addr_t* address)
 	return false;
 }
 
-isr_retval_t pf_handler(struct intr_stack *frame)
+void pf_handler(struct intr_stack *frame)
 {
 	struct PageError *page_error = (struct PageError*)&frame->err_code;
 	uint64_t address = frame->cr2;
@@ -186,7 +186,6 @@ isr_retval_t pf_handler(struct intr_stack *frame)
 	{
 		kpanic_intr(frame, "Page fault at %#p (error code %x)", address, frame->err_code);
 	}
-	return ISR_HANDLED;
 }
 
 void mmu_init()
