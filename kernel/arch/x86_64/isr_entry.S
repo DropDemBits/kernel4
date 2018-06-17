@@ -104,25 +104,26 @@ syscall_entry:
 	push $0x80
 
 	# Push other regs
-	push %rbp
-	push %rbx
 	push %r12
 	push %r13
 	push %r14
 	push %r15
 
-	movq %cr2, %rbx
-	push %rbx
+	movq %cr2, %r12
+	push %r12
 
-	push %rcx
-	push %rdx
-	push %rax
-	push %rsi
-	push %rdi
 	push %r8
 	push %r9
 	push %r10
 	push %r11
+
+	push %rbp
+	push %rdi
+	push %rsi
+	push %rdx
+	push %rcx
+	push %rbx
+	push %rax
 
 	movq %rsp, %rdi
 	call syscall_common
@@ -132,25 +133,26 @@ syscall_entry:
 	call set_rsp0
 
 	# Restore registers
+	popq %rax
+	popq %rbx
+	popq %rcx
+	popq %rdx
+	popq %rsi
+	popq %rdi
+	popq %rbp
+	
 	popq %r11
 	popq %r10
 	popq %r9
 	popq %r8
-	popq %rdi
-	popq %rsi
-	popq %rax
-	popq %rdx
-	popq %rcx
 
-	popq %rbx
-	movq %rbx, %cr2
+	popq %r12
+	movq %r12, %cr2
 
 	popq %r15
 	popq %r14
 	popq %r13
 	popq %r12
-	popq %rbx
-	popq %rbp
 
 	addq $16, %rsp
 

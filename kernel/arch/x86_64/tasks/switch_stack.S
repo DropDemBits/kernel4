@@ -147,8 +147,24 @@ set_rsp0:
 
 .global usermode_code
 usermode_code:
+
+	# Print out test string
+	xor %rax, %rax
+	movq $1, %rax
+	movq $(strval - usermode_code + 0x400000), %rbx
+	int $0x80
+
+	# Sleep for 1 second
+	xor %rax, %rax
+	movq $2, %rax
+	movq $1000, %rbx
+	int $0x80
+
 	xor %rax, %rax
 	int $0x80
 	jmp usermode_code
+
+strval:
+	.asciz "Hello World! "
 endcode:
 	.skip 4096 - (endcode - usermode_code)

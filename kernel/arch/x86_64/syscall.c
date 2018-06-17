@@ -3,13 +3,12 @@
 
 extern uint64_t syscalls[];
 
-void syscall_common(struct intr_stack *frame)
+void syscall_common(struct syscall_args *frame)
 {
-    if(frame->rax < NR_SYSCALLS && syscalls[frame->rax] != KNULL)
+    if(frame->retidx < NR_SYSCALLS && syscalls[frame->retidx] != KNULL)
     {
-        void (*syscall_handler)(void);
-        syscall_handler = syscalls[frame->rax];
+        syscall_func_t syscall_handler = syscalls[frame->retidx];
 
-        syscall_handler();
+        frame->retidx = syscall_handler(frame);
     }
 }
