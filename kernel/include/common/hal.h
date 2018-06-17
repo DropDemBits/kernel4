@@ -40,6 +40,7 @@ void hal_disable_interrupts();
 void hal_save_interrupts();
 void hal_restore_interrupts();
 void busy_wait();
+void intr_wait();
 
 void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode);
 void timer_reset_counter(uint16_t id);

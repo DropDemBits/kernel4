@@ -169,7 +169,7 @@ isr_retval_t pf_handler(struct intr_stack *frame)
 		// Redo tty thing
 		if(tty_background_dirty())
 		{
-			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+			fb_clear();
 		}
 	}
 

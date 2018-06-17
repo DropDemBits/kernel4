@@ -151,3 +151,10 @@ void fb_fillrect(void* vram, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uin
 		}
 	}
 }
+
+void fb_clear()
+{
+#ifndef __K4_VISUAL_STACK__
+	fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+#endif
+}

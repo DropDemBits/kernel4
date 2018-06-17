@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <common/ps2.h>
 #include <common/hal.h>
+#include <common/sched.h>
 
 #define STATUS_READREADY 0x01
 #define STATUS_WRITEREADY 0x02
@@ -31,7 +32,7 @@
 do { \
 	int cval = (timeout); \
 	do { \
-		ps2_wait(); \
+		sched_sleep_millis(1); \
 	} while((condition) && --cval); \
 	if(!cval) (timedout) = true; \
 } while(0); \

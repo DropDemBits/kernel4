@@ -49,13 +49,13 @@ void idle_loop()
 		preempt_disable();
 		if(tty_background_dirty())
 		{
-			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+			fb_clear();
 		}
 		tty_reshow();
 		tty_make_clean();
 		sched_gc();
 		preempt_enable();
-		sched_switch_thread();
+		intr_wait();
 	}
 }
 
@@ -66,11 +66,10 @@ void low_priothread()
 		sched_gc();
 		if(tty_background_dirty())
 		{
-			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
-			tty_reshow();
+			fb_clear();
 			tty_make_clean();
 		}
-
+		tty_reshow();
 	}
 }
 
@@ -89,32 +88,13 @@ void usermode_entry()
 	while(1);
 }
 
-void time_nomnoms()
-{
-	while(1)
-	{
-		if(tty_background_dirty())
-		{
-			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
-			tty_reshow();
-			tty_make_clean();
-		}
-		tty_reshow();
-
-		tty_set_colour(0x7, 0x0);
-		putchar('p');
-		sched_switch_thread();
-	}
-}
-
 void a_print()
 {
 	while(1)
 	{
 		tty_set_colour(0xF, 0xC);
 		putchar('a');
-		// tty_reshow();
-		sched_switch_thread();
+		sched_sleep_millis(200);
 	}
 }
 
@@ -124,8 +104,7 @@ void b_print()
 	{
 		tty_set_colour(0x0, 0x2);
 		putchar('b');
-		// tty_reshow();
-		sched_switch_thread();
+		sched_sleep_millis(200);
 	}
 }
 
@@ -164,7 +143,8 @@ void kmain()
 		tty_add_output(FB_CONSOLE, (size_t)get_fb_address());
 
 		// Clear screen
-		fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0x000000);
+		// fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0x000000);
+		fb_clear();
 	}
 	else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
 	{
@@ -258,8 +238,9 @@ void core_fini()
 
 	preempt_disable();
 	process_t *p1 = process_create();
-	thread_create(p1, (uint64_t*)low_priothread, PRIORITY_LOWER, "lowprio");
 	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL, "kshell");
+	// thread_create(p1, (uint64_t*)b_print, PRIORITY_HIGH, "b_print");
+	// thread_create(p1, (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
 	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
 	preempt_enable();
 

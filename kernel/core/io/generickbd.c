@@ -140,14 +140,14 @@ bool kbd_handle_key(uint8_t keycode, bool released)
 		else if(keycode == KEY_CAPSLOCK)
 			caps_pressed = false;
 	}
-	if(new_kmods != key_mods)
-	{
-		key_mods = new_kmods;
-		kbd_setmods(key_mods);
-		return true;
-	}
 
-	return false;
+	bool update_mods = false;
+	if(new_kmods & 0x7 != key_mods & 0x7)
+		update_mods = true;
+
+	kbd_setmods(new_kmods);
+
+	return update_mods;
 }
 
 char kbd_tochar(uint8_t keycode)

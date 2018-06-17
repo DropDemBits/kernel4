@@ -45,6 +45,7 @@ static thread_t* decoder_thread;
  */
 static uint8_t key_state_machine = 0;
 static uint8_t ps2set2_translation[] = {PS2_SET2_MAP};
+static bool command_successful = false;
 
 static void keycode_push(uint8_t keycode)
 {
@@ -61,18 +62,41 @@ static uint8_t keycode_pop()
 
 static bool send_command(uint8_t command, uint8_t subcommand)
 {
+	command_successful = false;
 	ps2_device_write(kbd_device, true, command);
-	if(ps2_device_read(kbd_device, true) != 0xFA) return false;
+	if(!command_successful && ps2_device_read(kbd_device, true) != 0xFA) return false;
+	command_successful = false;
+
 	ps2_device_write(kbd_device, true, subcommand);
-	if(ps2_device_read(kbd_device, true) != 0xFA) return false;
+	if(!command_successful && ps2_device_read(kbd_device, true) != 0xFA) return false;
+	command_successful = false;
 	return true;
 }
 
 static isr_retval_t ps2_keyboard_isr()
 {
 	uint8_t data = ps2_device_read(kbd_device, false);
-	keycode_push(data);
-	sched_set_thread_state(decoder_thread, STATE_RUNNING);
+	
+	if(data < 0xF0)
+	{
+		insert_data:
+		keycode_push(data);
+		sched_set_thread_state(decoder_thread, STATE_RUNNING);
+	} else
+	{
+		switch(data)
+		{
+			case 0xF0:
+				goto insert_data;
+				break;
+			case 0xFA:
+				command_successful = true;
+				break;
+			default:
+				tty_reshow();
+				break;
+		}
+	}
 	
 	ic_eoi(ps2_device_irqs()[kbd_device]);
 	return ISR_HANDLED;
@@ -137,7 +161,7 @@ static void keycode_decoder()
 			keycode = ps2set2_translation[data + 0x00];
 
 		if(kbd_handle_key(keycode, key_state_machine & 0x1))
-			send_command(0xED, kbd_getmods() & 0xf);
+			send_command(0xED, kbd_getmods() & 0x7);
 		key_state_machine = 0;
 	}
 }
@@ -146,10 +170,10 @@ void ps2kbd_init(int device)
 {
 	// PS2 Side
 	kbd_device = device;
-	decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_HIGHER, "keydecoder0");
+	decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2");
+	sched_set_thread_state(decoder_thread, STATE_SLEEPING);
 
-	ps2_device_write(kbd_device, true, 0xF4);
-	if(ps2_device_read(kbd_device, true) != 0xFA)
+	if(!send_command(0xF4, 0x00))
 		puts("[KBD] Scanning enable failed");
 
 	ps2_handle_device(kbd_device, ps2_keyboard_isr);
