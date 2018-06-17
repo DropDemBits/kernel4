@@ -73,7 +73,7 @@ void refresh_task()
 		{
 			if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
 			{
-				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, fb_info.height, 0);
+				fb_clear();
 			} else
 			{
 				for(int i = 0; i < fb_info.width * fb_info.height; i++)
@@ -82,13 +82,13 @@ void refresh_task()
 		}
 		tty_reshow();
 		tty_make_clean();
-		sched_set_thread_state(refresh_thread, STATE_SLEEPING);
+		sched_set_thread_state(sched_active_thread(), STATE_SLEEPING);
 	}
 }
 
 void request_refresh()
 {
-	sched_set_thread_state(refresh_thread, STATE_RUNNING);
+	// sched_set_thread_state(refresh_thread, STATE_RUNNING);
 }
 
 size_t strspn(const char* str, const char* delim)
@@ -206,7 +206,7 @@ static void shell_readline()
 	{
 		char kcode = kbd_read();
 		char kchr = kbd_tochar(kcode);
-
+		
 		if(kcode)
 			request_refresh();
 
@@ -310,7 +310,10 @@ static bool shell_parse()
 	} else if(is_command("sleep", command))
 	{
 		char* sleep_time = strtok_r(NULL, ARG_DELIM, &saveptr);
-		long int sleep_for = atol(sleep_time);
+		long int sleep_for = 0;
+		
+		if(sleep_time != NULL) 
+			sleep_for = atol(sleep_time);
 
 		if(sleep_for < 0)
 		{
