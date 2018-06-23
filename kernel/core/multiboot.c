@@ -58,6 +58,7 @@ void multiboot_parse()
 			break;
 		case MULTIBOOT_BOOTLOADER_MAGIC:
 			parse_mb1();
+			break;
 		default:
 			// Not loaded by multiboot loader
 			break;
@@ -183,6 +184,13 @@ void parse_mb2()
 
 	for (tag = (struct multiboot_tag *) (multiboot_ptr + (8 * 8 / sizeof(uptr_t))); tag->type != MULTIBOOT_TAG_TYPE_END; tag = (struct multiboot_tag *) ((uint8_t *) tag + ((tag->size + 7) & ~7)))
 	{
+		if(tag->size == 0)
+		{
+			// Invalid tag, so just skip it
+			tag++;
+			continue;
+		}
+
 		switch (tag->type) {
 			case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO:
 				mb_mem_lower = ((struct multiboot_tag_basic_meminfo*) tag)->mem_lower;
