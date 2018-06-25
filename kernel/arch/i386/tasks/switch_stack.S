@@ -18,10 +18,6 @@
 
 .section .text
 
-.global switch_stack
-.global initialize_thread
-.extern tss_begin
-
 /**
  * Switches the stack to the new pointer and saves the old into the thread's
  * register state. Old rsp will not be saved if rdi is KNULL, and the stack will
@@ -31,6 +27,7 @@
  * 4(ESP): Pointer to new thread's register state (ECX)
  * 8(ESP): Pointer to old thread's register state (EDX)
  */
+.global switch_stack
 switch_stack:
 	push %ebp
 	push %edi
@@ -54,7 +51,6 @@ switch_stack:
 	popl %esi
 	popl %edi
 	popl %ebp
-	sti
 	ret
 
 /**
@@ -65,45 +61,101 @@ switch_stack:
  * EBP: pointer to thread block
  * Current stack: Properly formatted iret structure
  */
-
+.global initialize_thread
 initialize_thread:
 	# Set thread state to running
 	movl $1, 12(%ebp)
-	xor %ebp, %ebp
 
-	/*
-	 * 16 SS
-	 * 12 ESP
-	 *  8 EFLAGS
-	 *  4 CS
-	 *  0 EIP
-	 */
-
-	cmpb $0x08, 4(%esp)
-	jnz 1f
-
-	movl 12(%esp), %eax
-	movl 8(%esp), %ecx
-	movl 0(%esp), %edx
-
-	subl $12, %eax
-	movl %edx, 0(%eax)
-	movl $0x8, 4(%eax)
-	movl %ecx, 8(%eax)
-
-	movl %eax, %esp
-
-1:
+	# No need to adjust anything, as we will enter usermode using the method below
 	xor %eax, %eax
+	xor %ebx, %ebx
 	xor %ecx, %ecx
 	xor %edx, %edx
+	xor %esi, %esi
+	xor %edi, %edi
+	xor %ebp, %ebp
 	iret
 
-// Stub functions
+/**
+ * Enters Ring 3.
+ * 
+ * Parameters:
+ * 4(ESP) / %EDX: Thread register block
+ * 8(ESP) / %ECX: Actual usermode entry point
+ */
 .global enter_usermode
 enter_usermode:
-	ud2
+	movl 4(%esp), %esi		# Put register block pointer in esi
+	movl 8(%esp), %edi
+
+	# Update RSP0
+	movl %esp, %edx
+	addl $4, %edx			# Exclude return address
+	movl %edx, 0(%esi)		# Update KESP
+	push %edx
+	call set_esp0
+	addl $4, %esp
+
+	# Construct IRET Stack
+	push $0x23 				# SS
+	push 4(%esi) 			# CPL3_RSP
+
+	pushf 					# EFLAGS
+	push $0x1B 				# CS
+	push %edi 				# EIP
+
+	# Update segment selectors
+	movw $0x23, %dx
+	movw %dx, %ds
+	movw %dx, %es
+	movw %dx, %fs
+	movw %dx, %gs
+
+	# Clear registers
+	xor %eax, %eax
+	xor %ebx, %ebx
+	xor %ecx, %ecx
+	xor %edx, %edx
+	xor %esi, %esi
+	xor %edi, %edi
+	xor %ebp, %ebp
+	iret
+
+.extern tss_begin
+.global set_esp0
+/**
+ * Sets ESP0 in the TSS.
+ * Clobbers EDX
+ * 
+ * Parameters:
+ * 4(ESP): new RSP value
+ */
+set_esp0:
+	movl 4(%esp), %edx 
+	movl %edx, (tss_begin+4)
+	ret
 
 .global usermode_code
 usermode_code:
-	ud2
+
+	# Print out test string
+	xor %eax, %eax
+	movl $1, %eax
+	movl $(strval - usermode_code + 0x400000), %ebx
+	int $0x80
+
+	# Sleep for 1 second
+	xor %eax, %eax
+	movl $2, %eax
+	movl $1000, %ebx
+	int $0x80
+
+	# Yield
+	xor %eax, %eax
+	int $0x80
+	jmp usermode_code
+
+strval:
+	.asciz "Hello World! "
+endcode:
+	.skip 4096 - (endcode - usermode_code)

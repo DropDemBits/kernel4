@@ -18,9 +18,6 @@
 
 .section .text
 
-.global switch_stack
-.global initialize_thread
-
 /**
  * Switches the stack to the new pointer and saves the old into the thread's
  * register state. Old rsp will not be saved if rdi is KNULL, and the stack will
@@ -30,6 +27,7 @@
  * RDI: Pointer to new thread's register state
  * RSI: Pointer to old thread's register state
  */
+.global switch_stack
 switch_stack:
 	push %rbp
 	push %rbx
@@ -67,6 +65,7 @@ switch_stack:
  * RBP: pointer to thread block
  * Current stack: properly formatted iret structure
  */
+.global initialize_thread
 initialize_thread:
 	# Set thread state to running
 	movl $1, 24(%rbp)
@@ -96,10 +95,10 @@ initialize_thread:
 enter_usermode:
 	movq %rdi, %r11
 
-	#movq 0(%r11), %rdi
+	# Update RSP0
 	movq %rsp, %rdi
-	addq $(2*8), %rdi
-	movq %rdi, 0(%r11)
+	addq $8, %rdi			# Exclude return address
+	movq %rdi, 0(%r11)		# Update KRSP
 	call set_rsp0
 
 	# Construct IRET Stack

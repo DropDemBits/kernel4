@@ -242,6 +242,7 @@ void core_fini()
 	// thread_create(p1, (uint64_t*)b_print, PRIORITY_HIGH, "b_print");
 	// thread_create(p1, (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
 	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
+	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
 	preempt_enable();
 
 	// Now we are done, exit thread.

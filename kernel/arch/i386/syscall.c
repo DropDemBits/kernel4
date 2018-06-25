@@ -1,5 +1,5 @@
 #include <common/syscall.h>
-#include <x86_64/stack_state.h>
+#include <i386/stack_state.h>
 
 extern syscall_func_t syscalls[];
 

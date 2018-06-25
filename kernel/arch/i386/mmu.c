@@ -108,7 +108,7 @@ static bool check_and_map_entry(page_entry_t* entry, linear_addr_t* address)
 			entry->p = 1;
 			entry->rw = 1;
 
-			if((uintptr_t)address < 0x80000000)
+			if((size_t)address < 0x80000000)
 				entry->su = 1;
 			else
 				entry->su = 0;
@@ -143,6 +143,18 @@ void mmu_init()
 	asm volatile("movl %%cr3, %%eax\n\t"
 				 "movl %%eax, %%cr3\n\t"
 		: "=a"(cr3));
+	
+	// Get rid of Identity Mapping
+	for(int i = 0; i < 0x8; i++)
+	{
+		void* addr = (void*)(i << PDT_SHIFT);
+		if(!get_pde_entry(addr)->p) continue;
+
+		get_pde_entry(addr)->frame = 0;
+		get_pde_entry(addr)->p = 0;
+		invlpg(addr);
+	}
+
 	isr_add_handler(14, (isr_t)pf_handler);
 }
 

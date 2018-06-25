@@ -96,7 +96,6 @@ irq_entry 13
 irq_entry 14
 spur_irq_entry 15
 
-.extern tss_begin
 .extern set_rsp0
 .globl syscall_entry
 syscall_entry:
@@ -108,9 +107,6 @@ syscall_entry:
 	push %r13
 	push %r14
 	push %r15
-
-	movq %cr2, %r12
-	push %r12
 
 	push %r8
 	push %r9
@@ -129,7 +125,7 @@ syscall_entry:
 	call syscall_common
 	
 	movq %rsp, %rdi
-	addq $(24*8), %rdi
+	addq $(22*8), %rdi
 	call set_rsp0
 
 	# Restore registers
@@ -139,24 +135,21 @@ syscall_entry:
 	popq %rdx
 	popq %rsi
 	popq %rdi
-	popq %rbp
+	popq %rbp //7
 	
 	popq %r11
 	popq %r10
 	popq %r9
-	popq %r8
-
-	popq %r12
-	movq %r12, %cr2
+	popq %r8 //11
 
 	popq %r15
 	popq %r14
 	popq %r13
-	popq %r12
+	popq %r12 //15
 
-	addq $16, %rsp
+	addq $16, %rsp //17
 
-	iretq
+	iretq // 22
 
 isr_entry:
 	# Push other regs
@@ -185,7 +178,7 @@ isr_entry:
 	call isr_common
 	
 	movq %rsp, %rdi
-	addq $(24*8), %rdi
+	addq $(23*8), %rdi
 	call set_rsp0
 
 	# Restore registers

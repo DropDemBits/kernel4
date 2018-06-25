@@ -16,7 +16,7 @@
 // along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
 // 
 
-.extern isr_common
+.extern isr_common, set_esp0
 
 .macro isr_err_entry int_num
 .globl isr\int_num\()_entry
@@ -94,6 +94,66 @@ irq_entry 13
 irq_entry 14
 spur_irq_entry 15
 
+.global syscall_entry
+.extern set_esp0
+
+syscall_entry:
+	push $0x80
+	push $0x00
+
+	push %ds
+	push %es
+	push %fs
+	push %gs
+
+	# Push other regs
+	push %ebp
+	push %edi
+	push %esi
+	push %edx
+	push %ecx
+	push %ebx
+	push %eax
+
+	movw $0x10, %dx
+	movw %dx, %ds
+	movw %dx, %es
+	movw %dx, %fs
+	movw %dx, %gs
+
+	# Call syscall_common
+	movl %esp, %eax
+	push %eax
+	xchg %bx, %bx
+	call syscall_common
+	addl $4, %esp
+
+	# Since this will always be entered from usermode, we don't have to worry
+	# about adjusting the stack offset
+	movl %esp, %edx
+	addl $(18*4), %edx
+	push %edx
+	call set_esp0
+	addl $4, %esp
+
+	# Restore registers
+	popl %eax
+	popl %ebx
+	popl %ecx
+	popl %edx
+	popl %esi
+	popl %edi
+	popl %ebp // 7
+
+	popl %gs
+	popl %fs
+	popl %es
+	popl %ds // 11
+
+	addl $8, %esp // 13
+
+	iret // 18
+
 isr_entry:
 	# Push other regs
 	push %ebp
@@ -108,13 +168,43 @@ isr_entry:
 	push %edx
 	push %eax
 
+	# Update segment selectors
+	push %ds
+	push %es
+	push %fs
+	push %gs
+
+	movw $0x10, %dx
+	movw %dx, %ds
+	movw %dx, %es
+	movw %dx, %fs
+	movw %dx, %gs
+
 	# Call isr_common
 	movl %esp, %eax
 	push %eax
 	call isr_common
 	addl $4, %esp
 
+	# Since we really only need to adjust ESP0 when returning to usermode,
+	# we can skip it when returning to kernel mode
+	movl 11*4(%esp), %ecx		# Fetch returning CPL
+	cmp $0x08, %ecx				# Are we returning to Kernel mode?
+	jz 1f
+
+	# Change ESP0
+	movl %esp, %edx
+	addl $(19*4), %edx		# Regs, IntCode, ErrCode, Usermode IRET
+	push %edx
+	call set_esp0
+	addl $4, %esp
+1:
 	# Restore registers
+	popl %gs
+	popl %fs
+	popl %es
+	popl %ds
+
 	popl %eax
 	popl %edx
 	popl %ecx
@@ -127,6 +217,6 @@ isr_entry:
 	popl %esi
 	popl %ebp
 
-	addl $8, %esp
+	addl $8, %esp // 10
 
-	iret
+	iret // 15 (User mode), 13 (Kernel mode)

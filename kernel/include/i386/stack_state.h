@@ -4,6 +4,10 @@
 #define __STACK_STATE_H__ 1
 
 struct intr_stack {
+	uint32_t ds;
+	uint32_t es;
+	uint32_t fs;
+	uint32_t gs;
 	// More Registers
 	uint32_t eax;
 	uint32_t edx;

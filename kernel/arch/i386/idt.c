@@ -71,6 +71,8 @@ extern void irq13_entry();
 extern void irq14_entry();
 extern void irq15_entry();
 
+extern void syscall_entry();
+
 typedef struct
 {
 	uint16_t offset_low;
@@ -211,6 +213,8 @@ void setup_idt()
 	create_descriptor(46, (uint32_t)irq14_entry, 0x08, IDT_TYPE_TRAP);
 	// Spurious #2 (normal in APIC)
 	create_descriptor(47, (uint32_t)irq15_entry, 0x08, IDT_TYPE_TRAP);
+
+	create_descriptor(0x80, (uint32_t)syscall_entry, 0x0B, IDT_TYPE_INTERRUPT);
 
 	for(int i = 0; i < 16; i++)
 		isr_add_handler(i+32, irq_common);
