@@ -44,8 +44,6 @@
 #define INPUT_SIZE 255
 #define ARG_DELIM (" \t")
 
-extern void request_refresh();
-
 static char* input_buffer = KNULL;
 static int index = 0;
 static bool input_done = false;
@@ -60,7 +58,6 @@ void wakeup_task()
 	while(1)
 	{
 		puts("I'M AWAKE NOW");
-		request_refresh();
 		sched_set_thread_state(test_wakeup, STATE_SLEEPING);
 	}
 }
@@ -86,129 +83,16 @@ void refresh_task()
 	}
 }
 
-void request_refresh()
-{
-	// sched_set_thread_state(refresh_thread, STATE_RUNNING);
-}
-
-size_t strspn(const char* str, const char* delim)
-{
-	size_t count = 0;
-
-	while(*str)
-	{
-		const char *c;
-		for(c = delim; *c; c++)
-		{
-			if(*str == *c)
-			{
-				count++;
-				break;
-			}
-		}
-		if(*c == '\0') return count;
-
-		str++;
-	}
-
-	return count;
-}
-
-char* strtok_r(char* str, const char* delim, char** lasts)
-{
-	char* token;
-
-	if(str == NULL)
-		str = *lasts;
-
-	str += strspn(str, delim);
-
-	if(*str == '\0')
-	{
-		*lasts = str;
-		return NULL;
-	}
-	token = str++;
-
-	while(*str)
-	{
-		for(const char *c = delim; *c; c++)
-		{
-			if(*str == *c)
-				goto tokend;
-		}
-		str++;
-	}
-
-	*lasts = str;
-	goto done;
-
-	tokend:
-	*str = '\0';
-	*lasts = str + 1;
-
-	done:
-	return token;
-}
-
-long int atol(const char* str)
-{
-	// Skip whitespace
-	while(*str)
-	{
-		if(*str == '\0') return 0;
-		if(!isspace(*str)) break;
-		str++;
-	}
-
-	long int retval = 0;
-	bool is_negative = false;
-
-	while(*str)
-	{
-		if(*str == '\0') return 0;
-		
-		if(*str == '-')
-		{
-			if(is_negative) break;
-			is_negative = true;
-			goto skip;
-		} else if(!isdigit(*str))
-		{
-			break;
-		}
-
-		retval *= 10;
-		retval += *str - '0';
-
-		skip:
-		str++;
-	}
-
-	if(is_negative)
-	{
-		if(retval < 0)
-			// Overflow
-			return -1;
-		retval *= -1;
-	}
-	return retval;
-}
-
 static void shell_readline()
 {
 	printf("> ");
 	input_done = false;
 	index = 0;
-	request_refresh();
 
 	while(1)
 	{
 		char kcode = kbd_read();
 		char kchr = kbd_tochar(kcode);
-		
-		if(kcode)
-			request_refresh();
 
 		if(kcode && kchr)
 		{
@@ -362,7 +246,6 @@ void kshell_main()
 			puts("Try 'help' or '?' for a list of available commands");
 			tty_set_colour(shell_text_clr, shell_bg_clr);
 		}
-		request_refresh();
 	}
 
 	puts("kshell is exiting, nothing left to do");

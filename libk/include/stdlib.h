@@ -21,6 +21,9 @@ extern char* itoa (int value, char * str, int base);
 extern char* lltoa (long long value, char * str, int base);
 extern char* ulltoa (unsigned long long value, char * str, int base);
 
+extern int atoi (const char * str);
+extern long int atol (const char * str);
+
 #ifdef __cplusplus
 }
 #endif

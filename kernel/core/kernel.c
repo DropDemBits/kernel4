@@ -59,19 +59,6 @@ void idle_loop()
 	}
 }
 
-void low_priothread()
-{
-	while(1)
-	{
-		sched_gc();
-		if(tty_background_dirty())
-		{
-			fb_clear();
-			tty_make_clean();
-		}
-		tty_reshow();
-	}
-}
 
 extern void enter_usermode(uint64_t* register_state, uint64_t* entry_addr);
 extern void usermode_code();

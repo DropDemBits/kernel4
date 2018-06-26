@@ -17,6 +17,8 @@ int strncmp(const char* str1, const char* str2, size_t num);
 void* strcopy(char* dest, const char* src);
 void* strncopy(char* dest, const char* src, size_t num);
 size_t strlen(const char* str);
+char* strtok_r(char* str, const char* delim, char** lasts);
+size_t strspn(const char* str, const char* delim);
 
 //Non standard
 int strnicmp(const char* str1, const char* str2, size_t length);
