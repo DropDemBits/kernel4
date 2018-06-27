@@ -8,8 +8,12 @@ BUILD_OBJ :=
 SYSROOT ?=
 PREFIX ?=/usr/local
 # Note: add -D__NO_OPTIMIZE__ when using -O0
+# -D__K4_VISUAL_STACK__: Visualize thread stacks
 CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude \
- -I$(SYSROOT)$(PREFIX)/include -O2
+ -I$(SYSROOT)$(PREFIX)/include \
+ -Og -g \
+# -D__K4_VISUAL_STACK__
+#  -O2
 LFLAGS := -ffreestanding -nostdlib -lgcc
 HAS_LOADER := n
 
