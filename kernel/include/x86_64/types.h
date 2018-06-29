@@ -9,7 +9,7 @@
 
 typedef uint64_t* uptr_t;
 typedef uint64_t uintptr_t;
-typedef uint64_t size_t;
+// typedef uint64_t size_t;
 typedef int64_t ssize_t;
 typedef uint64_t linear_addr_t;
 typedef uint64_t physical_addr_t;

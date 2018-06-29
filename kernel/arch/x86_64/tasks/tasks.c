@@ -19,6 +19,7 @@
  */
 
 #include <common/tasks.h>
+#include <common/hal.h>
 #include <common/mm.h>
 #include <x86_64/stack_state.h>
 
@@ -49,6 +50,9 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 
 	registers->rsp = alloc_address();
 
+	hal_save_interrupts();
+	paging_context_t* last_context = mmu_current_context();
+	mmu_switch_context(thread->parent->page_context_base);
 	for(uint64_t i = 0; i < 4; i++)
 	{
 		mmu_map(kernel_stack - (i << 9));
@@ -71,15 +75,22 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 
 	// General registers
 	registers->rip = (uint64_t) entry_point;
+	mmu_switch_context(last_context);
+	hal_restore_interrupts();
 }
 
 void cleanup_register_state(thread_t *thread)
 {
 	struct thread_registers *registers = thread->register_state;
 
+	hal_save_interrupts();
+	paging_context_t* last_context = mmu_current_context();
+	mmu_switch_context(thread->parent->page_context_base);
 	for(uint64_t i = 0; i < 4; i++)
 	{
 		mmu_unmap((uint64_t*)((registers->kernel_rsp & ~0xFFF) - (i << 12)));
 		mmu_unmap((uint64_t*)((registers->rsp & ~0xFFF) - (i << 12)));
 	}
+	mmu_switch_context(last_context);
+	hal_restore_interrupts();
 }

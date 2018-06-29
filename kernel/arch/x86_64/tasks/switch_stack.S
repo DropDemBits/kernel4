@@ -26,6 +26,7 @@
  * Parameters:
  * RDI: Pointer to new thread's register state
  * RSI: Pointer to old thread's register state
+ * RDX: Pointer to new thread's paging context
  */
 .global switch_stack
 switch_stack:
@@ -36,18 +37,34 @@ switch_stack:
 	push %r14
 	push %r15
 
+	movq %rdx, %r11
+
+	# Update KRSP in old thread
 	movq $0xFFFFDEAD00000000, %rax
 	cmpq %rax, %rsi
 	jz 1f
 	movq %rsp, 0(%rsi)
 1:
+	# Skip stack change (if needed)
 	cmpq %rax, %rdi
-	jz 2f
+	jz 3f
+
+	# Update RSP0
 	movabsq $tss_begin, %rdx
 	movq 0(%rdi), %rdi
 	movq %rdi, 4(%rdx)
-	movq %rdi, %rsp
+
+	# Change CR3 (if needed)
+	movq 0(%r11), %r11		# Get New CR3
+	movq %cr3, %rdx
+	cmpq %rdx, %r11			# Going back to old CR3?
+	jz 2f
+
+	movq %r11, %cr3			# Change CR3 to new context
 2:
+	# Change stack
+	movq %rdi, %rsp
+3:
 	popq %r15
 	popq %r14
 	popq %r13

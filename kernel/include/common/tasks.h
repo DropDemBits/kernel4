@@ -1,4 +1,5 @@
 #include <common/types.h>
+#include <common/mm.h>
 
 #ifndef __TASKS_H__
 #define __TASKS_H__
@@ -29,6 +30,10 @@ typedef struct process
 	unsigned int pid;
 	uint64_t child_count;
 	struct thread **child_threads;
+
+	// TODO: Do we want to implement separate address spaces for exploit
+	// mitigation?
+	paging_context_t* page_context_base;
 } process_t;
 
 typedef struct thread

@@ -24,12 +24,25 @@
 #ifndef __MM_H__
 #define __MM_H__ 1
 
+/**
+ * Address space
+ */
+typedef struct paging_context
+{
+    uint64_t phybase;
+} paging_context_t;
+
 size_t get_page_size();
 void mmu_init();
 int mmu_map(linear_addr_t* address);
 int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping);
 void mmu_unmap(linear_addr_t* address);
 bool mmu_is_usable(linear_addr_t* address);
+void mmu_switch_address_space(uint64_t page_context_base);
+paging_context_t* mmu_create_context();
+void mmu_destroy_context(paging_context_t* addr_context);
+paging_context_t* mmu_current_context();
+void mmu_switch_context(paging_context_t* addr_context);
 
 void mm_init();
 void mm_add_region(physical_addr_t base, size_t length, uint32_t type);

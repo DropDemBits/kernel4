@@ -26,6 +26,7 @@
  * Parameters:
  * 4(ESP): Pointer to new thread's register state (ECX)
  * 8(ESP): Pointer to old thread's register state (EDX)
+ * 12(ESP): Pointer to new thread's paging context (EAX)
  */
 .global switch_stack
 switch_stack:
@@ -34,23 +35,38 @@ switch_stack:
 	push %esi
 	push %ebx
 
+	# Put all the things into registers
 	movl 20(%esp), %ecx
 	movl 24(%esp), %edx
+	movl 28(%esp), %eax
 
+	# Update old thread's KESP
 	cmpl $0xDEADBEEF, %edx
 	jz 1f
 	movl %esp, 0(%edx)
 1:
+	// Update Stack (if needed)
 	testl $0xDEADBEEF, %ecx
-	jz 2f
+	jz 3f
+
+	# Update ESP0
 	movl 0(%ecx), %ecx
 	movl %ecx, (tss_begin+4)
-	movl %ecx, %esp
+
+	# Update CR3
+	movl 0(%eax), %eax		# Get new CR3
+	movl %cr3, %edx			# Get current CR3
+	cmp %eax, %edx			# Are we switching to the same context?
+	jnz 2f
+	movl %eax, %cr3			# We aren't, so alter CR3
 2:
+	movl %ecx, %esp
+3:
 	popl %ebx
 	popl %esi
 	popl %edi
 	popl %ebp
+	xorl %eax, %eax
 	ret
 
 /**

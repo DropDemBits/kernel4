@@ -38,6 +38,7 @@ process_t* process_create()
 	process->child_threads = KNULL;
 	process->pid = pid_counter++;
 	process->child_count = 0;
+	process->page_context_base = mmu_create_context();
 
 	return process;
 }

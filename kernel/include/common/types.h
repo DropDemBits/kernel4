@@ -17,6 +17,7 @@
  * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 

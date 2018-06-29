@@ -152,7 +152,9 @@ void kmain()
 	// Resume init in other thread
 	process_t *p1 = process_create();
 	thread_create(p1, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
-	thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
+	thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
+	thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
+	// thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
 
 	preempt_enable();
 	while(1) sched_switch_thread();
@@ -224,14 +226,15 @@ void core_fini()
 	tty_prints("Finished Initialisation\n");
 
 	preempt_disable();
-	process_t *p1 = process_create();
+	/*process_t *p1 = process_create();
 	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL, "kshell");
-	// thread_create(p1, (uint64_t*)b_print, PRIORITY_HIGH, "b_print");
-	// thread_create(p1, (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
 	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
-	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
-	preempt_enable();
+	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");*/
+	
+	thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
+	thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
 
+	preempt_enable();
 	// Now we are done, exit thread.
 	sched_set_thread_state(sched_active_thread(), STATE_EXITED);
 }

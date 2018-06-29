@@ -25,7 +25,8 @@
 
 extern void switch_stack(
 	struct thread_registers *new_state,
-	struct thread_registers *old_state
+	struct thread_registers *old_state,
+	paging_context_t* new_context
 );
 
 struct thread_queue
@@ -228,7 +229,6 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 	{
 		queue->queue_head = thread;
 		queue->queue_tail = thread;
-		active_process = thread->parent;
 	} else
 	{
 		if(queue->queue_tail != KNULL)
@@ -327,6 +327,7 @@ void sched_switch_thread()
 		}
 		idle_entry = false;
 
+		active_process = active_thread->parent;
 		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority]));
 	}
 
@@ -345,7 +346,7 @@ void sched_switch_thread()
 		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority]));
 		active_process = active_thread->parent;
 		preempt_enable();
-		switch_stack(active_thread->register_state, old_thread->register_state);
+		switch_stack(active_thread->register_state, old_thread->register_state, active_process->page_context_base);
 	}
 
 	thread_t *old_thread = active_thread;
@@ -355,7 +356,7 @@ void sched_switch_thread()
 	if(old_thread->current_state == STATE_INITIALIZED)
 	{
 		preempt_enable();
-		switch_stack(old_thread->register_state, KNULL);
+		switch_stack(old_thread->register_state, KNULL, active_process->page_context_base);
 	}
 
 	thread_t *next_thread = sched_next_thread();
@@ -393,7 +394,7 @@ void sched_switch_thread()
 		active_process = next_thread->parent;
 		active_thread = next_thread;
 		preempt_enable();
-		switch_stack(active_thread->register_state, old_thread->register_state);
+		switch_stack(active_thread->register_state, old_thread->register_state, active_process->page_context_base);
 	} else
 	{
 		// Just in case..

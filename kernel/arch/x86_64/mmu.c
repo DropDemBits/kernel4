@@ -72,11 +72,15 @@ enum {
 	PTE_MASK   = 0xFFFFFFFFF,
 };
 
-static page_entry_t *cr3;
-static page_entry_t* const pml4e_lookup = (page_entry_t*) 0xFFFFFFFFFFFFF000;
-static page_entry_t* const pdpe_lookup  = (page_entry_t*) 0xFFFFFFFFFFE00000;
-static page_entry_t* const pde_lookup   = (page_entry_t*) 0xFFFFFFFFC0000000;
-static page_entry_t* const pte_lookup   = (page_entry_t*) 0xFFFFFF8000000000;
+static uint64_t* temp_map_base = 							0xFFFFF00000000000;
+static uint32_t temp_map_count =								 	0x00000000;
+static paging_context_t* current_context;
+static paging_context_t initial_context;
+
+static page_entry_t* const pml4e_lookup = (page_entry_t*)	0xFFFFFFFFFFFFF000;
+static page_entry_t* const pdpe_lookup  = (page_entry_t*)	0xFFFFFFFFFFE00000;
+static page_entry_t* const pde_lookup   = (page_entry_t*)	0xFFFFFFFFC0000000;
+static page_entry_t* const pte_lookup   = (page_entry_t*)	0xFFFFFF8000000000;
 
 static void invlpg(linear_addr_t* address)
 {
@@ -195,10 +199,15 @@ void mmu_init()
 	*ptr = 0;
 
 	isr_add_handler(14, (isr_t)pf_handler);
-	// Set CR3
+	
+	// Setup initial paging context
+	uint64_t cr3;
 	asm volatile("movq %%cr3, %%rax\n\t"
 				 "movq %%rax, %%cr3\n\t":
 		"=a"(cr3));
+
+	initial_context.phybase = cr3;
+	current_context = &initial_context;
 }
 
 int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
@@ -263,6 +272,14 @@ int mmu_map(linear_addr_t* address)
 	return mmu_map_direct(address, frame);
 }
 
+static void mmu_unmap_direct(linear_addr_t* address)
+{
+	get_pte_entry(address)->p = 0;
+	get_pte_entry(address)->rw = 0;
+	get_pte_entry(address)->su = 0;
+	invlpg(address);
+}
+
 void mmu_unmap(linear_addr_t* address)
 {
 	if(	get_pml4e_entry(address)->p == 0 ||
@@ -270,13 +287,9 @@ void mmu_unmap(linear_addr_t* address)
 		get_pde_entry(address)->p == 0 ||
 		get_pte_entry(address)->p == 0) return;
 
-	get_pte_entry(address)->p = 0;
-	get_pte_entry(address)->rw = 0;
-	get_pte_entry(address)->su = 0;
+	mmu_unmap_direct(address);
 	mm_free((physical_addr_t*)(get_pte_entry(address)->frame << 12), 1);
 	get_pte_entry(address)->frame = KMEM_POISON;
-
-	invlpg(address);
 }
 
 bool mmu_is_usable(linear_addr_t* address)
@@ -291,4 +304,47 @@ bool mmu_is_usable(linear_addr_t* address)
 linear_addr_t* mm_get_base()
 {
 	return (linear_addr_t*) 0xFFFF880000000000;
+}
+
+paging_context_t* mmu_create_context()
+{
+	// Create page context base
+	uint64_t pml4_context = mm_alloc(1);
+	uint64_t* temp_mapping_ptr = temp_map_base;
+
+	// Map context to temporary address
+	mmu_map_direct(temp_mapping_ptr, (physical_addr_t*)pml4_context);
+	memset((void*)temp_mapping_ptr, 0x00, 0x1000);
+
+	// Copy relavent mappings to address space
+	memcpy((uint8_t*)temp_mapping_ptr+2048, (uint8_t*)pml4e_lookup+2048, 2048);
+	// Change recursive mapping entry
+	((page_entry_t*)temp_mapping_ptr)[511].frame = pml4_context >> 12ULL;
+
+	paging_context_t *context = kmalloc(sizeof(paging_context_t));
+	context->phybase = pml4_context;
+	mmu_unmap_direct(temp_mapping_ptr);
+
+	return context;
+}
+
+void mmu_destroy_context(paging_context_t* context)
+{
+	if(context == KNULL) return;
+	mm_free(context->phybase, 1);
+	kfree(context);
+}
+
+paging_context_t* mmu_current_context()
+{
+	return current_context;
+}
+
+void mmu_switch_context(paging_context_t* addr_context)
+{
+	// If we're switching to the same address context, then don't bother
+	if(addr_context == current_context) return;
+	current_context = addr_context;
+	asm volatile("movq %%rax, %%cr3\n\t"::
+		"a"(addr_context->phybase));
 }
