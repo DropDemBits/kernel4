@@ -29,7 +29,7 @@
 typedef multiboot2_memory_map_t mb2_mmap_t;
 typedef multiboot_memory_map_t mb_mmap_t;
 
-uptr_t multiboot_ptr = (void*)0;
+void*` multiboot_ptr = (void*)0;
 size_t multiboot_magic = 0;
 // 4KiB aligned pointer
 size_t multiboot_base = 0;
@@ -182,7 +182,7 @@ void parse_mb2()
 	size_t info_size = 0;
 	mb2_mmap_t *mmap;
 
-	for (tag = (struct multiboot_tag *) (multiboot_ptr + (8 * 8 / sizeof(uptr_t))); tag->type != MULTIBOOT_TAG_TYPE_END; tag = (struct multiboot_tag *) ((uint8_t *) tag + ((tag->size + 7) & ~7)))
+	for (tag = (struct multiboot_tag *) (multiboot_ptr + (8 * 8 / sizeof(void*))); tag->type != MULTIBOOT_TAG_TYPE_END; tag = (struct multiboot_tag *) ((uint8_t *) tag + ((tag->size + 7) & ~7)))
 	{
 		if(tag->size == 0)
 		{

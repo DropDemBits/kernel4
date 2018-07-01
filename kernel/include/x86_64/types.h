@@ -7,7 +7,6 @@
 #define KNULL (void*)0xFFFFDEAD00000000ULL
 #define KMEM_POISON 0xDEADCEED5ULL
 
-typedef uint64_t* uptr_t;
 typedef uint64_t uintptr_t;
 // typedef uint64_t size_t;
 typedef int64_t ssize_t;
