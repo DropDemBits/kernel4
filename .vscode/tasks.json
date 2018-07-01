@@ -1,0 +1,67 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build ISOs",
+            "type": "shell",
+            "command": "make geniso",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Run Bochs",
+            "type": "shell",
+            "command": "make geniso && bochs",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run QEMU (i386)",
+            "type": "shell",
+            "command": "make geniso && sudo qemu-system-i386 -enable-kvm -cdrom k4-i386.iso",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run QEMU (x86_64)",
+            "type": "shell",
+            "command": "make geniso && sudo qemu-system-x86_64 -enable-kvm -cdrom k4-x86_64.iso -monitor stdio -d cpu_reset,int",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Debug QEMU (x86_64)",
+            "type": "shell",
+            "command": "make geniso && qemu-system-x86_64 -enable-kvm -S -s -cdrom k4-x86_64.iso",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Debug QEMU (i386)",
+            "type": "shell",
+            "command": "make geniso && qemu-system-i386 -enable-kvm -S -s -cdrom k4-i386.iso",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}
