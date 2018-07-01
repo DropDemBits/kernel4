@@ -60,18 +60,18 @@ void idle_loop()
 }
 
 
-extern void enter_usermode(uint64_t* register_state, uint64_t* entry_addr);
+extern void enter_usermode(void* register_state, unsigned long entry_addr);
 extern void usermode_code();
 
 void usermode_entry()
 {
-	uint64_t* retaddr = (uint64_t*)0x400000;
-	uint64_t* copy = (uint64_t*)&usermode_code;
+	unsigned long retaddr = 0x400000;
+	// doot
 
 	mmu_map(retaddr);
-	memcpy(retaddr, copy, 4096);
+	memcpy((void*)retaddr, &usermode_code, 4096);
 
-	enter_usermode(sched_active_thread()->register_state, retaddr);
+	enter_usermode((void*)(sched_active_thread()->register_state), retaddr);
 	while(1);
 }
 

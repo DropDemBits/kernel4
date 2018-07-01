@@ -39,8 +39,10 @@ do { \
 
 #define WAIT_TIMEOUT(condition, timeout) \
 do { \
-	bool unused = false; \
-	WAIT_TIMEOUT_CHECK(condition, timeout, unused) \
+	int cval = (timeout); \
+	do { \
+		sched_sleep_millis(1); \
+	} while((condition) && --cval); \
 } while(0); \
 
 /*

@@ -72,15 +72,14 @@ enum {
 	PTE_MASK   = 0xFFFFFFFFF,
 };
 
-static uint64_t* temp_map_base = 							0xFFFFF00000000000;
-static uint32_t temp_map_count =								 	0x00000000;
+static uint64_t* temp_map_base = 				(uint64_t*) 0xFFFFF00000000000;
 static paging_context_t* current_context;
 static paging_context_t initial_context;
 
-static page_entry_t* const pml4e_lookup = (page_entry_t*)	0xFFFFFFFFFFFFF000;
-static page_entry_t* const pdpe_lookup  = (page_entry_t*)	0xFFFFFFFFFFE00000;
-static page_entry_t* const pde_lookup   = (page_entry_t*)	0xFFFFFFFFC0000000;
-static page_entry_t* const pte_lookup   = (page_entry_t*)	0xFFFFFF8000000000;
+static page_entry_t* const pml4e_lookup = 	(page_entry_t*) 0xFFFFFFFFFFFFF000;
+static page_entry_t* const pdpe_lookup  = 	(page_entry_t*) 0xFFFFFFFFFFE00000;
+static page_entry_t* const pde_lookup   = 	(page_entry_t*) 0xFFFFFFFFC0000000;
+static page_entry_t* const pte_lookup   = 	(page_entry_t*) 0xFFFFFF8000000000;
 
 static void invlpg(unsigned long address)
 {
@@ -212,7 +211,7 @@ void mmu_init()
 
 int mmu_map_direct(unsigned long address, unsigned long mapping)
 {
-	if(mapping == KNULL || address == KNULL) return -1;
+	if(mapping == (uintptr_t)KNULL || address == (uintptr_t)KNULL) return -1;
 
 	// TODO: Add PML5 support
 	// Check PML4E Presence
@@ -266,7 +265,7 @@ int mmu_map(unsigned long address)
 {
 	unsigned long frame = mm_alloc(1);
 
-	if(frame == KNULL)
+	if(frame == (uintptr_t)KNULL)
 		return -1;
 
 	return mmu_map_direct(address, frame);
@@ -310,20 +309,19 @@ paging_context_t* mmu_create_context()
 {
 	// Create page context base
 	unsigned long pml4_context = mm_alloc(1);
-	uint64_t* temp_mapping_ptr = temp_map_base;
 
 	// Map context to temporary address
-	mmu_map_direct(temp_mapping_ptr, pml4_context);
-	memset((void*)temp_mapping_ptr, 0x00, 0x1000);
+	mmu_map_direct((uintptr_t)temp_map_base, pml4_context);
+	memset((void*)temp_map_base, 0x00, 0x1000);
 
 	// Copy relavent mappings to address space
-	memcpy((uint8_t*)temp_mapping_ptr+2048, (uint8_t*)pml4e_lookup+2048, 2048);
+	memcpy((uint8_t*)temp_map_base+2048, (uint8_t*)pml4e_lookup+2048, 2048);
 	// Change recursive mapping entry
-	((page_entry_t*)temp_mapping_ptr)[511].frame = pml4_context >> 12ULL;
+	((page_entry_t*)temp_map_base)[511].frame = pml4_context >> 12ULL;
 
 	paging_context_t *context = kmalloc(sizeof(paging_context_t));
 	context->phybase = pml4_context;
-	mmu_unmap_direct(temp_mapping_ptr);
+	mmu_unmap_direct((uintptr_t)temp_map_base);
 
 	return context;
 }

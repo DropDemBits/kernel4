@@ -52,7 +52,7 @@ typedef struct thread
 } thread_t;
 
 process_t* process_create();
-thread_t* thread_create(process_t *parent, uint64_t *entry_point, enum thread_priority priority, const char* name);
+thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priority priority, const char* name);
 void thread_destroy(thread_t *thread);
 
 #endif /* __TASKS_H__ */

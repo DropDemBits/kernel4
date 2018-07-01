@@ -230,7 +230,7 @@ void tty_reshow()
 	}
 
 	if(extra_devices[VGA_CONSOLE].base != (size_t)KNULL &&
-		mmu_is_usable((size_t*)extra_devices[VGA_CONSOLE].base))
+		mmu_is_usable(extra_devices[VGA_CONSOLE].base))
 	{
 		// EGA Textmode console
 		uint16_t* console_base = (uint16_t*)extra_devices[VGA_CONSOLE].base;
@@ -264,7 +264,7 @@ void tty_reshow()
 	}
 
 	if(extra_devices[FB_CONSOLE].base != (size_t)KNULL &&
-		mmu_is_usable((size_t*)extra_devices[FB_CONSOLE].base))
+		mmu_is_usable(extra_devices[FB_CONSOLE].base))
 	{
 		int i = 0;
 		if(background_reshow) i = 0;
@@ -287,7 +287,7 @@ void tty_reshow()
 				continue;
 			}
 
-			fb_fill_putchar(extra_devices[FB_CONSOLE].base,
+			fb_fill_putchar((void*)extra_devices[FB_CONSOLE].base,
 						(i % width) << 3,
 						(i / width) << 4,
 						pchar,
@@ -298,7 +298,7 @@ void tty_reshow()
 		// Erase extra charachters
 		for(int i = current_draw; i < last_draw && last_draw > current_draw; i++)
 		{
-			fb_fill_putchar(extra_devices[FB_CONSOLE].base,
+			fb_fill_putchar((void*)extra_devices[FB_CONSOLE].base,
 						(i % width) << 3,
 						(i / width) << 4,
 						EMPTY_CHAR,

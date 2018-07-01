@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <common/sched.h>
 #include <common/syscall.h>
 

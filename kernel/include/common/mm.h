@@ -29,7 +29,7 @@
  */
 typedef struct paging_context
 {
-    uint64_t phybase;
+    unsigned long phybase;
 } paging_context_t;
 
 size_t get_page_size();

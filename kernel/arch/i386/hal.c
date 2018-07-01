@@ -52,7 +52,7 @@ void hal_init()
 	pic_init();
 
 	for(int i = 0; i < 16; i++)
-		irq_add_handler(i, irq_common);
+		irq_add_handler(i, (isr_t)irq_common);
 
 	if(!use_apic)
 	{
@@ -142,6 +142,7 @@ void dump_registers(struct intr_stack *stack)
     printf("ESI: %#p, EDI: %#p, ESP: %#p, EBP: %#p\n", stack->esi, stack->edi, stack->esp, stack->ebp);
     printf("EIP: %#p\n", stack->eip);
     printf("Error code: %x\n", stack->err_code);
+	printf("CR2: %p\n", stack->cr2);
     thread_t* at = sched_active_thread();
     printf("Current Thread: %#p\n", at);
     if(at != KNULL)

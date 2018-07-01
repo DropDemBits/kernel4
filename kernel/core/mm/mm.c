@@ -18,6 +18,7 @@
  * 
  */
 
+#include <common/kfuncs.h>
 #include <common/mm.h>
 
 extern size_t kernel_phystart;
@@ -310,13 +311,13 @@ void mm_init()
 		mem_region_t* block = region_list;
 		mem_region_t* next_pointer = mm_get_base();
 
-		mmu_map_direct(next_pointer, region_list);
+		mmu_map_direct((unsigned long)next_pointer, (unsigned long)region_list);
 		region_list = mm_get_base();
 		next_pointer++;
 
 		while(block->next != KNULL)
 		{
-			mmu_map_direct(next_pointer, block->next);
+			mmu_map_direct((unsigned long)next_pointer, (unsigned long)block->next);
 			block->next = next_pointer++;
 			block = block->next;
 		}
@@ -326,7 +327,7 @@ void mm_init()
 		block = region_list;
 		while(block != KNULL)
 		{
-			mmu_map_direct(block_pointer, block->bitmap);
+			mmu_map_direct((unsigned long)block_pointer, (unsigned long)block->bitmap);
 			block->bitmap = block_pointer;
 
 			block_pointer += (0x1000 >> 3);
@@ -433,13 +434,13 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
  */
 unsigned long mm_alloc(size_t size)
 {
-	size_t bit_index;
+	size_t bit_index = 0xFFFF;
 	mem_region_t* region = list_search_free(region_list);
 
 	if(size >= 32768)
 	{
 		// TODO: Are allocations larger than 128MiB needed?
-		return KNULL;
+		return (unsigned long)KNULL;
 	} else
 	{
 		// Find index
@@ -454,14 +455,14 @@ unsigned long mm_alloc(size_t size)
 		if(region == KNULL && bit_index == 0xFFFF)
 		{
 			kpanic("Out of Memory");
-			return KNULL;
+			return (unsigned long)KNULL;
 		}
 
 		// Set bits in bitmap
 		for(size_t i = 0; i < size; i++)
 			bm_set_bit(region, bit_index + i);
 
-		return (void*)((region->base << 27) | (bit_index << 12));
+		return (region->base << 27) | (bit_index << 12);
 	}
 }
 
@@ -470,7 +471,7 @@ unsigned long mm_alloc(size_t size)
  */
 void mm_free(unsigned long addr, size_t size)
 {
-	if(addr == KNULL || size == 0 || size >= 32768) return;
+	if(addr == (unsigned long)KNULL || size == 0 || size >= 32768) return;
 
 	mem_region_t* region = list_search_block(region_list, (size_t)addr);
 	if(region == KNULL)

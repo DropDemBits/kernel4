@@ -18,6 +18,8 @@
  * 
  */
 
+#include <string.h>
+
 #include <common/tasks.h>
 #include <common/hal.h>
 #include <common/mm.h>
@@ -55,12 +57,11 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	mmu_switch_context(thread->parent->page_context_base);
 	for(uint64_t i = 0; i < 4; i++)
 	{
-		mmu_map(kernel_stack - (i << 9));
-		mmu_map((uint64_t*)(registers->rsp - (i << 12)));
+		mmu_map((uintptr_t)kernel_stack - (i << 12));
+		mmu_map(registers->rsp - (i << 12));
 	}
 
 	// IRET structure
-	registers->kernel_rsp = kernel_stack;
 	*(kernel_stack--) = 0x00; // SS
 	*(kernel_stack--) = registers->kernel_rsp; // RSP
 	*(kernel_stack--) = 0x0202; // RFLAGS
@@ -71,7 +72,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	*(kernel_stack--) = (uint64_t) initialize_thread; // Return address
 	*(kernel_stack--) = (uint64_t) thread; // RBP
 	kernel_stack -= 4; // R15-12, RBX
-	registers->kernel_rsp = kernel_stack;
+	registers->kernel_rsp = (uint64_t)kernel_stack;
 
 	// General registers
 	registers->rip = (uint64_t) entry_point;
@@ -88,8 +89,8 @@ void cleanup_register_state(thread_t *thread)
 	mmu_switch_context(thread->parent->page_context_base);
 	for(uint64_t i = 0; i < 4; i++)
 	{
-		mmu_unmap((uint64_t*)((registers->kernel_rsp & ~0xFFF) - (i << 12)));
-		mmu_unmap((uint64_t*)((registers->rsp & ~0xFFF) - (i << 12)));
+		mmu_unmap((registers->kernel_rsp & ~0xFFF) - (i << 12));
+		mmu_unmap((registers->rsp & ~0xFFF) - (i << 12));
 	}
 	mmu_switch_context(last_context);
 	hal_restore_interrupts();

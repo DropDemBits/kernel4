@@ -23,6 +23,7 @@
 #include <common/sched.h>
 #include <common/hal.h>
 #include <x86_64/pic.h>
+#include <x86_64/pit.h>
 #include <x86_64/idt.h>
 #include <x86_64/stack_state.h>
 
@@ -53,7 +54,7 @@ void hal_init()
 	pic_init();
 
 	for(int i = 0; i < 16; i++)
-		irq_add_handler(i, irq_common);
+		irq_add_handler(i, (isr_t)irq_common);
 
 	if(!use_apic)
 	{

@@ -152,7 +152,7 @@ void mmu_init()
 	// Get rid of Identity Mapping
 	for(int i = 0; i < 0x8; i++)
 	{
-		void* addr = (void*)(i << PDT_SHIFT);
+		unsigned long addr = i << PDT_SHIFT;
 		if(!get_pde_entry(addr)->p) continue;
 
 		get_pde_entry(addr)->frame = 0;
@@ -165,7 +165,7 @@ void mmu_init()
 
 int mmu_map_direct(unsigned long address, unsigned long mapping)
 {
-	if(mapping == KNULL || address == KNULL) return -1;
+	if(mapping == (unsigned long)KNULL || address == (unsigned long)KNULL) return -1;
 
 	// Check PDE Presence
 	if(check_and_map_entry(get_pde_entry(address), address))
@@ -198,7 +198,7 @@ int mmu_map(unsigned long address)
 {
 	unsigned long frame = mm_alloc(1);
 
-	if(frame == KNULL)
+	if(frame == (unsigned long)KNULL)
 		return -1;
 
 	return mmu_map_direct(address, frame);
@@ -238,7 +238,7 @@ paging_context_t* mmu_create_context()
 {
 	unsigned long pdt_context = (unsigned long) mm_alloc(1);
 	// Temporarily map it
-	mmu_map_direct(temp_mapping, pdt_context);
+	mmu_map_direct((unsigned long)temp_mapping, pdt_context);
 	memset((void*)temp_mapping, 0x00, 0x1000);
 
 	// Copy relavent mappings to address space
@@ -248,7 +248,7 @@ paging_context_t* mmu_create_context()
 
 	paging_context_t *context = kmalloc(sizeof(paging_context_t));
 	context->phybase = pdt_context;
-	mmu_unmap_direct(temp_mapping);
+	mmu_unmap_direct((unsigned long)temp_mapping);
 
 	return context;
 }
@@ -256,7 +256,7 @@ paging_context_t* mmu_create_context()
 void mmu_destroy_context(paging_context_t* context)
 {
 	if(context == KNULL) return;
-	mm_free((uint32_t*)(context->phybase), 1);
+	mm_free(context->phybase, 1);
 	kfree(context);
 }
 
@@ -270,7 +270,6 @@ void mmu_switch_context(paging_context_t* addr_context)
 	// If we're switching to the same address context, then don't bother
 	if(addr_context == current_context) return;
 	current_context = addr_context;
-	uint32_t temp = (uint32_t)addr_context->phybase;
 	asm volatile("movl %%eax, %%cr3\n\t"::
-		"a"(temp) );
+		"a"(addr_context->phybase) );
 }

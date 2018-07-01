@@ -19,6 +19,7 @@
  */
 
 #include <ctype.h>
+#include <stdio.h>
 
 #include <common/sched.h>
 #include <common/kbd.h>
