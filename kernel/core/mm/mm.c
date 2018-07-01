@@ -22,7 +22,7 @@
 
 extern size_t kernel_phystart;
 extern size_t kernel_physize;
-extern linear_addr_t* mm_get_base();
+extern void* mm_get_base();
 
 enum {
 	RTYPE_LOW,
@@ -139,7 +139,7 @@ static bool mm_append_block(mem_region_t* list_head, mem_region_t* block)
 	total_blocks++;
 	if(++frame_blocks >= 64)
 	{
-		block->next = mm_alloc(1);
+		block->next = (struct mem_block*)mm_alloc(1);
 		return true;
 	}
 	return false;
@@ -287,7 +287,7 @@ static mem_region_t* mm_create_region(mem_region_t* list_head,
 	append->flags.reserved = 0xFFU;
 	append->flags.present = 0;
 
-	append->bitmap = mm_alloc(1);
+	append->bitmap = (uint64_t*)mm_alloc(1);
 	for(size_t i = 0; i < 512 && append->bitmap != KNULL; i++)
 	{
 		append->bitmap[i] = ~0ULL;
@@ -336,7 +336,7 @@ void mm_init()
 	}
 }
 
-void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
+void mm_add_region(unsigned long base, size_t length, uint32_t type)
 {
 	mem_region_t *tail = list_get_tail(region_list);
 	bool cover_kernel = false;
@@ -413,7 +413,7 @@ void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
 		if(cover_kernel)
 		{
 			// Reserve kernel image region
-			mm_add_region(	(physical_addr_t)&kernel_phystart,
+			mm_add_region(	(unsigned long)&kernel_phystart,
 							(size_t)&kernel_physize,
 							2);
 			cover_kernel = false;
@@ -431,7 +431,7 @@ void mm_add_region(physical_addr_t base, size_t length, uint32_t type)
  * Size is in 4KiB blocks.
  * Returns a pointer which matches the criteria, or KNULL if none was found.
  */
-void* mm_alloc(size_t size)
+unsigned long mm_alloc(size_t size)
 {
 	size_t bit_index;
 	mem_region_t* region = list_search_free(region_list);
@@ -468,7 +468,7 @@ void* mm_alloc(size_t size)
 /*
  * Frees a memory block allocated by mm_alloc
  */
-void mm_free(void* addr, size_t size)
+void mm_free(unsigned long addr, size_t size)
 {
 	if(addr == KNULL || size == 0 || size >= 32768) return;
 

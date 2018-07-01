@@ -263,7 +263,7 @@ void parse_mb2()
 		if(first_iter)
 		{
 			// Reserve multiboot info region
-			multiboot_base = (physical_addr_t)multiboot_ptr & ~0xFFF;
+			multiboot_base = (unsigned long)multiboot_ptr & ~0xFFF;
 			multiboot_size = info_size;
 			mm_add_region(	multiboot_base,
 							multiboot_size,

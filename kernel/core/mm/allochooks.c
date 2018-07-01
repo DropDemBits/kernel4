@@ -36,7 +36,7 @@ static uint64_t alloc_memblocks(size_t length)
 
 	for(; length > 0; length--)
 	{
-		if(mmu_map((linear_addr_t*) free_base) != 0)
+		if(mmu_map(free_base) != 0)
 		{
 			errored = true;
 			break;
@@ -57,7 +57,7 @@ static void free_memblocks(size_t length)
 {
 	for(; length > 0 && free_base - (length << 12) > heap_base; length--)
 	{
-		mmu_unmap((linear_addr_t*) free_base);
+		mmu_unmap(free_base);
 		free_base -= 0x1000;
 	}
 }

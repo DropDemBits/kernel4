@@ -114,20 +114,19 @@ void kmain()
 	 * device. Search PCI devices for sutable video device.
 	 */
 
-	uint32_t *framebuffer = (uint32_t*)get_fb_address();
+	unsigned long framebuffer = (unsigned long)get_fb_address();
 
 	// Map framebuffer
-	for(physical_addr_t off = 0;
+	for(unsigned long off = 0;
 		off <= (fb_info.width * fb_info.height * fb_info.bytes_pp);
 		off += 0x1000)
 	{
-		mmu_map_direct((linear_addr_t*)((linear_addr_t)framebuffer + off),
-						(physical_addr_t*)(fb_info.base_addr + off));
+		mmu_map_direct(framebuffer + off, fb_info.base_addr + off);
 	}
 
 	if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
 	{
-		tty_add_output(FB_CONSOLE, (size_t)get_fb_address());
+		tty_add_output(FB_CONSOLE, (unsigned long)get_fb_address());
 
 		// Clear screen
 		// fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0x000000);
@@ -177,7 +176,7 @@ void core_fini()
 
 	// Part 1: allocation
 	uint32_t* laddr = (uint32_t*)0xF0000000;
-	physical_addr_t* addr = mm_alloc(1);
+	unsigned long addr = mm_alloc(1);
 	printf("PAlloc test: Addr0 (%#p)\n", (uintptr_t)addr);
 
 	// Part 2: Mapping

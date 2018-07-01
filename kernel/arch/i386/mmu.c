@@ -68,27 +68,27 @@ static page_entry_t* const temp_mapping = (page_entry_t*) 0xF0000000;
 static page_entry_t* const pde_lookup = (page_entry_t*) 0xFFFFF000;
 static page_entry_t* const pte_lookup = (page_entry_t*) 0xFFC00000;
 
-static void invlpg(linear_addr_t* address)
+static void invlpg(unsigned long address)
 {
 	asm volatile("invlpg (%%eax)" : "=a"(address));
 }
 
-static page_entry_t* get_pde_entry(linear_addr_t* address)
+static page_entry_t* get_pde_entry(unsigned long address)
 {
-	uint32_t pde_off = ((linear_addr_t)address >> PDT_SHIFT) & PDE_MASK;
+	uint32_t pde_off = (address >> PDT_SHIFT) & PDE_MASK;
 
 	return &(pde_lookup[pde_off]);
 }
 
-static page_entry_t* get_pte_entry(linear_addr_t* address)
+static page_entry_t* get_pte_entry(unsigned long address)
 {
-	uint32_t pte_off = ((linear_addr_t)address >> PTT_SHIFT) & PTE_MASK;
+	uint32_t pte_off = (address >> PTT_SHIFT) & PTE_MASK;
 
 	return &(pte_lookup[pte_off]);
 }
 
 // Returns true if a new structure was allocated, false otherwise.
-static bool check_and_map_entry(page_entry_t* entry, linear_addr_t* address)
+static bool check_and_map_entry(page_entry_t* entry, unsigned long address)
 {
 	if(!entry->p)
 	{
@@ -102,8 +102,8 @@ static bool check_and_map_entry(page_entry_t* entry, linear_addr_t* address)
 		} else
 		{
 			// Allocate a new entry
-			uintptr_t frame = (uintptr_t)mm_alloc(1);
-			if(frame == (uintptr_t)KNULL)
+			unsigned long frame = mm_alloc(1);
+			if(frame == (unsigned long)KNULL)
 				return -1;
 
 			entry->frame = frame >> 12;
@@ -163,7 +163,7 @@ void mmu_init()
 	isr_add_handler(14, (isr_t)pf_handler);
 }
 
-int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
+int mmu_map_direct(unsigned long address, unsigned long mapping)
 {
 	if(mapping == KNULL || address == KNULL) return -1;
 
@@ -183,7 +183,7 @@ int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
 	// This is an unmapped address, so map it
 	get_pte_entry(address)->p = 1;
 	get_pte_entry(address)->rw = 1;
-	get_pte_entry(address)->frame = ((physical_addr_t)mapping >> 12);
+	get_pte_entry(address)->frame = mapping >> 12;
 
 	if((uintptr_t)address < 0x80000000)
 		get_pte_entry(address)->su = 1;
@@ -194,9 +194,9 @@ int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping)
 	return 0;
 }
 
-int mmu_map(linear_addr_t* address)
+int mmu_map(unsigned long address)
 {
-	physical_addr_t* frame = mm_alloc(1);
+	unsigned long frame = mm_alloc(1);
 
 	if(frame == KNULL)
 		return -1;
@@ -204,7 +204,7 @@ int mmu_map(linear_addr_t* address)
 	return mmu_map_direct(address, frame);
 }
 
-static bool mmu_unmap_direct(linear_addr_t* address)
+static bool mmu_unmap_direct(unsigned long address)
 {
 	if(	get_pde_entry(address)->p == 0 ||
 		get_pte_entry(address)->p == 0) return false;
@@ -214,31 +214,31 @@ static bool mmu_unmap_direct(linear_addr_t* address)
 	return true;
 }
 
-void mmu_unmap(linear_addr_t* address)
+void mmu_unmap(unsigned long address)
 {
 	if(!mmu_unmap_direct(address)) return;
 
-	mm_free((physical_addr_t*)(get_pte_entry(address)->frame << 12), 1);
+	mm_free(get_pte_entry(address)->frame << 12, 1);
 	get_pte_entry(address)->frame = KMEM_POISON;
 }
 
-bool mmu_is_usable(linear_addr_t* address)
+bool mmu_is_usable(unsigned long address)
 {
 	if(	get_pde_entry(address)->p &&
 		get_pte_entry(address)->p) return true;
 	return false;
 }
 
-linear_addr_t* mm_get_base()
+void* mm_get_base()
 {
-	return (linear_addr_t*) 0x88000000;
+	return (void*) 0x88000000;
 }
 
 paging_context_t* mmu_create_context()
 {
-	uint32_t pdt_context = (uint32_t) mm_alloc(1);
+	unsigned long pdt_context = (unsigned long) mm_alloc(1);
 	// Temporarily map it
-	mmu_map_direct((linear_addr_t*)temp_mapping, (void*)pdt_context);
+	mmu_map_direct(temp_mapping, pdt_context);
 	memset((void*)temp_mapping, 0x00, 0x1000);
 
 	// Copy relavent mappings to address space
@@ -248,7 +248,7 @@ paging_context_t* mmu_create_context()
 
 	paging_context_t *context = kmalloc(sizeof(paging_context_t));
 	context->phybase = pdt_context;
-	mmu_unmap_direct((linear_addr_t*)temp_mapping);
+	mmu_unmap_direct(temp_mapping);
 
 	return context;
 }
