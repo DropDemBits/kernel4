@@ -18,17 +18,18 @@
  * 
  */
 
+#include <common/kfuncs.h>
 #include <common/liballoc.h>
 #include <common/hal.h>
 #include <common/mm.h>
 #include <common/tty.h>
 #include <common/sched.h>
 
-static uint64_t heap_base = 0;
-static uint64_t heap_limit = 0;
-static uint64_t free_base = 0;
+static size_t heap_base = 0;
+static size_t heap_limit = 0;
+static size_t free_base = 0;
 
-static uint64_t alloc_memblocks(size_t length)
+static size_t alloc_memblocks(size_t length)
 {
 	if(free_base + (length << 12) > heap_limit) return 0;
 	size_t retval = free_base;
@@ -36,7 +37,7 @@ static uint64_t alloc_memblocks(size_t length)
 
 	for(; length > 0; length--)
 	{
-		if(mmu_map((linear_addr_t*) free_base) != 0)
+		if(mmu_map(free_base) != 0)
 		{
 			errored = true;
 			break;
@@ -57,7 +58,7 @@ static void free_memblocks(size_t length)
 {
 	for(; length > 0 && free_base - (length << 12) > heap_base; length--)
 	{
-		mmu_unmap((linear_addr_t*) free_base);
+		mmu_unmap(free_base);
 		free_base -= 0x1000;
 	}
 }

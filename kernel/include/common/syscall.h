@@ -5,7 +5,7 @@
 
 #define NR_SYSCALLS 32768
 
-typedef syscall_ret(*syscall_func_t)(struct syscall_arguments*);
+typedef syscall_ret(*syscall_func_t)(struct syscall_args*);
 
 void syscall_init();
 void syscall_add(uint64_t number, syscall_func_t entry_point);

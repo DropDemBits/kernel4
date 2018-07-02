@@ -18,6 +18,8 @@
  * 
  */
 
+#include <string.h>
+
 #include <common/tasks.h>
 #include <common/mm.h>
 #include <i386/stack_state.h>
@@ -51,12 +53,11 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 
 	for(uint32_t i = 0; i < 4; i++)
 	{
-		mmu_map(kernel_stack - (i << 9));
-		mmu_map((uint32_t*)(registers->esp - (i << 12)));
+		mmu_map((uintptr_t)kernel_stack - (i << 12));
+		mmu_map((registers->esp - (i << 12)));
 	}
 
 	// IRET structure
-	registers->kernel_esp = kernel_stack;
 	*(kernel_stack--) = 0x10; // SS
 	*(kernel_stack--) = registers->kernel_esp; // ESP
 	*(kernel_stack--) = 0x0202; // EFLAGS
@@ -67,7 +68,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	*(kernel_stack--) = (uint32_t) initialize_thread; // Return address
 	*(kernel_stack--) = (uint32_t) thread; // EBP
 	kernel_stack -= 2; // EDI, ESI, EBX
-	registers->kernel_esp = kernel_stack;
+	registers->kernel_esp = (uint32_t)kernel_stack;
 
 	// General registers
 	registers->eip = (uint32_t) entry_point;
@@ -79,7 +80,7 @@ void cleanup_register_state(thread_t *thread)
 	
 	for(uint32_t i = 0; i < 4; i++)
 	{
-		mmu_unmap((uint32_t*)((registers->kernel_esp & ~0xFFF) - (i << 12)));
-		mmu_unmap((uint32_t*)((registers->esp & ~0xFFF) - (i << 12)));
+		mmu_unmap((registers->kernel_esp & ~0xFFF) - (i << 12));
+		mmu_unmap((registers->esp & ~0xFFF) - (i << 12));
 	}
 }

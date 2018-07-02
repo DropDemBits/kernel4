@@ -212,9 +212,9 @@ skip:
 	addl $4, %edi
 	loop begin
 done:
-	# Identity
-	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + 0
-	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + 4
+	# Identity (Just map the first 8 MiB, the specialized tables are really only needed for the kernel pages)
+	movl $(0x00000000 + 0x083), bootstrap_pd - KERNEL_VIRTUAL_BASE + 0
+	movl $(0x00400000 + 0x083), bootstrap_pd - KERNEL_VIRTUAL_BASE + 4
 
 	# HH
 	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 0

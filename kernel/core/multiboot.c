@@ -19,6 +19,8 @@
  */
 
 #include <string.h>
+#include <stdio.h>
+
 #include <common/types.h>
 #include <common/mm.h>
 #include <common/fb.h>
@@ -29,7 +31,13 @@
 typedef multiboot2_memory_map_t mb2_mmap_t;
 typedef multiboot_memory_map_t mb_mmap_t;
 
-uptr_t multiboot_ptr = (void*)0;
+struct multiboot_tags_header
+{
+	uint32_t size;
+	uint32_t reserved;
+};
+
+void* multiboot_ptr = (void*)0;
 size_t multiboot_magic = 0;
 // 4KiB aligned pointer
 size_t multiboot_base = 0;
@@ -95,9 +103,9 @@ void parse_mb1()
 	if(flags & MULTIBOOT_INFO_MODS)
 	{
 		// Module information
-		struct multiboot_mod_list *module = (struct multiboot_mod_list*)mb1->mods_addr;
+		struct multiboot_mod_list *module = (struct multiboot_mod_list*)((uintptr_t)mb1->mods_addr);
 
-		if(strcmp(module->cmdline,"initrd.tar") == 0)
+		if(strcmp((const char*)((uintptr_t)module->cmdline),"initrd.tar") == 0)
 		{
 			initrd_start = module->mod_start;
 			initrd_size = module->mod_end - initrd_start;
@@ -134,18 +142,18 @@ void parse_mb1()
 	if(flags & MULTIBOOT_INFO_BOOT_LOADER_NAME)
 	{
 		tty_prints("Loaded by bootloader \"");
-		tty_prints(mb1->boot_loader_name);
+		tty_prints((const char*)((uintptr_t)mb1->boot_loader_name));
 		tty_prints("\"\n");
 	}
 
 	// This needs to be last as to not overwrite the rest of multiboot things
 	if(flags & MULTIBOOT_INFO_MEM_MAP)
 	{
-		mb_mmap_t* mmap = (mb_mmap_t*)mb1->mmap_addr;
+		mb_mmap_t* mmap = (mb_mmap_t*)((uintptr_t)mb1->mmap_addr);
 
 		bool first_iter = true;
 		while((size_t)mmap < mb1->mmap_addr + mb1->mmap_length) {
-			mb2_mmap_t* actual = (mb2_mmap_t*)((uint32_t)mmap + 4);
+			mb2_mmap_t* actual = (mb2_mmap_t*)((uintptr_t)mmap + 4);
 			mm_add_region(actual->addr, actual->len, actual->type);
 			if(first_iter)
 			{
@@ -160,7 +168,7 @@ void parse_mb1()
 				first_iter = false;
 			}
 
-			mmap = (mb_mmap_t*) ((uint32_t)mmap + mmap->size + sizeof(mmap->size));
+			mmap = (mb_mmap_t*) ((uintptr_t)mmap + mmap->size + sizeof(mmap->size));
 		}
 	}
 }
@@ -177,20 +185,15 @@ void parse_mb2()
 		return;
 	}
 
-	struct multiboot_tag *tag;
+	struct multiboot_tag *tag = (struct multiboot_tag*)multiboot_ptr + 1;
 	struct multiboot_tag_mmap *mmap_tag = KNULL;
-	size_t info_size = 0;
+	uint32_t info_size = *((uint32_t*)multiboot_ptr);
 	mb2_mmap_t *mmap;
 
-	for (tag = (struct multiboot_tag *) (multiboot_ptr + (8 * 8 / sizeof(uptr_t))); tag->type != MULTIBOOT_TAG_TYPE_END; tag = (struct multiboot_tag *) ((uint8_t *) tag + ((tag->size + 7) & ~7)))
+	for (;
+		 tag->type != MULTIBOOT_TAG_TYPE_END;
+		 tag = (struct multiboot_tag *) ((uint8_t *) tag + ((tag->size + 7) & ~7)))
 	{
-		if(tag->size == 0)
-		{
-			// Invalid tag, so just skip it
-			tag++;
-			continue;
-		}
-
 		switch (tag->type) {
 			case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO:
 				mb_mem_lower = ((struct multiboot_tag_basic_meminfo*) tag)->mem_lower;
@@ -221,7 +224,8 @@ void parse_mb2()
 				if(fb_info.type == TYPE_INDEXED)
 				{
 					fb_info.palette_size = fb->framebuffer_palette_num_colors;
-					fb_info.palette_addr = (uint64_t)&(fb->framebuffer_palette);
+					// We need to copy the palette into a different area, as this will be unmapped at mmu_init
+					// fb_info.palette_addr = (unsigned long)&(fb->framebuffer_palette);
 				}
 				else if (fb_info.type == TYPE_RGB)
 				{
@@ -244,26 +248,25 @@ void parse_mb2()
 			default:
 				break;
 		}
-		info_size += tag->size;
 	}
 
 	// Check if we have been passed a memory map
 	if(mmap_tag == KNULL) return;
 
 	// 4KiB align info size
-	info_size = (info_size + (8 + 0xFFF)) & ~0xFFF;
+	info_size = (info_size + 0xFFF) & ~0xFFF;
 
 	bool first_iter = true;
 
 	for (mmap = mmap_tag->entries;
 		(uint8_t *) mmap < ((uint8_t *) mmap_tag + mmap_tag->size);
-		mmap = (mb2_mmap_t *)((uint64_t) mmap + mmap_tag->entry_size))
+		mmap = (mb2_mmap_t *)((unsigned long) mmap + mmap_tag->entry_size))
 	{
 		mm_add_region(mmap->addr, mmap->len, mmap->type);
 		if(first_iter)
 		{
 			// Reserve multiboot info region
-			multiboot_base = (physical_addr_t)multiboot_ptr & ~0xFFF;
+			multiboot_base = (unsigned long)multiboot_ptr & ~0xFFF;
 			multiboot_size = info_size;
 			mm_add_region(	multiboot_base,
 							multiboot_size,

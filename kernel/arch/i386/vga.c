@@ -20,7 +20,7 @@
 
 #include <i386/types.h>
 
-linear_addr_t* get_fb_address()
+void* get_fb_address()
 {
-	return (linear_addr_t*) 0xE0000000;
+	return (void*) 0xE0000000;
 }

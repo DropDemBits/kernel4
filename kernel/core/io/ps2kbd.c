@@ -93,7 +93,6 @@ static void ps2_keyboard_isr()
 				command_successful = true;
 				break;
 			default:
-				tty_reshow();
 				break;
 		}
 	}

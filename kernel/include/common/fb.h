@@ -23,7 +23,7 @@
 #ifndef __FB_H__
 #define __FB_H__
 
-extern linear_addr_t* get_fb_address();
+extern void* get_fb_address();
 extern struct framebuffer_info fb_info;
 
 enum fb_type

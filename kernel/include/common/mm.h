@@ -29,15 +29,15 @@
  */
 typedef struct paging_context
 {
-    uint64_t phybase;
+    unsigned long phybase;
 } paging_context_t;
 
 size_t get_page_size();
 void mmu_init();
-int mmu_map(linear_addr_t* address);
-int mmu_map_direct(linear_addr_t* address, physical_addr_t* mapping);
-void mmu_unmap(linear_addr_t* address);
-bool mmu_is_usable(linear_addr_t* address);
+int mmu_map(unsigned long address);
+int mmu_map_direct(unsigned long address, unsigned long mapping);
+void mmu_unmap(unsigned long address);
+bool mmu_is_usable(unsigned long address);
 void mmu_switch_address_space(uint64_t page_context_base);
 paging_context_t* mmu_create_context();
 void mmu_destroy_context(paging_context_t* addr_context);
@@ -48,9 +48,9 @@ void mmu_set_temp_context(paging_context_t* addr_context);
 void mmu_exit_temp_context();
 
 void mm_init();
-void mm_add_region(physical_addr_t base, size_t length, uint32_t type);
-void* mm_alloc(size_t size);
-void mm_free(void* addr, size_t size);
+void mm_add_region(unsigned long base, size_t length, uint32_t type);
+unsigned long mm_alloc(size_t size);
+void mm_free(unsigned long addr, size_t size);
 
 void heap_init();
 

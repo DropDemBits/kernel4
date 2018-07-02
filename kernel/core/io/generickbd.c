@@ -72,7 +72,6 @@ uint8_t kbd_read()
 {
 	uint8_t keycode = 0;
 
-	recheck:
 	keycode = input_pop();
 	if(keycode == 0)
 	{
@@ -142,7 +141,7 @@ bool kbd_handle_key(uint8_t keycode, bool released)
 	}
 
 	bool update_mods = false;
-	if(new_kmods & 0x7 != key_mods & 0x7)
+	if((new_kmods & 0x7) != (key_mods & 0x7))
 		update_mods = true;
 
 	kbd_setmods(new_kmods);

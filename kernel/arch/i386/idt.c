@@ -217,5 +217,5 @@ void setup_idt()
 	create_descriptor(0x80, (uint32_t)syscall_entry, 0x0B, IDT_TYPE_INTERRUPT);
 
 	for(int i = 0; i < 16; i++)
-		isr_add_handler(i+32, irq_common);
+		isr_add_handler(i+32, (isr_t)irq_common);
 }

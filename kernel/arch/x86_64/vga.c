@@ -20,7 +20,7 @@
 
 #include <x86_64/types.h>
 
-linear_addr_t* get_fb_address()
+void* get_fb_address()
 {
-	return (linear_addr_t*) 0xFFFFE00000000000;
+	return (void*) 0xFFFFE00000000000;
 }

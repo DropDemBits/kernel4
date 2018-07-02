@@ -18,6 +18,8 @@
  * 
  */
 
+#include <string.h>
+
 #include <common/tasks.h>
 #include <common/hal.h>
 #include <common/mm.h>
@@ -45,7 +47,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	thread->register_state = kmalloc(sizeof(struct thread_registers));
 	memset(thread->register_state, 0, sizeof(struct thread_registers));
 
-	uint64_t kernel_stack = (uint64_t*) alloc_address();
+	uint64_t kernel_stack = alloc_address();
 	struct thread_registers *registers = thread->register_state;
 
 	registers->rsp = alloc_address();
@@ -55,28 +57,17 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 
 	for(uint64_t i = 0; i < 4; i++)
 	{
-		mmu_map((uint64_t*)(kernel_stack - (i << 12)));
+		mmu_map(kernel_stack - (i << 12));
 		// mmu_map((uint64_t*)(registers->rsp - (i << 12)));
 	}
 
 	kernel_stack += 0x1000;
 
-	/*paging_context_t* last_context = mmu_current_context();
-
 	// IRET structure
-	mmu_switch_context(thread->parent->page_context_base);
-	*(kernel_stack--) = 0x00; // SS
-	*(kernel_stack--) = registers->kernel_rsp; // RSP
-	*(kernel_stack--) = 0x0202; // RFLAGS
-	*(kernel_stack--) = 0x08; // CS
-	*(kernel_stack--) = (uint64_t) entry_point; // RIP
-
-	// initialize_thread stack
-	*(kernel_stack--) = (uint64_t) initialize_thread; // Return address
-	*(kernel_stack--) = (uint64_t) thread; // RBP
-	mmu_switch_context(last_context);*/
-
 	kernel_stack -= setup_kernel_stack(thread->parent->page_context_base, thread, entry_point, kernel_stack);
+	registers->kernel_rsp = kernel_stack;
+  
+	kernel_stack -= 4; // R15-12, RBX
 	registers->kernel_rsp = kernel_stack;
 
 	// General registers
@@ -93,8 +84,8 @@ void cleanup_register_state(thread_t *thread)
 	mmu_set_temp_context(thread->parent->page_context_base);
 	for(uint64_t i = 0; i < 4; i++)
 	{
-		mmu_unmap((uint64_t*)((registers->kernel_rsp & ~0xFFF) - (i << 12)));
-		mmu_unmap((uint64_t*)((registers->rsp & ~0xFFF) - (i << 12)));
+		mmu_unmap((registers->kernel_rsp & ~0xFFF) - (i << 12));
+		mmu_unmap((registers->rsp & ~0xFFF) - (i << 12));
 	}
 	mmu_exit_temp_context();
 	hal_restore_interrupts();
