@@ -23,7 +23,7 @@
 #include <common/mm.h>
 #include <x86_64/stack_state.h>
 
-extern void initialize_thread();
+extern unsigned long setup_kernel_stack(paging_context_t*, thread_t*, uint64_t*, uint64_t);
 
 /****SUPER TEMPORARY ADDRESS ALLOCATION****/
 #ifndef __K4_VISUAL_STACK__
@@ -34,9 +34,9 @@ static uint64_t alloc_base = 0xFFFFE00000080000;
 
 uint64_t alloc_address()
 {
-	alloc_base -= 0x1000; // 4KiB guard page
-	uint64_t retval = alloc_base;
 	alloc_base -= 0x4000; // 16KiB store
+	uint64_t retval = alloc_base;
+	alloc_base -= 0x1000; // 4KiB guard page
 	return retval;
 }
 
@@ -45,22 +45,26 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	thread->register_state = kmalloc(sizeof(struct thread_registers));
 	memset(thread->register_state, 0, sizeof(struct thread_registers));
 
-	uint64_t *kernel_stack = (uint64_t*) alloc_address();
+	uint64_t kernel_stack = (uint64_t*) alloc_address();
 	struct thread_registers *registers = thread->register_state;
 
 	registers->rsp = alloc_address();
 
 	hal_save_interrupts();
-	paging_context_t* last_context = mmu_current_context();
-	mmu_switch_context(thread->parent->page_context_base);
+	mmu_set_temp_context(thread->parent->page_context_base);
+
 	for(uint64_t i = 0; i < 4; i++)
 	{
-		mmu_map(kernel_stack - (i << 9));
-		mmu_map((uint64_t*)(registers->rsp - (i << 12)));
+		mmu_map((uint64_t*)(kernel_stack - (i << 12)));
+		// mmu_map((uint64_t*)(registers->rsp - (i << 12)));
 	}
 
+	kernel_stack += 0x1000;
+
+	/*paging_context_t* last_context = mmu_current_context();
+
 	// IRET structure
-	registers->kernel_rsp = kernel_stack;
+	mmu_switch_context(thread->parent->page_context_base);
 	*(kernel_stack--) = 0x00; // SS
 	*(kernel_stack--) = registers->kernel_rsp; // RSP
 	*(kernel_stack--) = 0x0202; // RFLAGS
@@ -70,12 +74,14 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	// initialize_thread stack
 	*(kernel_stack--) = (uint64_t) initialize_thread; // Return address
 	*(kernel_stack--) = (uint64_t) thread; // RBP
-	kernel_stack -= 4; // R15-12, RBX
+	mmu_switch_context(last_context);*/
+
+	kernel_stack -= setup_kernel_stack(thread->parent->page_context_base, thread, entry_point, kernel_stack);
 	registers->kernel_rsp = kernel_stack;
 
 	// General registers
 	registers->rip = (uint64_t) entry_point;
-	mmu_switch_context(last_context);
+	mmu_exit_temp_context();
 	hal_restore_interrupts();
 }
 
@@ -84,13 +90,12 @@ void cleanup_register_state(thread_t *thread)
 	struct thread_registers *registers = thread->register_state;
 
 	hal_save_interrupts();
-	paging_context_t* last_context = mmu_current_context();
-	mmu_switch_context(thread->parent->page_context_base);
+	mmu_set_temp_context(thread->parent->page_context_base);
 	for(uint64_t i = 0; i < 4; i++)
 	{
 		mmu_unmap((uint64_t*)((registers->kernel_rsp & ~0xFFF) - (i << 12)));
 		mmu_unmap((uint64_t*)((registers->rsp & ~0xFFF) - (i << 12)));
 	}
-	mmu_switch_context(last_context);
+	mmu_exit_temp_context();
 	hal_restore_interrupts();
 }

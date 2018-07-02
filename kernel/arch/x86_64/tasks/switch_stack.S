@@ -184,3 +184,57 @@ strval:
 	.asciz "Hello World! "
 endcode:
 	.skip 4096 - (endcode - usermode_code)
+
+/**
+ * Sets up the kernel stack of a thread.
+ * Has to be done in assembly due to changing context spaces which may not have the same stack.
+ * 
+ * Arguments:
+ * RDI: The paging context the stack is in
+ * RSI: The pointer to the stack's thread
+ * RDX: The entry point of the new thread
+ * RCX: The stack pointer of the stack
+ *
+ * Returns:
+ * RAX: The amount to subtract the stored KRSP by
+ */
+.global setup_kernel_stack
+setup_kernel_stack:
+	push %rbp
+
+	# From here on out, no one should use the stack
+
+	movq %cr3, %rax   # RAX contains current CR3
+	movq (%rdi), %rdi # RDI contains new CR3
+
+	cmp %rax, %rdi
+	jz 1f
+	movq %rdi, %cr3
+
+1:
+	# Initialize stack
+	movq %rcx, %rbp
+	#subq $7*8, %rbp				# Set stack to correct level
+
+	movabsq $initialize_thread, %r9
+	movq   %rsi, -7*8(%rbp)		# New thread RBP (thread block pointer)
+	movq    %r9, -6*8(%rbp)		# Return ip for switch_stack
+
+	movq   %rdx, -5*8(%rbp)		# RIP
+	movq $0x008, -4*8(%rbp)		# CS
+	movq $0x202, -3*8(%rbp)		# EFLAGS
+	movq   %rcx, -2*8(%rbp)		# New RSP
+	movq $0x000, -1*8(%rbp)		# SS
+
+
+	# Restore old CR3
+	xchg %rax, %rdi
+	cmp %rax, %rdi
+	jz 2f
+	movq %rdi, %cr3
+
+2:
+	popq %rbp
+
+	movq $12*8, %rax		# Subtract stack by this much
+	ret
