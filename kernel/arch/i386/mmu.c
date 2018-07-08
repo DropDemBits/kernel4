@@ -265,6 +265,16 @@ paging_context_t* mmu_current_context()
 	return current_context;
 }
 
+void mmu_set_context(paging_context_t* addr_context)
+{
+	current_context = addr_context;
+}
+
+void mmu_exit_temp_context()
+{
+	asm("ud2"::"a"(0xB01D000D));
+}
+
 void mmu_switch_context(paging_context_t* addr_context)
 {
 	// If we're switching to the same address context, then don't bother

@@ -345,6 +345,7 @@ void sched_switch_thread()
 
 		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority]));
 		active_process = active_thread->parent;
+		mmu_set_context(active_process->page_context_base);
 		preempt_enable();
 		switch_stack(active_thread->register_state, old_thread->register_state, active_process->page_context_base);
 	}
@@ -355,6 +356,7 @@ void sched_switch_thread()
 	// Otherwise, just switches to the same stack.
 	if(old_thread->current_state == STATE_INITIALIZED)
 	{
+		mmu_set_context(active_process->page_context_base);
 		preempt_enable();
 		switch_stack(old_thread->register_state, KNULL, active_process->page_context_base);
 	}
@@ -393,6 +395,7 @@ void sched_switch_thread()
 		sched_queue_thread(old_thread);
 		active_process = next_thread->parent;
 		active_thread = next_thread;
+		mmu_set_context(active_process->page_context_base);
 		preempt_enable();
 		switch_stack(active_thread->register_state, old_thread->register_state, active_process->page_context_base);
 	} else

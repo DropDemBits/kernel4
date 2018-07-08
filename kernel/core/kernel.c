@@ -149,11 +149,12 @@ void kmain()
 	sched_init();
 	
 	// Resume init in other thread
+	tty_prints("Starting threaded init\n");
 	process_t *p1 = process_create();
 	thread_create(p1, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
-	thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
-	thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
-	// thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
+	// thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
+	// thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
+	thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
 
 	preempt_enable();
 	while(1) sched_switch_thread();
@@ -162,11 +163,11 @@ void kmain()
 void core_fini()
 {
 	tty_prints("Initialising PS/2 controller\n");
-	ps2_init();
+	// ps2_init();
 	tty_prints("Initialising keyboard driver\n");
-	kbd_init();
+	// kbd_init();
 	tty_prints("Setting up system calls\n");
-	syscall_init();
+	// syscall_init();
 
 	// TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS

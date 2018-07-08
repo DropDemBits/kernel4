@@ -43,6 +43,9 @@ paging_context_t* mmu_create_context();
 void mmu_destroy_context(paging_context_t* addr_context);
 paging_context_t* mmu_current_context();
 void mmu_switch_context(paging_context_t* addr_context);
+void mmu_set_context(paging_context_t* addr_context);
+void mmu_set_temp_context(paging_context_t* addr_context);
+void mmu_exit_temp_context();
 
 void mm_init();
 void mm_add_region(unsigned long base, size_t length, uint32_t type);
