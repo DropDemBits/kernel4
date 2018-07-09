@@ -66,9 +66,6 @@ void init_register_state(thread_t *thread, uint64_t *entry_point)
 	// IRET structure
 	kernel_stack -= setup_kernel_stack(thread->parent->page_context_base, thread, entry_point, kernel_stack);
 	registers->kernel_rsp = kernel_stack;
-  
-	kernel_stack -= 4; // R15-12, RBX
-	registers->kernel_rsp = kernel_stack;
 
 	// General registers
 	registers->rip = (uint64_t) entry_point;

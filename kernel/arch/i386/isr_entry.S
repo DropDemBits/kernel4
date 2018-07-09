@@ -124,7 +124,6 @@ syscall_entry:
 	# Call syscall_common
 	movl %esp, %eax
 	push %eax
-	xchg %bx, %bx
 	call syscall_common
 	addl $4, %esp
 

@@ -72,7 +72,7 @@ enum {
 	PTE_MASK   = 0xFFFFFFFFF,
 };
 
-static uint64_t* temp_map_base = 							0xFFFFFF0000000000;
+static uint64_t temp_map_base = 							0xFFFFFF0000000000;
 static bool using_temp_map = false;
 
 static paging_context_t* current_context;
@@ -87,7 +87,7 @@ static page_entry_t* const pte_lookup   = (page_entry_t*)	0xFFFFFF8000000000;
 
 static void invlpg(unsigned long address)
 {
-	asm volatile("invlpg (%%rax)" : "=a"(address));
+	asm volatile("invlpg (%%rax)" :: "a"(address));
 }
 
 static page_entry_t* get_lookup(page_entry_t* base)
@@ -324,14 +324,14 @@ paging_context_t* mmu_create_context()
 	unsigned long pml4_context = mm_alloc(1);
 
 	// Map context to temporary address
-	mmu_map_direct((uintptr_t)temp_map_base, pml4_context);
+	mmu_map_direct(temp_map_base, pml4_context);
 	memset((void*)temp_map_base, 0x00, 0x1000);
 
 	// Copy relavent mappings to address space (Excluding temporary and recursive mapping)
-	memcpy((uint8_t*)temp_mapping_ptr+2048, (uint8_t*)pml4e_lookup+2048, 2048-16);
+	memcpy((uint8_t*)temp_map_base+2048, (uint8_t*)pml4e_lookup+2048, 2048-16);
 
 	// Change recursive mapping entry
-	page_entry_t *pml4e_temp_lookup = (page_entry_t*)temp_mapping_ptr;
+	page_entry_t *pml4e_temp_lookup = (page_entry_t*)temp_map_base;
 	pml4e_temp_lookup[511].frame = pml4_context >> 12ULL;
 	pml4e_temp_lookup[511].xd = 0;
 	pml4e_temp_lookup[511].rw = 1;
@@ -340,7 +340,7 @@ paging_context_t* mmu_create_context()
 	paging_context_t *context = kmalloc(sizeof(paging_context_t));
 	context->phybase = pml4_context;
 
-	mmu_unmap_direct(temp_mapping_ptr);
+	mmu_unmap_direct(temp_map_base);
 	return context;
 }
 
@@ -368,7 +368,7 @@ void mmu_set_temp_context(paging_context_t* addr_context)
 	
 	// Overwrite the temporary mapping entry
 	pml4e_lookup[510].frame = temp_context->phybase >> 12ULL;
-	invlpg((uint64_t*)&(pml4e_lookup[510]));
+	invlpg((uintptr_t)&(pml4e_lookup[510]));
 	
 start_temp:
 	using_temp_map = true;
