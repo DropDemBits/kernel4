@@ -45,6 +45,7 @@ struct sleep_node
 static process_t* active_process = KNULL;
 static thread_t* active_thread = KNULL;
 static bool preempt_enabled = false;
+// Queue of threads that can be run, but aren't actively running
 struct thread_queue run_queue;
 
 #define TIMER_RESOLUTION (1193181 / 1000)
@@ -176,7 +177,7 @@ static thread_t* sched_next_thread()
 	if(queue->queue_head != KNULL)
 	{
 		thread_t *next_thread = queue->queue_head;
-		while(next_thread->current_state > STATE_RUNNING)
+		while(next_thread->current_state > STATE_READY)
 		{
 			next_thread = next_thread->next;
 			if(next_thread == KNULL) break;
@@ -322,18 +323,28 @@ static void switch_to_thread(thread_t* next_thread)
 	thread_t* old_thread = active_thread;
 	active_thread = next_thread;
 
+	// Remove next thread from run queue
+	sched_queue_remove(next_thread, &run_queue);
+
+	// Add current thread to run queue
+	if(old_thread != KNULL)
+	{
+		old_thread->current_state = STATE_READY;
+		sched_queue_thread(old_thread);
+	}
+
 	mmu_set_context(next_thread->parent->page_context_base);
 	switch_stack(next_thread, old_thread, next_thread->parent->page_context_base);
 }
 
 void sched_switch_thread()
-{	
+{
+	sched_track_swaps();
 	thread_t* next_thread = sched_next_thread();
-	sched_queue_remove(next_thread, &run_queue);
-	sched_queue_thread(next_thread);
 	switch_to_thread(next_thread);
 }
 
+// Debugs below
 void sched_print_queues()
 {
 	thread_t* node = run_queue.queue_head;
@@ -346,16 +357,31 @@ void sched_print_queues()
 	printf("NULL");
 }
 
+unsigned long long tswp_counter = 0;
+long long tswp_timer = 0;
+void sched_track_swaps()
+{
+	if(tswp_timer == 0)
+		tswp_timer = ticks_since_boot;
+	
+	if(tswp_timer - ticks_since_boot <= 0)
+	{
+		printf("[Switches/s: %d]\n", tswp_counter);
+		tswp_counter = 0;
+		tswp_timer += 1000 * TIMER_RESOLUTION;
+	}
+	tswp_counter++;
+}
+
 void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
 {
 	if(thread == KNULL) return;
 
 	if(new_state == STATE_SLEEPING)
 	{
-		/*
-		 * We remove the thread from it's run queue first to ensure that it isn't
-		 * taking other threads off the run queue.
-	 	 */
+		// We remove the thread from it's run queue first to ensure that it isn't
+		// taking other threads off the run queue.
+	 	
 		sched_queue_remove(thread, &(thread_queues[thread->priority]));
 		sched_queue_thread_to(thread, &sleep_queue);
 	} else if(new_state == STATE_EXITED)
@@ -363,18 +389,12 @@ void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
 		cleanup_needed = true;
 		sched_queue_remove(thread, &(thread_queues[thread->priority]));
 		sched_queue_thread_to(thread, &exit_queue);
-	} else if(new_state == STATE_BLOCKED)
-	{
-		sched_queue_remove(thread, &(thread_queues[thread->priority]));
-		sched_queue_thread_to(thread, &blocked_queue);
 	} else if(new_state == STATE_RUNNING)
 	{
 		if (thread->current_state == STATE_SLEEPING)
 		{
 			sched_queue_remove(thread, &sleep_queue);
 		}
-		else if (thread->current_state == STATE_BLOCKED)
-			sched_queue_remove(thread, &blocked_queue);
 		sched_queue_thread(thread);
 	}
 

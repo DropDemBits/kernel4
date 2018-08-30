@@ -45,7 +45,7 @@ void tasks_init(char* init_name, void* init_entry)
 	init_process.pid = 1;
 
 	// Build init thread
-	init_thread.current_state = STATE_INITIALIZED;
+	init_thread.current_state = STATE_READY;
 	init_thread.name = init_name;
 	init_thread.parent = &init_process;
 	init_thread.next = KNULL;
@@ -96,7 +96,7 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
 	thread->parent = parent;
 	thread->next = KNULL;
 	thread->prev = KNULL;
-	thread->current_state = STATE_INITIALIZED;
+	thread->current_state = STATE_READY;
 	thread->tid = tid_counter++;
 	thread->priority = priority;
 	thread->name = name;

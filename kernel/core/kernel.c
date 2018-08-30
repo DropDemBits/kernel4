@@ -92,7 +92,12 @@ void b_print()
 	{
 		tty_set_colour(0x0, 0x2);
 		//tty_printchar('b');
+		if(tty_background_dirty())
+		{
+			fb_clear();
+		}
 		tty_reshow();
+		tty_make_clean();
 		sched_switch_thread();
 		//sched_sleep_millis(200);
 	}
