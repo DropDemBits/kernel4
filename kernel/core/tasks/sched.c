@@ -47,11 +47,13 @@ static thread_t* active_thread = KNULL;
 static bool preempt_enabled = false;
 // Queue of threads that can be run, but aren't actively running
 struct thread_queue run_queue;
+static thread_t* sleep_filo_head = KNULL;
 static int sched_semaphore = 0;
 static int taskswitch_semaphore = 0;
 static bool taskswitch_postponed = false;
 
-#define TIMER_RESOLUTION (1193181 / 1000)
+// 1000000000 / (1193181 / 1000)
+#define TIMER_RESOLUTION (838222)
 unsigned long long ticks_since_boot = 0;
 
 static struct thread_queue thread_queues[PRIORITY_COUNT];
@@ -84,9 +86,35 @@ static void sched_timer()
 	// We may not return to this thing here before we exit, so eoi early.
 	ic_eoi(0);
 
+	taskswitch_disable();
 	ticks_since_boot += TIMER_RESOLUTION;
 
+	// Iterate through the sleep stack
+	thread_t* current_node = KNULL;
+	// Use a next node in order to not use current_node->next
+	thread_t* next_node = sleep_filo_head;
+	sleep_filo_head = KNULL;
 
+
+	while(next_node != KNULL)
+	{
+		current_node = next_node;
+		next_node = current_node->next;
+
+		if(ticks_since_boot >= current_node->sleep_until)
+		{
+			// Wakeup task
+			current_node->next = KNULL;
+			current_node->prev = KNULL;
+			sched_unblock_thread(current_node);
+		} else
+		{
+			current_node->next = sleep_filo_head;
+			sleep_filo_head = current_node;
+		}
+	}
+
+	taskswitch_enable();
 }
 
 static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
@@ -99,9 +127,9 @@ static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 		if(thread->prev != KNULL) thread->prev->next = thread->next;
 		if(thread->next != KNULL) thread->next->prev = thread->prev;
 		if(queue->queue_tail == thread) queue->queue_tail = thread->prev;
-		thread->prev = KNULL;
 	}
 
+	thread->prev = KNULL;
 	thread->next = KNULL;
 }
 
@@ -198,6 +226,38 @@ void sched_queue_thread(thread_t *thread)
 	sched_queue_thread_to(thread, &run_queue);
 }
 
+void sched_sleep_until(uint64_t when)
+{
+	taskswitch_disable();
+
+	if(when < ticks_since_boot)
+	{
+		// Only enable the scheduler in order to not fire scheduling
+		sched_unlock();
+		return;
+	}
+
+	active_thread->sleep_until = when;
+
+	// Append thread to the sleep list, filo/stack fashion
+	active_thread->next = sleep_filo_head;
+	sleep_filo_head = active_thread;
+
+	taskswitch_enable();
+
+	sched_block_thread(STATE_SLEEPING);
+}
+
+void sched_sleep_ns(uint64_t ns)
+{
+	sched_sleep_until(ticks_since_boot + ns);
+}
+
+void sched_sleep(uint64_t ms)
+{
+	sched_sleep_ns(ms * 1000000);
+}
+
 void sched_sleep_millis(uint64_t millis)
 {
 	if(active_thread == KNULL)
@@ -272,9 +332,11 @@ static void switch_to_thread(thread_t* next_thread)
 	{
 		if(old_thread->current_state == STATE_RUNNING)
 			old_thread->current_state = STATE_READY;
-		sched_queue_thread(old_thread);
+		
+		if(old_thread->current_state < STATE_SLEEPING)
+			// Requeue thread if it isn't sleeping or exited
+			sched_queue_thread(old_thread);
 	}
-
 	mmu_set_context(next_thread->parent->page_context_base);
 	switch_stack(next_thread, old_thread, next_thread->parent->page_context_base);
 }
@@ -289,40 +351,35 @@ void sched_switch_thread()
 
 	sched_track_swaps();
 	thread_t* next_thread = sched_next_thread();
-	switch_to_thread(next_thread);
+	if(next_thread != KNULL)
+	{
+		switch_to_thread(next_thread);
+	}
 }
 
 // Debugs below
 void sched_print_queues()
 {
 	thread_t* node = run_queue.queue_head;
-	printf("%dRun Queue: ", sched_semaphore);
+	printf("Run Queue: ");
 
 	if(active_thread != KNULL)
-		printf("[%s] -> ", active_thread->name);
+		printf("[%p] -> ", active_thread);
 	
-	while(node != KNULL)
+	int i = 0;
+	while(node != KNULL && i < 5)
 	{
-		printf("%s -> ", node->name);
+		printf("%p -> ", node);
 		node = node->next;
+		i++;
 		tty_reshow();
 	}
 	puts("NULL");
 }
 
 unsigned long long tswp_counter = 0;
-long long tswp_timer = 0;
 void sched_track_swaps()
 {
-	if(tswp_timer == 0)
-		tswp_timer = ticks_since_boot;
-	
-	if(tswp_timer - ticks_since_boot <= 0)
-	{
-		printf("[Switches/s: %d]\n", tswp_counter);
-		tswp_counter = 0;
-		tswp_timer += 1000 * TIMER_RESOLUTION;
-	}
 	tswp_counter++;
 }
 
@@ -386,7 +443,9 @@ void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
 
 void sched_lock()
 {
-	hal_save_interrupts();
+	//hal_save_interrupts();
+
+	hal_disable_interrupts();
 	sched_semaphore++;
 }
 
@@ -394,7 +453,8 @@ void sched_unlock()
 {
 	sched_semaphore--;
 	if(sched_semaphore == 0)
-		hal_restore_interrupts();
+		hal_enable_interrupts();
+		//hal_restore_interrupts();
 }
 
 void taskswitch_disable()

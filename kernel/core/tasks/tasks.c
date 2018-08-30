@@ -133,3 +133,12 @@ void thread_destroy(thread_t *thread)
 
 	kfree(thread);
 }
+
+/**
+ * Initializes the thread state after being created for the first time
+ * For the assembly entry, see switch_stack.S
+ */
+void initialize_thread(thread_t* thread)
+{
+	sched_unlock();
+}

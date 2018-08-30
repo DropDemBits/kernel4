@@ -43,15 +43,6 @@ uint64_t alloc_address()
 }
 
 /**
- * Initializes the thread state after being created for the first time
- * For the assembly entry, see switch_stack.S
- */
-void initialize_thread(thread_t* thread)
-{
-	thread->current_state = STATE_RUNNING;
-}
-
-/**
  * Initializes the architecture-specfic side of a thread
  */
 void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack)

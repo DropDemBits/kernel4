@@ -50,6 +50,7 @@ typedef struct thread
 
 	unsigned int tid;
 	unsigned int timeslice;
+	uint64_t sleep_until;
 	enum thread_priority priority;
 	const char* name;
 
