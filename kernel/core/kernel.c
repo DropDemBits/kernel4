@@ -42,6 +42,8 @@ extern uint32_t initrd_size;
 
 void core_fini();
 
+static process_t init_process = {};
+
 void idle_loop()
 {
 	while(1)
@@ -150,11 +152,15 @@ void kmain()
 	
 	// Resume init in other thread
 	tty_prints("Starting threaded init\n");
-	process_t *p1 = process_create();
-	thread_create(p1, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
-	// thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
-	// thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
-	thread_create(p1, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
+
+	// Build init process
+	init_process.page_context_base = mmu_current_context();
+	init_process.child_threads = KNULL;
+	init_process.child_count = 0;
+	init_process.pid = 1;
+
+	thread_create(&init_process, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
+	thread_create(&init_process, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
 
 	preempt_enable();
 	while(1) sched_switch_thread();

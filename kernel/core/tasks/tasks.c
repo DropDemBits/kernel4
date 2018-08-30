@@ -28,8 +28,8 @@
 extern void init_register_state(thread_t *thread, uint64_t *entry_point);
 extern void cleanup_register_state(thread_t *thread);
 
-static unsigned int pid_counter = 0;
-static unsigned int tid_counter = 0;
+static unsigned int pid_counter = 2;
+static unsigned int tid_counter = 2;
 
 process_t* process_create()
 {

@@ -363,6 +363,13 @@ void mmu_set_context(paging_context_t* addr_context)
 
 void mmu_set_temp_context(paging_context_t* addr_context)
 {
+	if(current_context == addr_context)
+	{
+		// Don't bother setting the temp context, as we are just using the same context
+		using_temp_map = false;
+		return;
+	}
+
 	if(temp_context == addr_context) goto start_temp; // No point in overwritting it.
 	temp_context = addr_context;
 	
