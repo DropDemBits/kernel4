@@ -75,13 +75,26 @@ void usermode_entry()
 	while(1);
 }
 
+thread_t *woke_thread;
+void wake_test()
+{
+	while(1)
+	{
+		printf("WOKEN");
+		sched_block_thread(STATE_SUSPENDED);
+	}
+}
+
 void a_print()
 {
 	while(1)
 	{
 		tty_set_colour(0xF, 0xC);
-		// tty_printchar('a');
+		tty_printchar('a');
+
+		sched_lock();
 		sched_switch_thread();
+		sched_unlock();
 		//sched_sleep_millis(200);
 	}
 }
@@ -91,14 +104,20 @@ void b_print()
 	while(1)
 	{
 		tty_set_colour(0x0, 0x2);
-		//tty_printchar('b');
+		tty_printchar('b');
 		if(tty_background_dirty())
 		{
 			fb_clear();
 		}
 		tty_reshow();
 		tty_make_clean();
+
+		if(woke_thread != KNULL)
+			sched_unblock_thread(woke_thread);
+
+		sched_lock();
 		sched_switch_thread();
+		sched_unlock();
 		//sched_sleep_millis(200);
 	}
 }
@@ -156,6 +175,7 @@ void kmain()
 	tty_prints("Starting threaded init\n");
 	tasks_init("init", (void*)a_print);
 	thread_create(&init_process, (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
+	woke_thread = thread_create(&init_process, (uint64_t*)wake_test, PRIORITY_NORMAL, "woke_bro");
 
 	sched_print_queues();
 	tty_reshow();

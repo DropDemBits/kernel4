@@ -47,10 +47,12 @@ static thread_t* active_thread = KNULL;
 static bool preempt_enabled = false;
 // Queue of threads that can be run, but aren't actively running
 struct thread_queue run_queue;
+static int sched_semaphore = 0;
+static int taskswitch_semaphore = 0;
+static bool taskswitch_postponed = false;
 
 #define TIMER_RESOLUTION (1193181 / 1000)
 unsigned long long ticks_since_boot = 0;
-
 
 static struct thread_queue thread_queues[PRIORITY_COUNT];
 static struct thread_queue sleep_queue;
@@ -84,57 +86,7 @@ static void sched_timer()
 
 	ticks_since_boot += TIMER_RESOLUTION;
 
-	/*if(sleepers != KNULL)
-	{
-		if(sleepers->delta > 0)
-		{
-			// Case 1: We still have some time to kill, so decrement quanta
-			sleepers->delta--;
-		} else
-		{
-			// Case 2: We are scheduled to wakeup at this time, so start waking
-			// threads up.
-			int max_priority = PRIORITY_IDLE;
-			struct sleep_node* tail_sleepers = KNULL;
 
-			// Iterate through all the done sleeper nodes
-			while(sleepers != KNULL && sleepers->delta == 0)
-			{
-				// Get the max priority of the woken threads and store it
-				if(sleepers->thread->priority > max_priority)
-					max_priority = sleepers->thread->priority;
-				
-				sched_set_thread_state(sleepers->thread, STATE_RUNNING);
-
-				// Append sleeper node to queue for cleanup
-				if(done_sleepers == KNULL)
-					done_sleepers = sleepers;
-
-				// Move tail pointer forward one
-				tail_sleepers = sleepers;
-				
-				clean_sleepers = true;
-				sleepers = sleepers->next;
-			}
-
-			// Clear tail node's next to prevent cleanup of active nodes
-			tail_sleepers->next = KNULL;
-			
-			if(active_thread == KNULL || (active_thread->priority < max_priority))
-			{
-				sched_switch_thread();
-				// Once we return, the quanta check will be done below us.
-			}
-		}
-	}
-
-	if(preempt_enabled)
-	{
-		if(active_thread != KNULL && active_thread->timeslice > 0)
-			active_thread->timeslice--;
-		else
-			sched_switch_thread();
-	}*/
 }
 
 static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
@@ -155,24 +107,6 @@ static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 
 static thread_t* sched_next_thread()
 {
-	/*for(int i = 0; i < PRIORITY_COUNT; i++)
-	{
-		struct thread_queue *queue = &(thread_queues[PRIORITY_COUNT-1-i]);
-
-		if(queue->queue_head != KNULL)
-		{
-			thread_t *next_thread = queue->queue_head;
-			while(next_thread->current_state > STATE_RUNNING)
-			{
-				next_thread = next_thread->next;
-				if(next_thread == KNULL) break;
-			}
-
-			if(next_thread == KNULL) continue;
-			return next_thread;
-		}
-	}*/
-
 	struct thread_queue *queue = &run_queue;
 	if(queue->queue_head != KNULL)
 	{
@@ -320,16 +254,24 @@ void sched_sleep_millis(uint64_t millis)
 
 static void switch_to_thread(thread_t* next_thread)
 {
+	if(taskswitch_semaphore != 0)
+	{
+		taskswitch_postponed = true;
+		return;
+	}
+
 	thread_t* old_thread = active_thread;
 	active_thread = next_thread;
 
 	// Remove next thread from run queue
 	sched_queue_remove(next_thread, &run_queue);
+	next_thread->current_state = STATE_RUNNING;
 
 	// Add current thread to run queue
 	if(old_thread != KNULL)
 	{
-		old_thread->current_state = STATE_READY;
+		if(old_thread->current_state == STATE_RUNNING)
+			old_thread->current_state = STATE_READY;
 		sched_queue_thread(old_thread);
 	}
 
@@ -339,6 +281,12 @@ static void switch_to_thread(thread_t* next_thread)
 
 void sched_switch_thread()
 {
+	if(taskswitch_semaphore != 0)
+	{
+		taskswitch_postponed = true;
+		return;
+	}
+
 	sched_track_swaps();
 	thread_t* next_thread = sched_next_thread();
 	switch_to_thread(next_thread);
@@ -348,13 +296,18 @@ void sched_switch_thread()
 void sched_print_queues()
 {
 	thread_t* node = run_queue.queue_head;
-	printf("Run Queue: ");
+	printf("%dRun Queue: ", sched_semaphore);
+
+	if(active_thread != KNULL)
+		printf("[%s] -> ", active_thread->name);
+	
 	while(node != KNULL)
 	{
 		printf("%s -> ", node->name);
 		node = node->next;
+		tty_reshow();
 	}
-	printf("NULL");
+	puts("NULL");
 }
 
 unsigned long long tswp_counter = 0;
@@ -371,6 +324,33 @@ void sched_track_swaps()
 		tswp_timer += 1000 * TIMER_RESOLUTION;
 	}
 	tswp_counter++;
+}
+
+void sched_block_thread(enum thread_state new_state)
+{
+	sched_lock();
+	active_thread->current_state = new_state;
+	sched_switch_thread();
+	sched_unlock();
+}
+
+void sched_unblock_thread(thread_t* thread)
+{
+	sched_lock();
+	thread->current_state = STATE_READY;
+
+	if(sched_next_thread() == KNULL)
+	{
+		// Should there be no next task to run, pre-empt the current one
+		switch_to_thread(thread);
+	}
+	else
+	{
+		// Otherwise, add back to run queue
+		sched_queue_thread(thread);
+	}
+
+	sched_unlock();
 }
 
 void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
@@ -402,6 +382,36 @@ void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
 
 	if(thread == active_thread)
 		sched_switch_thread();
+}
+
+void sched_lock()
+{
+	hal_save_interrupts();
+	sched_semaphore++;
+}
+
+void sched_unlock()
+{
+	sched_semaphore--;
+	if(sched_semaphore == 0)
+		hal_restore_interrupts();
+}
+
+void taskswitch_disable()
+{
+	sched_lock();
+	taskswitch_semaphore++;
+}
+
+void taskswitch_enable()
+{
+	taskswitch_semaphore--;
+	if(taskswitch_semaphore == 0 && taskswitch_postponed)
+	{
+		sched_switch_thread();
+	}
+
+	sched_unlock();
 }
 
 void preempt_disable()
