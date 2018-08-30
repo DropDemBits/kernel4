@@ -25,7 +25,8 @@
 .section .bss
 	.align 4096
 
-stack_top:
+bootstack_top:
+.global bootstack_top
 	.skip 16384 # 16KiB
 stack_bottom:
 .global stack_bottom
@@ -181,6 +182,8 @@ lm_entry:
 
 	# Load stack
 	movabs $stack_bottom, %rsp
+	# Make space for canabalizing stack
+	subq $12*8, %rsp
 
 	# Set multiboot things
 	movabs $multiboot_magic, %rdx

@@ -148,11 +148,8 @@ void dump_registers(struct intr_stack *stack)
     if(at != KNULL)
     {
         printf("\tID: %d\n", at->tid);
-        printf("\tRegisters: %#p\n", at->register_state);
         printf("\tPriority: %d\n", at->priority);
-
-        if(at->register_state != KNULL)
-            printf("\tKESP: %#p, ESP: %#p", at->register_state->kernel_esp, at->register_state->esp);
+        printf("\tKESP: %#p, ESP: %#p", at->kernel_sp, at->user_sp);
     } else
 	{
 		puts("(Pre-scheduler)");

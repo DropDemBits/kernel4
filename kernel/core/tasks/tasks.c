@@ -25,11 +25,37 @@
 #include <common/sched.h>
 #include <common/mm.h>
 
-extern void init_register_state(thread_t *thread, uint64_t *entry_point);
+extern void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack);
 extern void cleanup_register_state(thread_t *thread);
+extern unsigned long bootstack_top;
+
+void process_add_child(process_t *parent, thread_t *child);
 
 static unsigned int pid_counter = 2;
 static unsigned int tid_counter = 2;
+process_t init_process = {};
+static thread_t init_thread = {};
+
+void tasks_init(char* init_name, void* init_entry)
+{
+	// Build init process
+	init_process.page_context_base = mmu_current_context();
+	init_process.child_threads = KNULL;
+	init_process.child_count = 0;
+	init_process.pid = 1;
+
+	// Build init thread
+	init_thread.current_state = STATE_INITIALIZED;
+	init_thread.name = init_name;
+	init_thread.parent = &init_process;
+	init_thread.next = KNULL;
+	init_thread.prev = KNULL;
+	init_thread.tid = 1;
+	init_thread.priority = PRIORITY_NORMAL;
+	init_register_state(&init_thread, init_entry, &bootstack_top);
+	process_add_child(&init_process, &init_thread);
+	sched_queue_thread(&init_thread);
+}
 
 process_t* process_create()
 {
@@ -73,9 +99,9 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
 	thread->current_state = STATE_INITIALIZED;
 	thread->tid = tid_counter++;
 	thread->priority = priority;
-	thread->register_state = KNULL;
 	thread->name = name;
-	init_register_state(thread, entry_point);
+	// TODO: Use a dedicated aligned stack allocator (ie. buddy)
+	init_register_state(thread, entry_point, kmalloc(THREAD_STACK_SIZE));
 
 	process_add_child(parent, thread);
 
@@ -105,6 +131,5 @@ void thread_destroy(thread_t *thread)
 		thread->parent->child_count--;
 	}
 
-	kfree((void*)thread->register_state);
 	kfree(thread);
 }

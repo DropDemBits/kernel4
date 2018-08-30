@@ -24,8 +24,8 @@
 #include <common/liballoc.h>
 
 extern void switch_stack(
-	struct thread_registers *new_state,
-	struct thread_registers *old_state,
+	thread_t *new_state,
+	thread_t *old_state,
 	paging_context_t* new_context
 );
 
@@ -44,6 +44,13 @@ struct sleep_node
 
 static process_t* active_process = KNULL;
 static thread_t* active_thread = KNULL;
+static bool preempt_enabled = false;
+struct thread_queue run_queue;
+
+#define TIMER_RESOLUTION (1193181 / 1000)
+unsigned long long ticks_since_boot = 0;
+
+
 static struct thread_queue thread_queues[PRIORITY_COUNT];
 static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
@@ -52,7 +59,6 @@ static struct sleep_node* sleepers = KNULL;
 static struct sleep_node* done_sleepers = KNULL;
 static bool cleanup_needed = false;
 static bool clean_sleepers = false;
-static bool preempt_enabled = false;
 static bool idle_entry = false;
 
 static unsigned int get_timeslice(enum thread_priority priority)
@@ -75,7 +81,9 @@ static void sched_timer()
 	// We may not return to this thing here before we exit, so eoi early.
 	ic_eoi(0);
 
-	if(sleepers != KNULL)
+	ticks_since_boot += TIMER_RESOLUTION;
+
+	/*if(sleepers != KNULL)
 	{
 		if(sleepers->delta > 0)
 		{
@@ -125,7 +133,7 @@ static void sched_timer()
 			active_thread->timeslice--;
 		else
 			sched_switch_thread();
-	}
+	}*/
 }
 
 static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
@@ -146,7 +154,7 @@ static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 
 static thread_t* sched_next_thread()
 {
-	for(int i = 0; i < PRIORITY_COUNT; i++)
+	/*for(int i = 0; i < PRIORITY_COUNT; i++)
 	{
 		struct thread_queue *queue = &(thread_queues[PRIORITY_COUNT-1-i]);
 
@@ -162,21 +170,28 @@ static thread_t* sched_next_thread()
 			if(next_thread == KNULL) continue;
 			return next_thread;
 		}
+	}*/
+
+	struct thread_queue *queue = &run_queue;
+	if(queue->queue_head != KNULL)
+	{
+		thread_t *next_thread = queue->queue_head;
+		while(next_thread->current_state > STATE_RUNNING)
+		{
+			next_thread = next_thread->next;
+			if(next_thread == KNULL) break;
+		}
+
+		if(next_thread != KNULL)
+			return next_thread;
 	}
 	return KNULL;
 }
 
 void sched_init()
 {
-	for(int i = 0; i < PRIORITY_COUNT; i++)
-	{
-		thread_queues[i].queue_head = KNULL;
-		thread_queues[i].queue_tail = KNULL;
-	}
-	exit_queue.queue_head = KNULL;
-	exit_queue.queue_tail = KNULL;
-	sleep_queue.queue_head = KNULL;
-	sleep_queue.queue_tail = KNULL;
+	run_queue.queue_head = KNULL;
+	run_queue.queue_tail = KNULL;
 	irq_add_handler(0, sched_timer);
 }
 
@@ -243,9 +258,9 @@ void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
 void sched_queue_thread(thread_t *thread)
 {
 	if(thread == KNULL) return;
-	struct thread_queue *queue = &(thread_queues[(thread->priority)]);
+	// struct thread_queue *queue = &(thread_queues[(thread->priority)]);
 
-	sched_queue_thread_to(thread, queue);
+	sched_queue_thread_to(thread, &run_queue);
 }
 
 void sched_sleep_millis(uint64_t millis)
@@ -302,107 +317,33 @@ void sched_sleep_millis(uint64_t millis)
 	sched_set_thread_state(active_thread, STATE_SLEEPING);
 }
 
-process_t *sched_active_process()
+static void switch_to_thread(thread_t* next_thread)
 {
-	return active_process;
-}
+	thread_t* old_thread = active_thread;
+	active_thread = next_thread;
 
-inline thread_t *sched_active_thread()
-{
-	return active_thread;
+	mmu_set_context(next_thread->parent->page_context_base);
+	switch_stack(next_thread, old_thread, next_thread->parent->page_context_base);
 }
 
 void sched_switch_thread()
+{	
+	thread_t* next_thread = sched_next_thread();
+	sched_queue_remove(next_thread, &run_queue);
+	sched_queue_thread(next_thread);
+	switch_to_thread(next_thread);
+}
+
+void sched_print_queues()
 {
-	preempt_disable();
-
-	// Case 1: Just initialized
-	if(active_thread == KNULL)
+	thread_t* node = run_queue.queue_head;
+	printf("Run Queue: ");
+	while(node != KNULL)
 	{
-		active_thread = sched_next_thread();
-
-		if(active_thread == KNULL)
-		{
-			return;
-		}
-		idle_entry = false;
-
-		active_process = active_thread->parent;
-		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority]));
+		printf("%s -> ", node->name);
+		node = node->next;
 	}
-
-	// Case 2: Current thread has changed state
-	if(active_thread->current_state > STATE_RUNNING)
-	{
-		thread_t *old_thread = active_thread;
-		active_thread = sched_next_thread();
-
-		if(active_thread == KNULL)
-		{
-			return;
-		}
-		idle_entry = false;
-
-		sched_queue_remove(active_thread, &(thread_queues[active_thread->priority]));
-		active_process = active_thread->parent;
-		mmu_set_context(active_process->page_context_base);
-		preempt_enable();
-		switch_stack(active_thread->register_state, old_thread->register_state, active_process->page_context_base);
-	}
-
-	thread_t *old_thread = active_thread;
-	// Case 3: First execution of the thread, so switch to stack.
-	// Really only useful during the transition from kmain to core_fini.
-	// Otherwise, just switches to the same stack.
-	if(old_thread->current_state == STATE_INITIALIZED)
-	{
-		mmu_set_context(active_process->page_context_base);
-		preempt_enable();
-		switch_stack(old_thread->register_state, KNULL, active_process->page_context_base);
-	}
-
-	thread_t *next_thread = sched_next_thread();
-
-	// Case 4: Next available thread has a lower priority than the
-	// current thread, and the current thread isn't yielding (quanta == 0).
-	// By now, the current thread is already to be confirmed to be running
-	// (otherwise would have fallen to case 2 or 3), so there is no point
-	// to check the current state.
-	if(next_thread != KNULL && next_thread->priority < old_thread->priority)
-	{
-		if(old_thread->timeslice == 0)
-		{
-			// We aren't yielding, so reset timeslice to continue
-			old_thread->timeslice = get_timeslice(old_thread->priority);
-			preempt_enable();
-			return;
-		}
-	}
-
-	// Case 5: There is no available next thread. This really shouldn't need to
-	// happen because the idle thread(s) should be the last threads to run.
-	// In the event that it does (ie. it is the very last thread running) and
-	// we are an idle thread, then return.
-	if(next_thread == KNULL && old_thread->priority == PRIORITY_IDLE)
-	{
-		preempt_enable();
-		return;
-	} else if (next_thread != NULL)
-	{
-		// Case 6: The current thread is the same priorty as the new thread,
-		// and it either has used it's quanta or is yielding
-		sched_queue_remove(next_thread, &(thread_queues[next_thread->priority]));
-		sched_queue_thread(old_thread);
-		active_process = next_thread->parent;
-		active_thread = next_thread;
-		mmu_set_context(active_process->page_context_base);
-		preempt_enable();
-		switch_stack(active_thread->register_state, old_thread->register_state, active_process->page_context_base);
-	} else
-	{
-		// Just in case..
-		kpanic("Achieved a bad state. No next threads and current priority isn't idle");
-	}
+	printf("NULL");
 }
 
 void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
@@ -451,4 +392,14 @@ void preempt_disable()
 void preempt_enable()
 {
 	preempt_enabled = true;
+}
+
+process_t *sched_active_process()
+{
+	return active_process;
+}
+
+thread_t *sched_active_thread()
+{
+	return active_thread;
 }

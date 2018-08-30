@@ -4,6 +4,8 @@
 #ifndef __TASKS_H__
 #define __TASKS_H__
 
+#define THREAD_STACK_SIZE 4096*4
+
 enum thread_state
 {
 	STATE_INITIALIZED,
@@ -42,15 +44,18 @@ typedef struct thread
 	struct thread *next;
 	struct thread *prev;
 
+	unsigned long kernel_sp;
+	unsigned long user_sp;
 	enum thread_state current_state;
 
 	unsigned int tid;
 	unsigned int timeslice;
 	enum thread_priority priority;
-	struct thread_registers *register_state;
 	const char* name;
+
 } thread_t;
 
+void tasks_init(char* init_name, void* init_entry);
 process_t* process_create();
 thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priority priority, const char* name);
 void thread_destroy(thread_t *thread);

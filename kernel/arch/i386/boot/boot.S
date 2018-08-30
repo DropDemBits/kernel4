@@ -109,7 +109,8 @@ bootstrap_pt0:
 bootstrap_pt1:
 	.skip 4096
 
-stack_top:
+bootstack_top:
+.global bootstack_top
 	.skip 16384 # 16KiB
 stack_bottom:
 
@@ -259,6 +260,7 @@ cont:
 	mov %dx, %ss
 	# Setup stack
 	movl $stack_bottom, %esp
+	subl $10*4, %esp
 	mov %dx, %es
 	mov %dx, %fs
 	mov %dx, %gs

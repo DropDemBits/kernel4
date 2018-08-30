@@ -25,7 +25,7 @@
 #include <common/mm.h>
 #include <x86_64/stack_state.h>
 
-extern unsigned long setup_kernel_stack(paging_context_t*, thread_t*, uint64_t*, uint64_t);
+extern void __initialize_thread();
 
 /****SUPER TEMPORARY ADDRESS ALLOCATION****/
 #ifndef __K4_VISUAL_STACK__
@@ -42,48 +42,41 @@ uint64_t alloc_address()
 	return retval;
 }
 
-void init_register_state(thread_t *thread, uint64_t *entry_point)
+/**
+ * Initializes the thread state after being created for the first time
+ * For the assembly entry, see switch_stack.S
+ */
+void initialize_thread(thread_t* thread)
 {
-	thread->register_state = kmalloc(sizeof(struct thread_registers));
-	memset(thread->register_state, 0, sizeof(struct thread_registers));
+	thread->current_state = STATE_RUNNING;
+}
 
-	uint64_t kernel_stack = alloc_address();
-	struct thread_registers *registers = thread->register_state;
+/**
+ * Initializes the architecture-specfic side of a thread
+ */
+void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack)
+{
+	//thread->register_state.rsp = alloc_address();
+	thread->kernel_sp = (unsigned long)kernel_stack;
+	thread->kernel_sp += THREAD_STACK_SIZE;
 
-	registers->rsp = alloc_address();
-
-	hal_save_interrupts();
-	mmu_set_temp_context(thread->parent->page_context_base);
-
-	for(uint64_t i = 0; i < 4; i++)
-	{
-		mmu_map(kernel_stack - (i << 12));
-		// mmu_map((uint64_t*)(registers->rsp - (i << 12)));
-	}
-
-	kernel_stack += 0x1000;
-
+	uint64_t* thread_stack = (uint64_t*)thread->kernel_sp;
 	// IRET structure
-	kernel_stack -= setup_kernel_stack(thread->parent->page_context_base, thread, entry_point, kernel_stack);
-	registers->kernel_rsp = kernel_stack;
+	*(--thread_stack) = 0x010;
+	*(--thread_stack) = thread->kernel_sp;
+	*(--thread_stack) = 0x202;
+	*(--thread_stack) = 0x008;
+	*(--thread_stack) = entry_point;
 
-	// General registers
-	registers->rip = (uint64_t) entry_point;
-	mmu_exit_temp_context();
-	hal_restore_interrupts();
+	// Initialize Thread entry
+	*(--thread_stack) = __initialize_thread;
+	*(--thread_stack) = thread;
+	thread_stack -= 5; // Remaining preserved registers
+
+	thread->kernel_sp = (uint64_t)thread_stack;
 }
 
 void cleanup_register_state(thread_t *thread)
 {
-	struct thread_registers *registers = thread->register_state;
-
-	hal_save_interrupts();
-	mmu_set_temp_context(thread->parent->page_context_base);
-	for(uint64_t i = 0; i < 4; i++)
-	{
-		mmu_unmap((registers->kernel_rsp & ~0xFFF) - (i << 12));
-		mmu_unmap((registers->rsp & ~0xFFF) - (i << 12));
-	}
-	mmu_exit_temp_context();
-	hal_restore_interrupts();
+	kfree(thread->kernel_sp);
 }

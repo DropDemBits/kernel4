@@ -24,8 +24,8 @@
  * not change if rsi is KNULL.
  *
  * Parameters:
- * 4(ESP): Pointer to new thread's register state (ECX)
- * 8(ESP): Pointer to old thread's register state (EDX)
+ * 4(ESP): Pointer to new thread (ECX)
+ * 8(ESP): Pointer to old thread (EDX)
  * 12(ESP): Pointer to new thread's paging context (EAX)
  */
 .global switch_stack
@@ -43,14 +43,14 @@ switch_stack:
 	# Update old thread's KESP
 	cmpl $0xDEADBEEF, %edx
 	jz 1f
-	movl %esp, 0(%edx)
+	movl %esp, 3*4(%edx)
 1:
 	// Update Stack (if needed)
 	testl $0xDEADBEEF, %ecx
 	jz 3f
 
 	# Update ESP0
-	movl 0(%ecx), %ecx
+	movl 3*4(%ecx), %ecx
 	movl %ecx, (tss_begin+4)
 
 	# Update CR3
@@ -77,10 +77,12 @@ switch_stack:
  * EBP: pointer to thread block
  * Current stack: Properly formatted iret structure
  */
-.global initialize_thread
-initialize_thread:
-	# Set thread state to running
-	movl $1, 12(%ebp)
+.extern initialize_thread
+.global __initialize_thread
+__initialize_thread:
+	push %ebp
+	call initialize_thread
+	addl $4, %esp
 
 	# No need to adjust anything, as we will enter usermode using the method below
 	xor %eax, %eax

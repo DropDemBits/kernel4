@@ -24,7 +24,7 @@
 #include <common/mm.h>
 #include <i386/stack_state.h>
 
-extern void initialize_thread();
+extern void __initialize_thread();
 
 /****SUPER TEMPORARY ADDRESS ALLOCATION****/
 #ifndef __K4_VISUAL_STACK__
@@ -41,46 +41,42 @@ uint32_t alloc_address()
 	return retval;
 }
 
-void init_register_state(thread_t *thread, uint64_t *entry_point)
+/**
+ * Initializes the thread state after being created for the first time
+ * For the assembly entry, see switch_stack.S
+ */
+void initialize_thread(thread_t* thread)
 {
-	thread->register_state = kmalloc(sizeof(struct thread_registers));
-	memset(thread->register_state, 0, sizeof(struct thread_registers));
-	
-	uint32_t *kernel_stack = (uint32_t*) alloc_address();
-	struct thread_registers *registers = thread->register_state;
+	thread->current_state = STATE_RUNNING;
+}
 
-	registers->esp = alloc_address();
+/**
+ * Initializes the architecture-specfic side of a thread
+ */
+void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack)
+{
+	//thread->register_state.rsp = alloc_address();
+	thread->kernel_sp = (unsigned long)kernel_stack;
+	thread->kernel_sp += THREAD_STACK_SIZE;
 
-	for(uint32_t i = 0; i < 4; i++)
-	{
-		mmu_map((uintptr_t)kernel_stack - (i << 12));
-		mmu_map((registers->esp - (i << 12)));
-	}
+	uint32_t* thread_stack = (uint32_t*)thread->kernel_sp;
 
 	// IRET structure
-	*(kernel_stack--) = 0x10; // SS
-	*(kernel_stack--) = registers->kernel_esp; // ESP
-	*(kernel_stack--) = 0x0202; // EFLAGS
-	*(kernel_stack--) = 0x08; // CS
-	*(kernel_stack--) = (uint32_t) entry_point; // EIP
+	*(--thread_stack) = 0x010;
+	*(--thread_stack) = thread->kernel_sp;
+	*(--thread_stack) = 0x202;
+	*(--thread_stack) = 0x008;
+	*(--thread_stack) = entry_point;
 
-	// initialize_thread stack
-	*(kernel_stack--) = (uint32_t) initialize_thread; // Return address
-	*(kernel_stack--) = (uint32_t) thread; // EBP
-	kernel_stack -= 2; // EDI, ESI, EBX
-	registers->kernel_esp = (uint32_t)kernel_stack;
+	// Initialize Thread entry
+	*(--thread_stack) = __initialize_thread;
+	*(--thread_stack) = thread;
+	thread_stack -= 3;
 
-	// General registers
-	registers->eip = (uint32_t) entry_point;
+	thread->kernel_sp = (uint32_t)thread_stack;
 }
 
 void cleanup_register_state(thread_t *thread)
 {
-	struct thread_registers *registers = thread->register_state;
-	
-	for(uint32_t i = 0; i < 4; i++)
-	{
-		mmu_unmap((registers->kernel_esp & ~0xFFF) - (i << 12));
-		mmu_unmap((registers->esp & ~0xFFF) - (i << 12));
-	}
+	kfree(thread->kernel_sp);
 }

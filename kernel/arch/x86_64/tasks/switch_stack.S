@@ -24,8 +24,8 @@
  * not change if rsi is KNULL.
  *
  * Parameters:
- * RDI: Pointer to new thread's register state
- * RSI: Pointer to old thread's register state
+ * RDI: Pointer to new thread
+ * RSI: Pointer to old thread
  * RDX: Pointer to new thread's paging context
  */
 .global switch_stack
@@ -43,7 +43,7 @@ switch_stack:
 	movq $0xFFFFDEAD00000000, %rax
 	cmpq %rax, %rsi
 	jz 1f
-	movq %rsp, 0(%rsi)
+	movq %rsp, 3*8(%rsi)
 1:
 	# Skip stack change (if needed)
 	cmpq %rax, %rdi
@@ -51,8 +51,8 @@ switch_stack:
 
 	# Update RSP0
 	movabsq $tss_begin, %rdx
-	movq 0(%rdi), %rdi
-	movq %rdi, 4(%rdx)
+	movq 3*8(%rdi), %rdi	# KESP
+	movq %rdi, 4(%rdx)		# RSP0
 
 	# Change CR3 (if needed)
 	movq 0(%r11), %r11		# Get New CR3
@@ -82,10 +82,11 @@ switch_stack:
  * RBP: pointer to thread block
  * Current stack: properly formatted iret structure
  */
-.global initialize_thread
-initialize_thread:
-	# Set thread state to running
-	movl $1, 24(%rbp)
+.extern initialize_thread
+.global __initialize_thread
+__initialize_thread:
+	movq %rbp, %rdi
+	call initialize_thread
 
 	# Cleanup registers
 	xor %rbp, %rbp
@@ -105,11 +106,12 @@ initialize_thread:
  * Enters Ring 3.
  * 
  * Parameters:
- * RDI: Thread register block
+ * RDI: Thread control block
  * RSI: Actual usermode entry point
  */
 .global enter_usermode
 enter_usermode:
+	movq 3*8(%rdi), %rdi
 	movq %rdi, %r11
 
 	# Update RSP0

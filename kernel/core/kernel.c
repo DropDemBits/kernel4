@@ -42,8 +42,6 @@ extern uint32_t initrd_size;
 
 void core_fini();
 
-static process_t init_process = {};
-
 void idle_loop()
 {
 	while(1)
@@ -62,7 +60,7 @@ void idle_loop()
 }
 
 
-extern void enter_usermode(void* register_state, unsigned long entry_addr);
+extern void enter_usermode(void* thread, unsigned long entry_addr);
 extern void usermode_code();
 
 void usermode_entry()
@@ -73,7 +71,7 @@ void usermode_entry()
 	mmu_map(retaddr);
 	memcpy((void*)retaddr, &usermode_code, 4096);
 
-	enter_usermode((void*)(sched_active_thread()->register_state), retaddr);
+	enter_usermode((void*)(sched_active_thread()), retaddr);
 	while(1);
 }
 
@@ -82,8 +80,9 @@ void a_print()
 	while(1)
 	{
 		tty_set_colour(0xF, 0xC);
-		putchar('a');
-		sched_sleep_millis(200);
+		// tty_printchar('a');
+		sched_switch_thread();
+		//sched_sleep_millis(200);
 	}
 }
 
@@ -92,11 +91,14 @@ void b_print()
 	while(1)
 	{
 		tty_set_colour(0x0, 0x2);
-		putchar('b');
-		sched_sleep_millis(200);
+		//tty_printchar('b');
+		tty_reshow();
+		sched_switch_thread();
+		//sched_sleep_millis(200);
 	}
 }
 
+extern process_t init_process;
 void kmain()
 {
 	tty_init();
@@ -110,11 +112,6 @@ void kmain()
 	tty_prints("Initialising Framebuffer\n");
 	fb_init();
 	multiboot_reclaim();
-
-	/*
-	 * TODO: Sometimes our bootloader will not fulfill our request for a video
-	 * device. Search PCI devices for sutable video device.
-	 */
 
 	unsigned long framebuffer = (unsigned long)get_fb_address();
 
@@ -152,15 +149,11 @@ void kmain()
 	
 	// Resume init in other thread
 	tty_prints("Starting threaded init\n");
+	tasks_init("init", (void*)a_print);
+	thread_create(&init_process, (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
 
-	// Build init process
-	init_process.page_context_base = mmu_current_context();
-	init_process.child_threads = KNULL;
-	init_process.child_count = 0;
-	init_process.pid = 1;
-
-	thread_create(&init_process, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
-	thread_create(&init_process, (uint64_t*)core_fini, PRIORITY_KERNEL, "coreinit");
+	sched_print_queues();
+	tty_reshow();
 
 	preempt_enable();
 	while(1) sched_switch_thread();
@@ -168,12 +161,14 @@ void kmain()
 
 void core_fini()
 {
+	// thread_create(&init_process, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
+
 	tty_prints("Initialising PS/2 controller\n");
-	// ps2_init();
+	//ps2_init();
 	tty_prints("Initialising keyboard driver\n");
-	// kbd_init();
+	//kbd_init();
 	tty_prints("Setting up system calls\n");
-	// syscall_init();
+	//syscall_init();
 
 	// TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS
@@ -237,10 +232,12 @@ void core_fini()
 	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
 	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");*/
 	
-	thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
-	thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
+	// thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
+	// thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
+	//thread_create(process_create(), (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
 
 	preempt_enable();
 	// Now we are done, exit thread.
-	sched_set_thread_state(sched_active_thread(), STATE_EXITED);
+	//sched_set_thread_state(sched_active_thread(), STATE_EXITED);
+	while(1);
 }
