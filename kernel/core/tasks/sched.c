@@ -259,6 +259,8 @@ void sched_sleep(uint64_t ms)
 
 void sched_sleep_millis(uint64_t millis)
 {
+	sched_sleep(millis);
+	/*
 	if(active_thread == KNULL)
 		// Can't sleep when we haven't initialized
 		return;
@@ -308,7 +310,7 @@ void sched_sleep_millis(uint64_t millis)
 		}
 	}
 
-	sched_set_thread_state(active_thread, STATE_SLEEPING);
+	sched_block_thread(STATE_SLEEPING);*/
 }
 
 static void switch_to_thread(thread_t* next_thread)
@@ -321,6 +323,7 @@ static void switch_to_thread(thread_t* next_thread)
 
 	thread_t* old_thread = active_thread;
 	active_thread = next_thread;
+	active_process = active_thread->parent;
 
 	// Remove next thread from run queue
 	sched_queue_remove(next_thread, &run_queue);
@@ -457,37 +460,6 @@ void sched_unblock_thread(thread_t* thread)
 	}
 
 	sched_unlock();
-}
-
-void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
-{
-	if(thread == KNULL) return;
-
-	if(new_state == STATE_SLEEPING)
-	{
-		// We remove the thread from it's run queue first to ensure that it isn't
-		// taking other threads off the run queue.
-	 	
-		sched_queue_remove(thread, &(thread_queues[thread->priority]));
-		sched_queue_thread_to(thread, &sleep_queue);
-	} else if(new_state == STATE_EXITED)
-	{
-		cleanup_needed = true;
-		sched_queue_remove(thread, &(thread_queues[thread->priority]));
-		sched_queue_thread_to(thread, &exit_queue);
-	} else if(new_state == STATE_RUNNING)
-	{
-		if (thread->current_state == STATE_SLEEPING)
-		{
-			sched_queue_remove(thread, &sleep_queue);
-		}
-		sched_queue_thread(thread);
-	}
-
-	thread->current_state = new_state;
-
-	if(thread == active_thread)
-		sched_switch_thread();
 }
 
 void sched_setidle(thread_t* thread)

@@ -71,7 +71,7 @@ static void at_keyboard_isr()
 {
 	uint8_t data = ps2_device_read(kbd_device, false);
 	keycode_push(data);
-	sched_set_thread_state(decoder_thread, STATE_RUNNING);
+	sched_unblock_thread(decoder_thread);
 
 	ic_eoi(ps2_device_irqs()[kbd_device]);
 }
@@ -85,7 +85,7 @@ static void keycode_decoder()
 		data = keycode_pop();
 
 		if(data == 0x00)
-			sched_set_thread_state(sched_active_thread(), STATE_SLEEPING);
+			sched_block_thread(STATE_SUSPENDED);
 
 		switch(data)
 		{

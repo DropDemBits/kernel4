@@ -81,7 +81,7 @@ static void ps2_keyboard_isr()
 	{
 		insert_data:
 		keycode_push(data);
-		sched_set_thread_state(decoder_thread, STATE_RUNNING);
+		sched_unblock_thread(decoder_thread);
 	} else
 	{
 		switch(data)
@@ -110,7 +110,7 @@ static void keycode_decoder()
 		data = keycode_pop();
 		
 		if(data == 0x00)
-			sched_set_thread_state(sched_active_thread(), STATE_SLEEPING);
+			sched_block_thread(STATE_SUSPENDED);
 
 		switch(data)
 		{
@@ -169,7 +169,6 @@ void ps2kbd_init(int device)
 	// PS2 Side
 	kbd_device = device;
 	decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2");
-	sched_set_thread_state(decoder_thread, STATE_SLEEPING);
 
 	if(!send_command(0xF4, 0x00))
 		puts("[KBD] Scanning enable failed");

@@ -50,7 +50,7 @@ void preempt_disable();
 void preempt_enable();
 
 // Deprecated methods
-void sched_set_thread_state(thread_t *thread, enum thread_state state);
+// void sched_set_thread_state(thread_t *thread, enum thread_state state);
 void sched_sleep_millis(uint64_t millis);
 void switch_thread(thread_t *old_thread, thread_t *new_thread);
 
