@@ -47,7 +47,7 @@ void idle_loop()
 {
 	while(1)
 	{
-		preempt_disable();
+		/*preempt_disable();
 		if(tty_background_dirty())
 		{
 			fb_clear();
@@ -55,7 +55,7 @@ void idle_loop()
 		tty_reshow();
 		tty_make_clean();
 		sched_gc();
-		preempt_enable();
+		preempt_enable();*/
 		intr_wait();
 	}
 }
@@ -77,12 +77,12 @@ void usermode_entry()
 }
 
 extern unsigned long long tswp_counter;
+extern struct thread_queue run_queue;
 void info_display()
 {
-	const char* switches = "Switches/s: ";
+	const char* switches = "Swaps/s: ";
 	while(1)
 	{
-		sched_sleep(1000);
 		char buf[256];
 
 		// Swaps / s
@@ -93,7 +93,53 @@ void info_display()
 			fb_fill_putchar(get_fb_address(), (strlen(switches) + i) << 3, 26 << 4, buf[i], 0xFFFFFFFF, 0x0);
 		}
 
+		// Queue
+		thread_t* node = run_queue.queue_head;
+		int posX = 0;
+		int posY = 27 << 4;
+
+		// Active
+		fb_fill_putchar(get_fb_address(), posX, posY, '[', 0xFFFFFFFF, 0);
+		posX += 8;
+		for(int i = 0; i < strlen(sched_active_thread()->name); i++)
+		{
+			fb_fill_putchar(get_fb_address(), posX, posY, sched_active_thread()->name[i], ~0, 0);
+			posX += 8;
+			if(posX > fb_info.width)
+			{
+				posY += 16;
+				posX = 0;
+			}
+		}
+		fb_fill_putchar(get_fb_address(), posX, posY, ']', 0xFFFFFFFF, 0);
+		posX += 8;
+		fb_fill_putchar(get_fb_address(), posX, posY, ' ', 0xFFFFFFFF, 0);
+		posX += 8;
+
+		while(node != KNULL)
+		{
+			for(int i = 0; i < strlen(node->name); i++)
+			{
+				fb_fill_putchar(get_fb_address(), posX, posY, node->name[i], ~0, 0);
+				posX += 8;
+				if(posX > fb_info.width)
+				{
+					posY += 16;
+					posX = 0;
+				}
+			}
+			fb_fill_putchar(get_fb_address(), posX, posY, ' ', 0xFFFFFFFF, 0);
+			posX += 8;
+				if(posX > fb_info.width)
+				{
+					posY += 16;
+					posX = 0;
+				}
+			node = node->next;
+		}
+
 		tswp_counter = 0;
+		sched_sleep(1000);
 	}
 }
 
@@ -112,11 +158,27 @@ void a_print()
 	{
 		tty_set_colour(0xF, 0xC);
 		tty_printchar('a');
+		tty_reshow();
 
-		sched_lock();
+		/*sched_lock();
 		sched_switch_thread();
-		sched_unlock();
-		//sched_sleep_millis(200);
+		sched_unlock();*/
+		sched_sleep(16);
+	}
+}
+
+void c_print()
+{
+	while(1)
+	{
+		tty_set_colour(0xF, 0x9);
+		tty_printchar('c');
+		tty_reshow();
+
+		/*sched_lock();
+		sched_switch_thread();
+		sched_unlock();*/
+		sched_sleep(15);
 	}
 }
 
@@ -132,10 +194,10 @@ void b_print()
 		tty_reshow();
 		tty_make_clean();
 
-		sched_lock();
+		/*sched_lock();
 		sched_switch_thread();
-		sched_unlock();
-		//sched_sleep_millis(200);
+		sched_unlock();*/
+		sched_sleep(14);
 	}
 }
 
@@ -191,9 +253,11 @@ void kmain()
 	// Resume init in other thread
 	tty_prints("Starting threaded init\n");
 	tasks_init("init", (void*)a_print);
-	thread_create(&init_process, (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
-	thread_create(&init_process, (uint64_t*)wake_test, PRIORITY_NORMAL, "woke_bro");
-	thread_create(&init_process, (uint64_t*)info_display, PRIORITY_NORMAL, "info_thread");
+	thread_create(&init_process, (void*)b_print, PRIORITY_NORMAL, "b_print");
+	thread_create(&init_process, (void*)c_print, PRIORITY_NORMAL, "c_print");
+	thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread");
+	// thread_create(&init_process, (uint64_t*)wake_test, PRIORITY_NORMAL, "woke_bro");
+	// thread_create(&init_process, (uint64_t*)info_display, PRIORITY_NORMAL, "info_thread");
 
 	//sched_print_queues();
 	tty_reshow();

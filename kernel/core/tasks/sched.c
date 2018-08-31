@@ -41,11 +41,15 @@ static thread_t* active_thread = KNULL;
 static bool preempt_enabled = false;
 // Queue of threads that can be run, but aren't actively running
 struct thread_queue run_queue;
+static thread_t* idle_thread;
 static thread_t* sleep_filo_head = KNULL;
 static int sched_semaphore = 0;
 static int taskswitch_semaphore = 0;
 static bool taskswitch_postponed = false;
+// Set if we are in the idle state (used for postponing postponed task switches)
+static bool is_idle = false;
 
+// To be moved into the generic timer code
 // 1000000000 / (1193181 / 1000)
 #define TIMER_RESOLUTION (838222)
 unsigned long long ticks_since_boot = 0;
@@ -142,7 +146,8 @@ static thread_t* sched_next_thread()
 		if(next_thread != KNULL)
 			return next_thread;
 	}
-	return KNULL;
+
+	return idle_thread;
 }
 
 void sched_init()
@@ -347,8 +352,52 @@ void sched_switch_thread()
 	thread_t* next_thread = sched_next_thread();
 	if(next_thread != KNULL)
 	{
+		if(next_thread == idle_thread)
+		{
+			if(active_thread->current_state == STATE_RUNNING)
+			{
+				// There is no next thread, but current thread is still running, so return.
+				return;
+			}
+		}
+
+		// We have a next thread, so switch to it
 		switch_to_thread(next_thread);
 	}
+	/*else if(active_thread != KNULL && active_thread->current_state == STATE_RUNNING)
+	{
+		// Current thread is still running, so just return
+		return;
+	}
+	else
+	{
+		// Current thread is blocked, enter idle state
+		thread_t* thread = active_thread;
+		// In the future, we may want to start a timer until the next power state
+		//uint64_t idle_start = ticks_since_boot;
+
+		active_thread = KNULL;
+
+		// Unlock the scheduler to temporarily enable interrupts
+		is_idle = true;
+		do
+		{
+			hal_enable_interrupts();
+			intr_wait();
+			hal_disable_interrupts();
+		}
+		while(sched_next_thread() == KNULL);
+		is_idle = false;
+
+		// Return the thread
+		active_thread = thread;
+
+		sched_track_swaps();
+		// Switch to next active thread (unless it was the previously running thread)
+		thread_t* next_thread = sched_next_thread();
+		if(next_thread != thread)
+			switch_to_thread(next_thread);
+	}*/
 }
 
 // Debugs below
@@ -390,10 +439,16 @@ void sched_unblock_thread(thread_t* thread)
 	sched_lock();
 	thread->current_state = STATE_READY;
 
-	if(sched_next_thread() == KNULL)
+	if(sched_next_thread() == KNULL || active_thread == idle_thread)
 	{
 		// Should there be no next task to run, pre-empt the current one
 		switch_to_thread(thread);
+
+		if(taskswitch_postponed)
+		{
+			// If the task switch was postponed (ie. during sleeper wakeup), just queue the thread for later
+			sched_queue_thread(thread);
+		}
 	}
 	else
 	{
@@ -435,6 +490,11 @@ void sched_set_thread_state(thread_t *thread, enum thread_state new_state)
 		sched_switch_thread();
 }
 
+void sched_setidle(thread_t* thread)
+{
+	idle_thread = thread;
+}
+
 void sched_lock()
 {
 	//hal_save_interrupts();
@@ -460,8 +520,10 @@ void taskswitch_disable()
 void taskswitch_enable()
 {
 	taskswitch_semaphore--;
-	if(taskswitch_semaphore == 0 && taskswitch_postponed)
+	// Don't do a task switch if we are in the idle state (will be handled by idle loop exit)
+	if(taskswitch_semaphore == 0 && taskswitch_postponed && !is_idle)
 	{
+		taskswitch_postponed = false;
 		sched_switch_thread();
 	}
 

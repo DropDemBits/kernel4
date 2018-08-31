@@ -225,6 +225,11 @@ void tty_reshow()
 			uart_writec('\r');
 		}
 		else {
+			if((uart_base % width) == width - 1)
+			{
+				uart_writec('\n');
+				uart_writec('\r');
+			}
 			uart_writec(window[uart_base].actual_char);
 		}
 	}
