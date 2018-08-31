@@ -29,12 +29,6 @@ extern void switch_stack(
 	paging_context_t* new_context
 );
 
-struct thread_queue
-{
-	thread_t *queue_head;
-	thread_t *queue_tail;
-};
-
 struct sleep_node
 {
 	thread_t *thread;
