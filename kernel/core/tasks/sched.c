@@ -36,7 +36,6 @@ struct sleep_node
 	struct sleep_node* next;
 };
 
-static process_t* active_process = KNULL;
 static thread_t* active_thread = KNULL;
 static bool preempt_enabled = false;
 // Queue of threads that can be run, but aren't actively running
@@ -93,7 +92,6 @@ static void sched_timer()
 	thread_t* next_node = sleep_filo_head;
 	sleep_filo_head = KNULL;
 
-
 	while(next_node != KNULL)
 	{
 		current_node = next_node;
@@ -101,9 +99,10 @@ static void sched_timer()
 
 		if(ticks_since_boot >= current_node->sleep_until)
 		{
-			// Wakeup task
+			// Don't pull the entire sleep queue along with us
 			current_node->next = KNULL;
-			current_node->prev = KNULL;
+
+			// Wakeup task
 			sched_unblock_thread(current_node);
 		} else
 		{
@@ -117,18 +116,31 @@ static void sched_timer()
 
 static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 {
-	if(thread == queue->queue_head)
+	// ???: Do we need a (spin)lock to this?
+	queue->queue_head = thread->next;
+	if(queue->queue_head == KNULL)
+		queue->queue_tail = KNULL;
+
+	thread->next = KNULL;
+}
+
+void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
+{
+	// ???: Do we need a (spin)lock to this?
+	if(queue->queue_head == KNULL)
 	{
-		queue->queue_head = thread->next;
+		queue->queue_head = thread;
+		queue->queue_tail = thread;
 	} else
 	{
-		if(thread->prev != KNULL) thread->prev->next = thread->next;
-		if(thread->next != KNULL) thread->next->prev = thread->prev;
-		if(queue->queue_tail == thread) queue->queue_tail = thread->prev;
+		queue->queue_tail->next = thread;
+		queue->queue_tail = thread;
 	}
+}
 
-	thread->prev = KNULL;
-	thread->next = KNULL;
+void sched_queue_thread(thread_t *thread)
+{
+	sched_queue_thread_to(thread, &run_queue);
 }
 
 static thread_t* sched_next_thread()
@@ -193,36 +205,6 @@ void sched_gc()
 
 		done_sleepers = KNULL;
 	}
-}
-
-void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue)
-{
-	if(thread == KNULL) return;
-
-	if(thread->timeslice == 0)
-		thread->timeslice = get_timeslice(thread->priority);
-
-	if(queue->queue_head == KNULL)
-	{
-		queue->queue_head = thread;
-		queue->queue_tail = thread;
-	} else
-	{
-		if(queue->queue_tail != KNULL)
-			queue->queue_tail->next = thread;
-		
-		// Link pointers together
-		thread->prev = queue->queue_tail;
-		queue->queue_tail = thread;
-	}
-}
-
-void sched_queue_thread(thread_t *thread)
-{
-	if(thread == KNULL) return;
-	// struct thread_queue *queue = &(thread_queues[(thread->priority)]);
-
-	sched_queue_thread_to(thread, &run_queue);
 }
 
 void sched_sleep_until(uint64_t when)
@@ -315,30 +297,28 @@ void sched_sleep_millis(uint64_t millis)
 
 static void switch_to_thread(thread_t* next_thread)
 {
+	thread_t* old_thread = active_thread;
+
 	if(taskswitch_semaphore != 0)
 	{
 		taskswitch_postponed = true;
 		return;
 	}
 
-	thread_t* old_thread = active_thread;
-	active_thread = next_thread;
-	active_process = active_thread->parent;
-
-	// Remove next thread from run queue
-	sched_queue_remove(next_thread, &run_queue);
-	next_thread->current_state = STATE_RUNNING;
-
 	// Add current thread to run queue
-	if(old_thread != KNULL)
+	if(active_thread != KNULL)
 	{
-		if(old_thread->current_state == STATE_RUNNING)
-			old_thread->current_state = STATE_READY;
-		
-		if(old_thread->current_state < STATE_SLEEPING)
-			// Requeue thread if it isn't sleeping or exited
-			sched_queue_thread(old_thread);
+		if(active_thread->current_state == STATE_RUNNING)
+			active_thread->current_state = STATE_READY;
+
+		// Requeue thread if it is only ready
+		if(active_thread->current_state == STATE_READY)
+			sched_queue_thread(active_thread);
 	}
+
+	active_thread = next_thread;
+
+	next_thread->current_state = STATE_RUNNING;
 	mmu_set_context(next_thread->parent->page_context_base);
 	switch_stack(next_thread, old_thread, next_thread->parent->page_context_base);
 }
@@ -352,55 +332,46 @@ void sched_switch_thread()
 	}
 
 	sched_track_swaps();
-	thread_t* next_thread = sched_next_thread();
-	if(next_thread != KNULL)
+	if(run_queue.queue_head != KNULL)
 	{
+		// We have a next thread, so switch to it
+		thread_t* next_thread = run_queue.queue_head;
+		run_queue.queue_head = next_thread->next;
+
 		if(next_thread == idle_thread)
 		{
-			if(active_thread->current_state == STATE_RUNNING)
+			// Next thread is the idle thread, although there may be other options
+			if(run_queue.queue_head != KNULL)
 			{
-				// There is no next thread, but current thread is still running, so return.
+				// Still a thread in the queue, so swap places with idle thread.
+				next_thread = run_queue.queue_head;
+				idle_thread->next = next_thread->next;
+				run_queue.queue_head = idle_thread;
+
+				// Should idle thread be the last thread in the queue, set it to be the tail
+				if(idle_thread->next == KNULL)
+					run_queue.queue_tail = idle_thread;
+
+				next_thread->next = KNULL;
+			}
+			else if (active_thread->current_state == STATE_RUNNING)
+			{
+				// No other threads in the queue, but the current one is still running. Just return
+				sched_queue_thread(next_thread);
 				return;
 			}
+			else {
+				// Idle thread is the only one left.
+				sched_queue_remove(idle_thread, &run_queue);
+			}
+		}
+		else {
+			// Remove next thread from run queue
+			sched_queue_remove(next_thread, &run_queue);
 		}
 
-		// We have a next thread, so switch to it
 		switch_to_thread(next_thread);
 	}
-	/*else if(active_thread != KNULL && active_thread->current_state == STATE_RUNNING)
-	{
-		// Current thread is still running, so just return
-		return;
-	}
-	else
-	{
-		// Current thread is blocked, enter idle state
-		thread_t* thread = active_thread;
-		// In the future, we may want to start a timer until the next power state
-		//uint64_t idle_start = ticks_since_boot;
-
-		active_thread = KNULL;
-
-		// Unlock the scheduler to temporarily enable interrupts
-		is_idle = true;
-		do
-		{
-			hal_enable_interrupts();
-			intr_wait();
-			hal_disable_interrupts();
-		}
-		while(sched_next_thread() == KNULL);
-		is_idle = false;
-
-		// Return the thread
-		active_thread = thread;
-
-		sched_track_swaps();
-		// Switch to next active thread (unless it was the previously running thread)
-		thread_t* next_thread = sched_next_thread();
-		if(next_thread != thread)
-			switch_to_thread(next_thread);
-	}*/
 }
 
 // Debugs below
@@ -410,17 +381,17 @@ void sched_print_queues()
 	printf("Run Queue: ");
 
 	if(active_thread != KNULL)
-		printf("[%p] -> ", active_thread);
+		printf("[%s] -> ", active_thread->name);
 	
-	int i = 0;
-	while(node != KNULL && i < 5)
+	while(node != KNULL)
 	{
-		printf("%p -> ", node);
+		printf("%s -> ", node->name);
 		node = node->next;
-		i++;
-		tty_reshow();
+		// tty_reshow();
 	}
-	puts("NULL");
+	
+	if(run_queue.queue_tail != KNULL)
+		printf("<%s>\n", run_queue.queue_tail->name);
 }
 
 unsigned long long tswp_counter = 0;
@@ -442,7 +413,7 @@ void sched_unblock_thread(thread_t* thread)
 	sched_lock();
 	thread->current_state = STATE_READY;
 
-	if(sched_next_thread() == KNULL || active_thread == idle_thread)
+	if(run_queue.queue_head == KNULL || (active_thread == idle_thread))
 	{
 		// Should there be no next task to run, pre-empt the current one
 		switch_to_thread(thread);
@@ -493,7 +464,7 @@ void taskswitch_enable()
 {
 	taskswitch_semaphore--;
 	// Don't do a task switch if we are in the idle state (will be handled by idle loop exit)
-	if(taskswitch_semaphore == 0 && taskswitch_postponed && !is_idle)
+	if(taskswitch_semaphore == 0 && taskswitch_postponed)
 	{
 		taskswitch_postponed = false;
 		sched_switch_thread();
@@ -514,7 +485,7 @@ void preempt_enable()
 
 process_t *sched_active_process()
 {
-	return active_process;
+	return active_thread->parent;
 }
 
 thread_t *sched_active_thread()

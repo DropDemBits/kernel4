@@ -76,11 +76,15 @@ void usermode_entry()
 	while(1);
 }
 
+extern unsigned long long ticks_since_boot;
 extern unsigned long long tswp_counter;
 extern struct thread_queue run_queue;
+int count = 0;
 void info_display()
 {
 	const char* switches = "Swaps/s: ";
+	int last_len = 0;
+
 	while(1)
 	{
 		char buf[256];
@@ -93,12 +97,10 @@ void info_display()
 			fb_fill_putchar(get_fb_address(), (strlen(switches) + i) << 3, 26 << 4, buf[i], 0xFFFFFFFF, 0x0);
 		}
 
-		// Queue
-		thread_t* node = run_queue.queue_head;
 		int posX = 0;
 		int posY = 27 << 4;
 
-		// Active
+		// Active thread
 		fb_fill_putchar(get_fb_address(), posX, posY, '[', 0xFFFFFFFF, 0);
 		posX += 8;
 		for(int i = 0; i < strlen(sched_active_thread()->name); i++)
@@ -116,6 +118,8 @@ void info_display()
 		fb_fill_putchar(get_fb_address(), posX, posY, ' ', 0xFFFFFFFF, 0);
 		posX += 8;
 
+		// Print queue proper
+		thread_t* node = run_queue.queue_head;
 		while(node != KNULL)
 		{
 			for(int i = 0; i < strlen(node->name); i++)
@@ -130,15 +134,30 @@ void info_display()
 			}
 			fb_fill_putchar(get_fb_address(), posX, posY, ' ', 0xFFFFFFFF, 0);
 			posX += 8;
-				if(posX > fb_info.width)
-				{
-					posY += 16;
-					posX = 0;
-				}
+			if(posX > fb_info.width)
+			{
+				posY += 16;
+				posX = 0;
+			}
 			node = node->next;
+			if(posY > 28 << 4)
+			{
+			}
 		}
 
+		// Clear old pixels
+		if(posX < last_len)
+			fb_fillrect(get_fb_address(), posX, posY, last_len - posX, 16, 0);
+		last_len = posX;
+
 		tswp_counter = 0;
+
+		ulltoa(ticks_since_boot / 1000000, buf, 10);
+
+		for(int i = 0; i < strlen(buf); i++)
+		{
+			fb_fill_putchar(get_fb_address(), i << 3, 28 << 4, buf[i], ~0, 0);
+		}
 		sched_sleep(1000);
 	}
 }
@@ -147,7 +166,9 @@ void wake_test()
 {
 	while(1)
 	{
+		tty_set_colour(0xF, 0x0);
 		printf("WOKEN");
+
 		sched_sleep(1000);
 	}
 }
@@ -158,12 +179,8 @@ void a_print()
 	{
 		tty_set_colour(0xF, 0xC);
 		tty_printchar('a');
-		tty_reshow();
 
-		/*sched_lock();
-		sched_switch_thread();
-		sched_unlock();*/
-		sched_sleep(16);
+		sched_sleep(200);
 	}
 }
 
@@ -171,14 +188,14 @@ void c_print()
 {
 	while(1)
 	{
-		tty_set_colour(0xF, 0x9);
+		tty_set_colour(0x0, 0x9);
 		tty_printchar('c');
 		tty_reshow();
 
-		/*sched_lock();
-		sched_switch_thread();
-		sched_unlock();*/
-		sched_sleep(15);
+		// sched_lock();
+		// sched_switch_thread();
+		// sched_unlock();
+		sched_sleep(100);
 	}
 }
 
@@ -194,10 +211,7 @@ void b_print()
 		tty_reshow();
 		tty_make_clean();
 
-		/*sched_lock();
-		sched_switch_thread();
-		sched_unlock();*/
-		sched_sleep(14);
+		sched_sleep(50);
 	}
 }
 
@@ -247,25 +261,27 @@ void kmain()
 	tty_prints("Initialising HAL\n");
 	hal_init();
 	hal_enable_interrupts();
+
 	tty_prints("Initialising Scheduler\n");
 	sched_init();
 	
 	// Resume init in other thread
-	tty_prints("Starting threaded init\n");
+	tty_prints("Starting up threads for init\n");
 	tasks_init("init", (void*)a_print);
 	thread_create(&init_process, (void*)b_print, PRIORITY_NORMAL, "b_print");
 	thread_create(&init_process, (void*)c_print, PRIORITY_NORMAL, "c_print");
+	thread_create(&init_process, (void*)info_display, PRIORITY_NORMAL, "info_thread");
+	thread_create(&init_process, (void*)wake_test, PRIORITY_NORMAL, "woke_bro");
 	thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread");
-	// thread_create(&init_process, (uint64_t*)wake_test, PRIORITY_NORMAL, "woke_bro");
-	// thread_create(&init_process, (uint64_t*)info_display, PRIORITY_NORMAL, "info_thread");
 
-	//sched_print_queues();
+	sched_print_queues();
 	tty_reshow();
 
-	preempt_enable();
+	// preempt_enable();
 
 	while(1)
 	{
+		tty_reshow();
 		sched_lock();
 		sched_switch_thread();
 		sched_unlock();
@@ -274,12 +290,10 @@ void kmain()
 
 void core_fini()
 {
-	// thread_create(&init_process, (uint64_t*)idle_loop, PRIORITY_IDLE, "idleloop");
-
 	tty_prints("Initialising PS/2 controller\n");
-	//ps2_init();
+	ps2_init();
 	tty_prints("Initialising keyboard driver\n");
-	//kbd_init();
+	kbd_init();
 	tty_prints("Setting up system calls\n");
 	//syscall_init();
 
@@ -352,5 +366,11 @@ void core_fini()
 	preempt_enable();
 	// Now we are done, exit thread.
 	//sched_set_thread_state(sched_active_thread(), STATE_EXITED);
-	while(1);
+	sched_block_thread(STATE_SUSPENDED);
+	while(1)
+	{
+		sched_lock();
+		sched_switch_thread();
+		sched_unlock();
+	}
 }

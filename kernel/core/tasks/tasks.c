@@ -49,7 +49,6 @@ void tasks_init(char* init_name, void* init_entry)
 	init_thread.name = init_name;
 	init_thread.parent = &init_process;
 	init_thread.next = KNULL;
-	init_thread.prev = KNULL;
 	init_thread.tid = 1;
 	init_thread.priority = PRIORITY_NORMAL;
 	init_register_state(&init_thread, init_entry, &bootstack_top);
@@ -95,7 +94,6 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
 
 	thread->parent = parent;
 	thread->next = KNULL;
-	thread->prev = KNULL;
 	thread->current_state = STATE_READY;
 	thread->tid = tid_counter++;
 	thread->priority = priority;
@@ -107,8 +105,8 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
 
 	if(priority == PRIORITY_IDLE)
 		sched_setidle(thread);
-	else
-		sched_queue_thread(thread);
+
+	sched_queue_thread(thread);
 	return thread;
 }
 

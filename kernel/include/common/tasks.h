@@ -42,7 +42,6 @@ typedef struct thread
 {
 	process_t *parent;
 	struct thread *next;
-	struct thread *prev;
 
 	unsigned long kernel_sp;
 	unsigned long user_sp;
