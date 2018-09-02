@@ -8,3 +8,5 @@ k4*.iso
 sysroot
 pxedest
 initrd/initrd/*.tar
+com*.txt
+*.sym

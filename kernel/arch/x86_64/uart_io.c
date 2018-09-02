@@ -18,7 +18,7 @@
  * 
  */
 
-#include <x86_64/io.h>
+#include <arch/io.h>
 
 enum
 {

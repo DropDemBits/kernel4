@@ -12,8 +12,6 @@ typedef uint32_t uintptr_t;
 typedef int32_t ssize_t;
 typedef uint32_t ino_t;
 
-typedef void(*isr_t)(void*);
-
 typedef uint32_t syscall_ret;
 struct syscall_args
 {

@@ -36,6 +36,9 @@
                 "/usr/include",
                 "${workspaceRoot}",
                 "${workspaceRoot}/kernel/include",
+                "${workspaceRoot}/kernel/include/x86",
+                "${workspaceRoot}/kernel/include/x86_64",
+                "${workspaceRoot}/kernel/include/i386",
                 "${workspaceRoot}/libk/include"
             ],
             "defines": [],

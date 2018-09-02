@@ -1,4 +1,4 @@
-#include <x86_64/types.h>
+#include <common/types.h>
 
 #ifndef __IDT_H__
 #define __IDT_H__ 1

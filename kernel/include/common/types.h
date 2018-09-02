@@ -32,4 +32,6 @@
 #include <x86_64/types.h>
 #endif
 
+typedef void(*isr_t)(void*);
+
 #endif

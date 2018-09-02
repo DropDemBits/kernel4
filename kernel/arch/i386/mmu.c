@@ -23,8 +23,8 @@
 #include <common/mm.h>
 #include <common/tty.h>
 #include <common/kfuncs.h>
+#include <arch/idt.h>
 #include <i386/stack_state.h>
-#include <i386/idt.h>
 
 struct PageError {
     uint32_t was_present : 1;

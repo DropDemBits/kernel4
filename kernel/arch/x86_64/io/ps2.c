@@ -19,7 +19,7 @@
  */
 
 #include <common/ps2.h>
-#include <x86_64/io.h>
+#include <arch/io.h>
 
 uint8_t irqs[] = {1, 12};
 

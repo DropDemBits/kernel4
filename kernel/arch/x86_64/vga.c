@@ -18,7 +18,7 @@
  * 
  */
 
-#include <x86_64/types.h>
+#include <common/types.h>
 
 void* get_fb_address()
 {

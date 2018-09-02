@@ -1,4 +1,10 @@
 {
     "licenser.license": "GPLv3",
     "C_Cpp.intelliSenseEngineFallback": "Enabled",
+    "files.associations": {
+        "*.S": "gas",
+        "*.h": "c",
+        "typeinfo": "c",
+        "*.tcc": "c"
+    },
 }

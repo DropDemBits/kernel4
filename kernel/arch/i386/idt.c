@@ -20,7 +20,7 @@
 
 #include <common/hal.h>
 #include <common/kfuncs.h>
-#include <i386/idt.h>
+#include <arch/idt.h>
 #include <i386/stack_state.h>
 
 #define IDT_TYPE_TASK            0x5

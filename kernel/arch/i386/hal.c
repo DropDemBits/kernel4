@@ -22,9 +22,9 @@
 
 #include <common/sched.h>
 #include <common/hal.h>
-#include <i386/pic.h>
-#include <i386/pit.h>
-#include <i386/idt.h>
+#include <arch/pic.h>
+#include <arch/pit.h>
+#include <arch/idt.h>
 #include <i386/stack_state.h>
 
 #define MAX_TIMERS 64

@@ -23,7 +23,7 @@
 #include <common/kfuncs.h>
 #include <common/mm.h>
 #include <common/tty.h>
-#include <x86_64/idt.h>
+#include <arch/idt.h>
 #include <x86_64/stack_state.h>
 
 #define IDT_TYPE_INTERRUPT    0xE

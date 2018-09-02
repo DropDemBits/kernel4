@@ -19,9 +19,9 @@
  */
 
 #include <common/hal.h>
-#include <i386/pit.h>
-#include <i386/idt.h>
-#include <i386/io.h>
+#include <arch/pit.h>
+#include <arch/idt.h>
+#include <arch/io.h>
 
 #define PIT_MODE_ONESHOT          (0 << 1) // Interrupts when the counter reaches zero
 #define PIT_MODE_HARDWARE_ONESHOT (1 << 1) // Start upon gate input (Speaker port only)

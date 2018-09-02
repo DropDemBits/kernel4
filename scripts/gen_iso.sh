@@ -4,7 +4,7 @@ set -e
 echo "Creating ISO for target $1"
 mkdir -p isodir/boot/grub/
 cat > isodir/boot/grub/grub.cfg << EOF
-set timeout=5
+set timeout=0
 menuentry "K4 (Multiboot)" {
     multiboot "/k4-$1.kern"
     module "/initrd.tar" "initrd.tar"

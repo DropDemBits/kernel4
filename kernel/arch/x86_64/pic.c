@@ -18,8 +18,8 @@
  * 
  */
 
-#include <x86_64/pic.h>
-#include <x86_64/io.h>
+#include <arch/pic.h>
+#include <arch/io.h>
 
 #define PIC1_CMD   0x20
 #define PIC1_DATA  0x21
