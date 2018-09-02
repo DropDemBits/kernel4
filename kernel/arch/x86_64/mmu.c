@@ -147,7 +147,6 @@ static bool check_and_map_entry(page_entry_t* entry, unsigned long address)
 			}
 
 			entry->frame = frame >> 12;
-			entry->frame = frame >> 12;
 			entry->p = 1;
 			entry->rw = 1;
 			entry->xd = 0;

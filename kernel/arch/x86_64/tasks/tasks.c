@@ -52,6 +52,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
 	thread->kernel_stacktop = (unsigned long)kernel_stack;
 
 	uint64_t* thread_stack = (uint64_t*)thread->kernel_sp;
+	
 	// IRET structure
 	*(--thread_stack) = 0x010;
 	*(--thread_stack) = thread->kernel_sp;

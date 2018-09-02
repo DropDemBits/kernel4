@@ -147,7 +147,7 @@ void dump_registers(struct intr_stack *stack)
     printf("Current Thread: %#p\n", at);
     if(at != KNULL)
     {
-        printf("\tID: %d\n", at->tid);
+        printf("\tID: %d (%s)\n", at->tid, at->name);
         printf("\tPriority: %d\n", at->priority);
         printf("\tKESP: %#p, ESP: %#p", at->kernel_sp, at->user_sp);
     } else

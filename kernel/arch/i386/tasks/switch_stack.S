@@ -43,14 +43,14 @@ switch_stack:
 	# Update old thread's KESP
 	cmpl $0xDEADBEEF, %edx
 	jz 1f
-	movl %esp, 3*4(%edx)
+	movl %esp, 2*4(%edx)
 1:
 	// Update Stack (if needed)
 	testl $0xDEADBEEF, %ecx
 	jz 3f
 
 	# Update ESP0
-	movl 3*4(%ecx), %ecx
+	movl 2*4(%ecx), %ecx
 	movl %ecx, (tss_begin+4)
 
 	# Update CR3
@@ -98,13 +98,15 @@ __initialize_thread:
  * Enters Ring 3.
  * 
  * Parameters:
- * 4(ESP) / %EDX: Thread register block
+ * 4(ESP) / %EDX: Thread control block
  * 8(ESP) / %ECX: Actual usermode entry point
  */
 .global enter_usermode
 enter_usermode:
-	movl 4(%esp), %esi		# Put register block pointer in esi
-	movl 8(%esp), %edi
+	movl 4(%esp), %esi		# Put tcb pointer in esi
+	movl 8(%esp), %edi		# Entry point
+
+	movl 2*4(%esi), %esi	# KRSP
 
 	# Update RSP0
 	movl %esp, %edx
