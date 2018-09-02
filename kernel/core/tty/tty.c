@@ -19,6 +19,7 @@
  */
 
 #include <common/hal.h>
+#include <common/locks.h>
 #include <common/tty.h>
 #include <common/fb.h>
 #include <common/mm.h>
@@ -34,6 +35,7 @@ int16_t row = 0;
 // Used for offset
 uint16_t screen_row = 0;
 uint16_t last_draw = 0;
+mutex_t tty_mutex = {.max_count = 1, .count = 0, .waiting_threads={KNULL, KNULL}};
 tty_colour_t colour = {.fg_colour=0x7,.bg_colour=0x0};
 tty_device_t extra_devices[2];
 tty_char_t window[TTY_SIZE];

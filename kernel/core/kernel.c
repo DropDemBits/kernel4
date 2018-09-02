@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <common/locks.h>
 #include <common/mm.h>
 #include <common/fb.h>
 #include <common/hal.h>
@@ -285,7 +286,7 @@ void core_fini()
 
     taskswitch_disable();
     process_t *p1 = process_create();
-    thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL, "kshell");
+    thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell");
     thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread");
     thread_create(process_create(), (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
     taskswitch_enable();

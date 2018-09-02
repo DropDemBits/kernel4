@@ -31,6 +31,8 @@ struct thread_queue
 
 void sched_init();
 void sched_queue_thread(thread_t *thread);
+void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue);
+void sched_queue_remove(thread_t* thread, struct thread_queue *queue);
 void sched_setidle(thread_t* thread);
 void sched_switch_thread();
 void sched_block_thread(enum thread_state state);

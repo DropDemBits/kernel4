@@ -154,7 +154,7 @@ static void cleanup_task()
     }
 }
 
-static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
+void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
 {
     // ???: Do we need a (spin)lock to this?
     queue->queue_head = thread->next;
