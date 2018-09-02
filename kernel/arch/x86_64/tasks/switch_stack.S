@@ -43,7 +43,7 @@ switch_stack:
 	movq $0xFFFFDEAD00000000, %rax
 	cmpq %rax, %rsi
 	jz 1f
-	movq %rsp, 3*8(%rsi)
+	movq %rsp, 2*8(%rsi)
 1:
 	# Skip stack change (if needed)
 	cmpq %rax, %rdi
@@ -51,7 +51,7 @@ switch_stack:
 
 	# Update RSP0
 	movabsq $tss_begin, %rdx
-	movq 3*8(%rdi), %rdi	# KESP
+	movq 2*8(%rdi), %rdi	# KESP
 	movq %rdi, 4(%rdx)		# RSP0
 
 	# Change CR3 (if needed)
