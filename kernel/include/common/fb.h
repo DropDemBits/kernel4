@@ -28,30 +28,30 @@ extern struct framebuffer_info fb_info;
 
 enum fb_type
 {
-	TYPE_INDEXED = 0,
-	TYPE_RGB = 1,
-	TYPE_EGA_TEXT = 2,
+    TYPE_INDEXED = 0,
+    TYPE_RGB = 1,
+    TYPE_EGA_TEXT = 2,
 };
 
 struct framebuffer_info
 {
-	uint64_t base_addr;
-	uint32_t pitch;
-	uint32_t width;
-	uint32_t height;
-	uint8_t bits_pp;
-	uint8_t bytes_pp;
-	enum fb_type type;
-	// Palette Info (VALID if type == TYPE_INDEXED)
-	uint16_t palette_size;
-	uint64_t palette_addr;
-	// Colour Info (Valid if type == TYPE_RGB)
-	uint8_t red_position;
-	uint8_t red_mask_size;
-	uint8_t green_position;
-	uint8_t green_mask_size;
-	uint8_t blue_position;
-	uint8_t blue_mask_size;
+    uint64_t base_addr;
+    uint32_t pitch;
+    uint32_t width;
+    uint32_t height;
+    uint8_t bits_pp;
+    uint8_t bytes_pp;
+    enum fb_type type;
+    // Palette Info (VALID if type == TYPE_INDEXED)
+    uint16_t palette_size;
+    uint64_t palette_addr;
+    // Colour Info (Valid if type == TYPE_RGB)
+    uint8_t red_position;
+    uint8_t red_mask_size;
+    uint8_t green_position;
+    uint8_t green_mask_size;
+    uint8_t blue_position;
+    uint8_t blue_mask_size;
 };
 
 void fb_init();

@@ -11,9 +11,9 @@
 #define VFS_TYPE_SYMLINK 0x06
 #define VFS_TYPE_MOUNT 0x08
 
-#define VFSO_RDONLY	0x01
-#define VFSO_WRONLY	0x02
-#define VFSO_RDWR 	0x03
+#define VFSO_RDONLY    0x01
+#define VFSO_WRONLY    0x02
+#define VFSO_RDWR     0x03
 
 struct vfs_inode;
 struct vfs_dirent;
@@ -32,26 +32,26 @@ typedef struct vfs_dirent* (*vfs_readdir_func_t)(struct vfs_inode *node, size_t 
 typedef struct vfs_inode* (*vfs_finddir_func_t)(struct vfs_inode *node, const char* name);
 
 typedef struct vfs_inode {
-	// name in dirent
-	uint32_t perms_mask : 12; // Access permissions
-	uint32_t type : 4; // Node type
-	uint32_t uid;	// User ID
-	uint32_t gid;	// Group ID
-	uint32_t size;	// Size in bytes
-	ino_t inode; // Associated fs inode
-	vfs_read_func_t read;
-	vfs_write_func_t write;
-	vfs_open_func_t open;
-	vfs_close_func_t close;
-	vfs_readdir_func_t readdir;
-	vfs_finddir_func_t finddir;
-	uint32_t impl_specific; // VFS-impl specific value
-	struct vfs_inode* ptr;
+    // name in dirent
+    uint32_t perms_mask : 12; // Access permissions
+    uint32_t type : 4; // Node type
+    uint32_t uid;    // User ID
+    uint32_t gid;    // Group ID
+    uint32_t size;    // Size in bytes
+    ino_t inode; // Associated fs inode
+    vfs_read_func_t read;
+    vfs_write_func_t write;
+    vfs_open_func_t open;
+    vfs_close_func_t close;
+    vfs_readdir_func_t readdir;
+    vfs_finddir_func_t finddir;
+    uint32_t impl_specific; // VFS-impl specific value
+    struct vfs_inode* ptr;
 } vfs_inode_t;
 
 struct vfs_dirent {
-	ino_t inode; // Associated vfs_inode
-	char* name;
+    ino_t inode; // Associated vfs_inode
+    char* name;
 };
 
 void vfs_mount(vfs_inode_t* root_node, const char* path);

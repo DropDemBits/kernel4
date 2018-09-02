@@ -24,32 +24,32 @@
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
 
-	push $\int_num\()
-	jmp isr_entry
+    push $\int_num\()
+    jmp isr_entry
 .endm
 
 .macro isr_noerr_entry int_num
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
-	push $0
-	push $\int_num\()
-	jmp isr_entry
+    push $0
+    push $\int_num\()
+    jmp isr_entry
 .endm
 
 .macro irq_entry int_num
 .globl irq\int_num\()_entry
 irq\int_num\()_entry:
-	push $0
-	push $\int_num+32\()
-	jmp isr_entry
+    push $0
+    push $\int_num+32\()
+    jmp isr_entry
 .endm
 
 .macro spur_irq_entry int_num
 .globl irq\int_num\()_entry
 irq\int_num\()_entry:
-	push $0
-	push $\int_num+32\()
-	jmp isr_entry
+    push $0
+    push $\int_num+32\()
+    jmp isr_entry
 .endm
 
 isr_noerr_entry 0
@@ -99,109 +99,109 @@ spur_irq_entry 15
 .extern set_rsp0
 .globl syscall_entry
 syscall_entry:
-	push $0
-	push $0x80
+    push $0
+    push $0x80
 
-	# Push other regs
-	push %r12
-	push %r13
-	push %r14
-	push %r15
+    # Push other regs
+    push %r12
+    push %r13
+    push %r14
+    push %r15
 
-	push %r8
-	push %r9
-	push %r10
-	push %r11
+    push %r8
+    push %r9
+    push %r10
+    push %r11
 
-	push %rbp
-	push %rdi
-	push %rsi
-	push %rdx
-	push %rcx
-	push %rbx
-	push %rax
+    push %rbp
+    push %rdi
+    push %rsi
+    push %rdx
+    push %rcx
+    push %rbx
+    push %rax
 
-	movq %rsp, %rdi
-	call syscall_common
-	
-	movq %rsp, %rdi
-	addq $(22*8), %rdi
-	call set_rsp0
+    movq %rsp, %rdi
+    call syscall_common
+    
+    movq %rsp, %rdi
+    addq $(22*8), %rdi
+    call set_rsp0
 
-	# Restore registers
-	popq %rax
-	popq %rbx
-	popq %rcx
-	popq %rdx
-	popq %rsi
-	popq %rdi
-	popq %rbp //7
-	
-	popq %r11
-	popq %r10
-	popq %r9
-	popq %r8 //11
+    # Restore registers
+    popq %rax
+    popq %rbx
+    popq %rcx
+    popq %rdx
+    popq %rsi
+    popq %rdi
+    popq %rbp //7
+    
+    popq %r11
+    popq %r10
+    popq %r9
+    popq %r8 //11
 
-	popq %r15
-	popq %r14
-	popq %r13
-	popq %r12 //15
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12 //15
 
-	addq $16, %rsp //17
+    addq $16, %rsp //17
 
-	iretq // 22
+    iretq // 22
 
 isr_entry:
-	# Push other regs
-	push %rbp
-	push %rbx
-	push %r12
-	push %r13
-	push %r14
-	push %r15
+    # Push other regs
+    push %rbp
+    push %rbx
+    push %r12
+    push %r13
+    push %r14
+    push %r15
 
-	movq %cr2, %rbx
-	push %rbx
+    movq %cr2, %rbx
+    push %rbx
 
-	push %rcx
-	push %rdx
-	push %rax
-	push %rsi
-	push %rdi
-	push %r8
-	push %r9
-	push %r10
-	push %r11
+    push %rcx
+    push %rdx
+    push %rax
+    push %rsi
+    push %rdi
+    push %r8
+    push %r9
+    push %r10
+    push %r11
 
-	# Call isr_common
-	movq %rsp, %rdi
-	call isr_common
-	
-	movq %rsp, %rdi
-	addq $(23*8), %rdi
-	call set_rsp0
+    # Call isr_common
+    movq %rsp, %rdi
+    call isr_common
+    
+    movq %rsp, %rdi
+    addq $(23*8), %rdi
+    call set_rsp0
 
-	# Restore registers
-	popq %r11
-	popq %r10
-	popq %r9
-	popq %r8
-	popq %rdi
-	popq %rsi
-	popq %rax
-	popq %rdx
-	popq %rcx
+    # Restore registers
+    popq %r11
+    popq %r10
+    popq %r9
+    popq %r8
+    popq %rdi
+    popq %rsi
+    popq %rax
+    popq %rdx
+    popq %rcx
 
-	popq %rbx
-	movq %rbx, %cr2
+    popq %rbx
+    movq %rbx, %cr2
 
-	popq %r15
-	popq %r14
-	popq %r13
-	popq %r12
-	popq %rbx
-	popq %rbp
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    popq %rbx
+    popq %rbp
 
-	addq $16, %rsp
+    addq $16, %rsp
 
-	iretq
+    iretq

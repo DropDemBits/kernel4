@@ -30,8 +30,8 @@ struct intr_stack;
 
 struct heap_info
 {
-	size_t base;
-	size_t length;
+    size_t base;
+    size_t length;
 };
 
 void hal_init();

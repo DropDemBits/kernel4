@@ -8,53 +8,53 @@
 
 enum thread_state
 {
-	STATE_RUNNING,
-	STATE_READY,
-	STATE_SUSPENDED,
-	STATE_SLEEPING,
-	STATE_EXITED,
+    STATE_RUNNING,
+    STATE_READY,
+    STATE_SUSPENDED,
+    STATE_SLEEPING,
+    STATE_EXITED,
 };
 
 enum thread_priority
 {
-	PRIORITY_KERNEL = 6,
-	PRIORITY_HIGHER = 5,
-	PRIORITY_HIGH = 4,
-	PRIORITY_NORMAL = 3,
-	PRIORITY_LOW = 2,
-	PRIORITY_LOWER = 1,
-	PRIORITY_IDLE = 0,
-	PRIORITY_COUNT = 7,
+    PRIORITY_KERNEL = 6,
+    PRIORITY_HIGHER = 5,
+    PRIORITY_HIGH = 4,
+    PRIORITY_NORMAL = 3,
+    PRIORITY_LOW = 2,
+    PRIORITY_LOWER = 1,
+    PRIORITY_IDLE = 0,
+    PRIORITY_COUNT = 7,
 };
 
 typedef struct process
 {
-	unsigned int pid;
-	uint64_t child_count;
-	struct thread **child_threads;
+    unsigned int pid;
+    uint64_t child_count;
+    struct thread **child_threads;
 
-	// TODO: Do we want to implement separate address spaces for exploit
-	// mitigation?
-	paging_context_t* page_context_base;
+    // TODO: Do we want to implement separate address spaces for exploit
+    // mitigation?
+    paging_context_t* page_context_base;
 } process_t;
 
 typedef struct thread
 {
-	process_t *parent;
-	struct thread *next;
+    process_t *parent;
+    struct thread *next;
 
-	unsigned long kernel_sp;
-	unsigned long user_sp;
-	unsigned long kernel_stacktop;
-	unsigned long user_stacktop;
-	
-	enum thread_state current_state;
+    unsigned long kernel_sp;
+    unsigned long user_sp;
+    unsigned long kernel_stacktop;
+    unsigned long user_stacktop;
+    
+    enum thread_state current_state;
 
-	unsigned int tid;
-	unsigned int timeslice;
-	uint64_t sleep_until;
-	enum thread_priority priority;
-	const char* name;
+    unsigned int tid;
+    unsigned int timeslice;
+    uint64_t sleep_until;
+    enum thread_priority priority;
+    const char* name;
 
 } thread_t;
 

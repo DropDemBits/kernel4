@@ -22,32 +22,32 @@
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
 
-	push $\int_num\()
-	jmp isr_entry
+    push $\int_num\()
+    jmp isr_entry
 .endm
 
 .macro isr_noerr_entry int_num
 .globl isr\int_num\()_entry
 isr\int_num\()_entry:
-	push $0
-	push $\int_num\()
-	jmp isr_entry
+    push $0
+    push $\int_num\()
+    jmp isr_entry
 .endm
 
 .macro irq_entry int_num
 .globl irq\int_num\()_entry
 irq\int_num\()_entry:
-	push $0
-	push $\int_num+32\()
-	jmp isr_entry
+    push $0
+    push $\int_num+32\()
+    jmp isr_entry
 .endm
 
 .macro spur_irq_entry int_num
 .globl irq\int_num\()_entry
 irq\int_num\()_entry:
-	push $0
-	push $\int_num+32\()
-	jmp isr_entry
+    push $0
+    push $\int_num+32\()
+    jmp isr_entry
 .endm
 
 isr_noerr_entry 0
@@ -98,124 +98,124 @@ spur_irq_entry 15
 .extern set_esp0
 
 syscall_entry:
-	push $0x80
-	push $0x00
+    push $0x80
+    push $0x00
 
-	push %ds
-	push %es
-	push %fs
-	push %gs
+    push %ds
+    push %es
+    push %fs
+    push %gs
 
-	# Push other regs
-	push %ebp
-	push %edi
-	push %esi
-	push %edx
-	push %ecx
-	push %ebx
-	push %eax
+    # Push other regs
+    push %ebp
+    push %edi
+    push %esi
+    push %edx
+    push %ecx
+    push %ebx
+    push %eax
 
-	movw $0x10, %dx
-	movw %dx, %ds
-	movw %dx, %es
-	movw %dx, %fs
-	movw %dx, %gs
+    movw $0x10, %dx
+    movw %dx, %ds
+    movw %dx, %es
+    movw %dx, %fs
+    movw %dx, %gs
 
-	# Call syscall_common
-	movl %esp, %eax
-	push %eax
-	call syscall_common
-	addl $4, %esp
+    # Call syscall_common
+    movl %esp, %eax
+    push %eax
+    call syscall_common
+    addl $4, %esp
 
-	# Since this will always be entered from usermode, we don't have to worry
-	# about adjusting the stack offset
-	movl %esp, %edx
-	addl $(18*4), %edx
-	push %edx
-	call set_esp0
-	addl $4, %esp
+    # Since this will always be entered from usermode, we don't have to worry
+    # about adjusting the stack offset
+    movl %esp, %edx
+    addl $(18*4), %edx
+    push %edx
+    call set_esp0
+    addl $4, %esp
 
-	# Restore registers
-	popl %eax
-	popl %ebx
-	popl %ecx
-	popl %edx
-	popl %esi
-	popl %edi
-	popl %ebp // 7
+    # Restore registers
+    popl %eax
+    popl %ebx
+    popl %ecx
+    popl %edx
+    popl %esi
+    popl %edi
+    popl %ebp // 7
 
-	popl %gs
-	popl %fs
-	popl %es
-	popl %ds // 11
+    popl %gs
+    popl %fs
+    popl %es
+    popl %ds // 11
 
-	addl $8, %esp // 13
+    addl $8, %esp // 13
 
-	iret // 18
+    iret // 18
 
 isr_entry:
-	# Push other regs
-	push %ebp
-	push %esi
-	push %edi
-	push %ebx
+    # Push other regs
+    push %ebp
+    push %esi
+    push %edi
+    push %ebx
 
-	movl %cr2, %ebx
-	push %ebx
+    movl %cr2, %ebx
+    push %ebx
 
-	push %ecx
-	push %edx
-	push %eax
+    push %ecx
+    push %edx
+    push %eax
 
-	# Update segment selectors
-	push %ds
-	push %es
-	push %fs
-	push %gs
+    # Update segment selectors
+    push %ds
+    push %es
+    push %fs
+    push %gs
 
-	movw $0x10, %dx
-	movw %dx, %ds
-	movw %dx, %es
-	movw %dx, %fs
-	movw %dx, %gs
+    movw $0x10, %dx
+    movw %dx, %ds
+    movw %dx, %es
+    movw %dx, %fs
+    movw %dx, %gs
 
-	# Call isr_common
-	movl %esp, %eax
-	push %eax
-	call isr_common
-	addl $4, %esp
+    # Call isr_common
+    movl %esp, %eax
+    push %eax
+    call isr_common
+    addl $4, %esp
 
-	# Since we really only need to adjust ESP0 when returning to usermode,
-	# we can skip it when returning to kernel mode
-	movl 11*4(%esp), %ecx		# Fetch returning CPL
-	cmp $0x08, %ecx				# Are we returning to Kernel mode?
-	jz 1f
+    # Since we really only need to adjust ESP0 when returning to usermode,
+    # we can skip it when returning to kernel mode
+    movl 11*4(%esp), %ecx        # Fetch returning CPL
+    cmp $0x08, %ecx                # Are we returning to Kernel mode?
+    jz 1f
 
-	# Change ESP0
-	movl %esp, %edx
-	addl $(19*4), %edx		# Regs, IntCode, ErrCode, Usermode IRET
-	push %edx
-	call set_esp0
-	addl $4, %esp
+    # Change ESP0
+    movl %esp, %edx
+    addl $(19*4), %edx        # Regs, IntCode, ErrCode, Usermode IRET
+    push %edx
+    call set_esp0
+    addl $4, %esp
 1:
-	# Restore registers
-	popl %gs
-	popl %fs
-	popl %es
-	popl %ds
+    # Restore registers
+    popl %gs
+    popl %fs
+    popl %es
+    popl %ds
 
-	popl %eax
-	popl %edx
-	popl %ecx
+    popl %eax
+    popl %edx
+    popl %ecx
 
-	popl %ebx
-	movl %ebx, %cr2
+    popl %ebx
+    movl %ebx, %cr2
 
-	popl %ebx
-	popl %edi
-	popl %esi
-	popl %ebp
+    popl %ebx
+    popl %edi
+    popl %esi
+    popl %ebp
 
-	addl $8, %esp // 10
+    addl $8, %esp // 10
 
-	iret // 15 (User mode), 13 (Kernel mode)
+    iret // 15 (User mode), 13 (Kernel mode)

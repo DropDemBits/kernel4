@@ -24,15 +24,15 @@
 
 void kabort()
 {
-	kpanic("Abort called");
+    kpanic("Abort called");
 }
 
 void kputchar(int ic)
 {
-	tty_printchar(ic);
+    tty_printchar(ic);
 }
 
 void kexit(int status)
 {
-	kpanic("Exit called with code %d", status);
+    kpanic("Exit called with code %d", status);
 }

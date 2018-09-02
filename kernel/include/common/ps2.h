@@ -32,19 +32,19 @@ extern uint8_t* ps2_device_irqs();
 
 enum ps2_devtype
 {
-	TYPE_NONE,
-	TYPE_AT_KBD,
-	TYPE_MF2_KBD,
-	TYPE_MF2_KBD_TRANS,
-	TYPE_2B_MOUSE,
-	TYPE_3B_MOUSE,
-	TYPE_5B_MOUSE,
+    TYPE_NONE,
+    TYPE_AT_KBD,
+    TYPE_MF2_KBD,
+    TYPE_MF2_KBD_TRANS,
+    TYPE_2B_MOUSE,
+    TYPE_3B_MOUSE,
+    TYPE_5B_MOUSE,
 };
 
 struct ps2_device
 {
-	uint8_t present;
-	enum ps2_devtype type;
+    uint8_t present;
+    enum ps2_devtype type;
 };
 
 void ps2_init();

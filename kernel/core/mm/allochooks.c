@@ -31,43 +31,43 @@ static size_t free_base = 0;
 
 static size_t alloc_memblocks(size_t length)
 {
-	if(free_base + (length << 12) > heap_limit) return 0;
-	size_t retval = free_base;
-	bool errored = false;
+    if(free_base + (length << 12) > heap_limit) return 0;
+    size_t retval = free_base;
+    bool errored = false;
 
-	for(; length > 0; length--)
-	{
-		if(mmu_map(free_base) != 0)
-		{
-			errored = true;
-			break;
-		}
-		free_base += 0x1000;
-	}
+    for(; length > 0; length--)
+    {
+        if(mmu_map(free_base) != 0)
+        {
+            errored = true;
+            break;
+        }
+        free_base += 0x1000;
+    }
 
-	if(errored)
-	{
-		// Various places don't check for a null pointer, so just panic
-		kpanic("Could not allocate heap memory (Out of memory?)");
-	}
+    if(errored)
+    {
+        // Various places don't check for a null pointer, so just panic
+        kpanic("Could not allocate heap memory (Out of memory?)");
+    }
 
-	return retval;
+    return retval;
 }
 
 static void free_memblocks(size_t length)
 {
-	for(; length > 0 && free_base - (length << 12) > heap_base; length--)
-	{
-		mmu_unmap(free_base);
-		free_base -= 0x1000;
-	}
+    for(; length > 0 && free_base - (length << 12) > heap_base; length--)
+    {
+        mmu_unmap(free_base);
+        free_base -= 0x1000;
+    }
 }
 
 void heap_init()
 {
-	heap_base = (uint64_t) get_heap_info()->base;
-	heap_limit = (uint64_t) (get_heap_info()->length + heap_base);
-	free_base = heap_base;
+    heap_base = (uint64_t) get_heap_info()->base;
+    heap_limit = (uint64_t) (get_heap_info()->length + heap_base);
+    free_base = heap_base;
 }
 
 /** This function is supposed to lock the memory data structures. It
@@ -79,10 +79,10 @@ void heap_init()
  */
 int liballoc_lock()
 {
-	// TODO: Disable preemption
-	//preempt_disable();
-	hal_save_interrupts();
-	return 0;
+    // TODO: Disable preemption
+    //preempt_disable();
+    hal_save_interrupts();
+    return 0;
 }
 
 /** This function unlocks what was previously locked by the liballoc_lock
@@ -93,10 +93,10 @@ int liballoc_lock()
  */
 int liballoc_unlock()
 {
-	// TODO: Enable preemption
-	//preempt_enable();
-	hal_restore_interrupts();
-	return 0;
+    // TODO: Enable preemption
+    //preempt_enable();
+    hal_restore_interrupts();
+    return 0;
 }
 
 /** This is the hook into the local system which allocates pages. It
@@ -108,7 +108,7 @@ int liballoc_unlock()
  */
 void* liballoc_alloc(size_t num_pages)
 {
-	return (void*)alloc_memblocks(num_pages);
+    return (void*)alloc_memblocks(num_pages);
 }
 
 /** This frees previously allocated memory. The void* parameter passed
@@ -121,6 +121,6 @@ void* liballoc_alloc(size_t num_pages)
  */
 int liballoc_free(void* base, size_t num_pages)
 {
-	free_memblocks(num_pages);
-	return 0;
+    free_memblocks(num_pages);
+    return 0;
 }

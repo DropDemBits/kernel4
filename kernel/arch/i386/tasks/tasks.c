@@ -35,10 +35,10 @@ static uint32_t alloc_base = 0xE0080000;
 
 uint32_t alloc_address()
 {
-	alloc_base -= 0x1000; // 4KiB guard page
-	uint32_t retval = alloc_base;
-	alloc_base -= 0x4000; // 16KiB store
-	return retval;
+    alloc_base -= 0x1000; // 4KiB guard page
+    uint32_t retval = alloc_base;
+    alloc_base -= 0x4000; // 16KiB store
+    return retval;
 }
 
 /**
@@ -46,28 +46,28 @@ uint32_t alloc_address()
  */
 void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack)
 {
-	//thread->register_state.rsp = alloc_address();
-	thread->kernel_sp = (unsigned long)kernel_stack;
-	thread->kernel_stacktop = (unsigned long)kernel_stack;
+    //thread->register_state.rsp = alloc_address();
+    thread->kernel_sp = (unsigned long)kernel_stack;
+    thread->kernel_stacktop = (unsigned long)kernel_stack;
 
-	uint32_t* thread_stack = (uint32_t*)thread->kernel_sp;
+    uint32_t* thread_stack = (uint32_t*)thread->kernel_sp;
 
-	// IRET structure
-	*(--thread_stack) = 0x010;
-	*(--thread_stack) = thread->kernel_sp;
-	*(--thread_stack) = 0x202;
-	*(--thread_stack) = 0x008;
-	*(--thread_stack) = entry_point;
+    // IRET structure
+    *(--thread_stack) = 0x010;
+    *(--thread_stack) = thread->kernel_sp;
+    *(--thread_stack) = 0x202;
+    *(--thread_stack) = 0x008;
+    *(--thread_stack) = entry_point;
 
-	// Initialize Thread entry
-	*(--thread_stack) = __initialize_thread;
-	*(--thread_stack) = thread;
-	thread_stack -= 3;
+    // Initialize Thread entry
+    *(--thread_stack) = __initialize_thread;
+    *(--thread_stack) = thread;
+    thread_stack -= 3;
 
-	thread->kernel_sp = (uint32_t)thread_stack;
+    thread->kernel_sp = (uint32_t)thread_stack;
 }
 
 void cleanup_register_state(thread_t *thread)
 {
-	kfree(thread->kernel_stacktop - THREAD_STACK_SIZE);
+    kfree(thread->kernel_stacktop - THREAD_STACK_SIZE);
 }

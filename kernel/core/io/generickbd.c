@@ -45,137 +45,137 @@ static bool has_data = false;
 
 static void input_push(uint8_t keycode)
 {
-	if(write_head >= 4096) write_head = 0;
-	input_buffer[write_head++] = keycode;
+    if(write_head >= 4096) write_head = 0;
+    input_buffer[write_head++] = keycode;
 }
 
 static uint8_t input_pop()
 {
-	if(read_head == write_head) return 0;
-	else if(read_head >= 4096) read_head = 0;
-	return input_buffer[read_head++];
+    if(read_head == write_head) return 0;
+    else if(read_head >= 4096) read_head = 0;
+    return input_buffer[read_head++];
 }
 
 void kbd_init()
 {
-	charmap = default_charmap;
-	is_inited = true;
+    charmap = default_charmap;
+    is_inited = true;
 }
 
 void kbd_write(uint8_t keycode)
 {
-	has_data = true;
-	input_push(keycode);
+    has_data = true;
+    input_push(keycode);
 }
 
 uint8_t kbd_read()
 {
-	uint8_t keycode = 0;
+    uint8_t keycode = 0;
 
-	keycode = input_pop();
-	if(keycode == 0)
-	{
-		// We only block usermode-type threads, so remove this later
-		sched_sleep_ms(10);
-	}
-	return keycode;
+    keycode = input_pop();
+    if(keycode == 0)
+    {
+        // We only block usermode-type threads, so remove this later
+        sched_sleep_ms(10);
+    }
+    return keycode;
 }
 
 void kbd_setstate(uint8_t keycode, uint8_t state)
 {
-	key_states[keycode] = state;
+    key_states[keycode] = state;
 }
 
 uint8_t kbd_getstate(uint8_t keycode)
 {
-	return key_states[keycode];
+    return key_states[keycode];
 }
 
 void kbd_setmods(uint8_t modifiers)
 {
-	key_mods = modifiers;
+    key_mods = modifiers;
 }
 
 uint8_t kbd_getmods()
 {
-	return key_mods;
+    return key_mods;
 }
 
 void kbd_loadmap(key_mapping_t *mapping)
 {
-	charmap = mapping;
+    charmap = mapping;
 }
 
 bool kbd_handle_key(uint8_t keycode, bool released)
 {
-	if(!is_inited) return false;
+    if(!is_inited) return false;
 
-	uint8_t new_kmods = key_mods;
-	if(!released || keycode == KEY_PAUSE)
-	{
-		kbd_write(keycode);
-		if(kbd_getstate(keycode) == KEY_STATE_PRESSED)
-			kbd_setstate(keycode, KEY_STATE_REPEAT);
-		else
-			kbd_setstate(keycode, KEY_STATE_PRESSED);
+    uint8_t new_kmods = key_mods;
+    if(!released || keycode == KEY_PAUSE)
+    {
+        kbd_write(keycode);
+        if(kbd_getstate(keycode) == KEY_STATE_PRESSED)
+            kbd_setstate(keycode, KEY_STATE_REPEAT);
+        else
+            kbd_setstate(keycode, KEY_STATE_PRESSED);
 
-		if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
-			new_kmods |= MOD_SHIFT;
-		else if(keycode == KEY_CAPSLOCK && ((new_kmods & MOD_CAPS_LOCK) == 0))
-		{
-			new_kmods |= MOD_CAPS_LOCK;
-			caps_pressed = true;
-		}
-	} else if(released)
-	{
-		kbd_setstate(keycode, KEY_STATE_RELEASED);
+        if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
+            new_kmods |= MOD_SHIFT;
+        else if(keycode == KEY_CAPSLOCK && ((new_kmods & MOD_CAPS_LOCK) == 0))
+        {
+            new_kmods |= MOD_CAPS_LOCK;
+            caps_pressed = true;
+        }
+    } else if(released)
+    {
+        kbd_setstate(keycode, KEY_STATE_RELEASED);
 
-		if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
-			new_kmods &= ~MOD_SHIFT;
-		else if(keycode == KEY_CAPSLOCK && (new_kmods & MOD_CAPS_LOCK) && !caps_pressed)
-		{
-			new_kmods &= ~MOD_CAPS_LOCK;
-		}
-		else if(keycode == KEY_CAPSLOCK)
-			caps_pressed = false;
-	}
+        if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
+            new_kmods &= ~MOD_SHIFT;
+        else if(keycode == KEY_CAPSLOCK && (new_kmods & MOD_CAPS_LOCK) && !caps_pressed)
+        {
+            new_kmods &= ~MOD_CAPS_LOCK;
+        }
+        else if(keycode == KEY_CAPSLOCK)
+            caps_pressed = false;
+    }
 
-	bool update_mods = false;
-	if((new_kmods & 0x7) != (key_mods & 0x7))
-		update_mods = true;
+    bool update_mods = false;
+    if((new_kmods & 0x7) != (key_mods & 0x7))
+        update_mods = true;
 
-	kbd_setmods(new_kmods);
+    kbd_setmods(new_kmods);
 
-	return update_mods;
+    return update_mods;
 }
 
 char kbd_tochar(uint8_t keycode)
 {
-	if(keycode > KEY_KPDOT) return 0;
+    if(keycode > KEY_KPDOT) return 0;
 
-	if(keycode >= KEY_A && keycode <= KEY_Z)
-	{
-		if(key_mods & MOD_SHIFT && key_mods & MOD_CAPS_LOCK)
-			return charmap[keycode].normal_char;
-		else if(key_mods & MOD_SHIFT || key_mods & MOD_CAPS_LOCK)
-			return charmap[keycode].shift_char;
-		else
-			return charmap[keycode].normal_char;
-	} else
-	{
-		if(key_mods & MOD_SHIFT)
-			return charmap[keycode].shift_char;
-		else
-			return charmap[keycode].normal_char;
-	}
+    if(keycode >= KEY_A && keycode <= KEY_Z)
+    {
+        if(key_mods & MOD_SHIFT && key_mods & MOD_CAPS_LOCK)
+            return charmap[keycode].normal_char;
+        else if(key_mods & MOD_SHIFT || key_mods & MOD_CAPS_LOCK)
+            return charmap[keycode].shift_char;
+        else
+            return charmap[keycode].normal_char;
+    } else
+    {
+        if(key_mods & MOD_SHIFT)
+            return charmap[keycode].shift_char;
+        else
+            return charmap[keycode].normal_char;
+    }
 }
 
 uint8_t key_get_state(uint8_t keycode)
 {
-	if(keycode == KEY_PAUSE && key_states[keycode])
-	{
-		key_states[keycode] = KEY_STATE_RELEASED;
-		return KEY_STATE_PRESSED;
-	}
-	return key_states[keycode];
+    if(keycode == KEY_PAUSE && key_states[keycode])
+    {
+        key_states[keycode] = KEY_STATE_RELEASED;
+        return KEY_STATE_PRESSED;
+    }
+    return key_states[keycode];
 }

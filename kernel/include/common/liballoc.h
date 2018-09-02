@@ -17,10 +17,10 @@
 
 // If we are told to not define our own size_t, then we skip the define.
 //#define _HAVE_UINTPTR_T
-//typedef	unsigned long	uintptr_t;
+//typedef    unsigned long    uintptr_t;
 
 //This lets you prefix malloc and friends
-#define PREFIX(func)		k ## func
+#define PREFIX(func)        k ## func
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,10 +67,10 @@ extern int liballoc_free(void*,size_t);
 
 
 
-extern void    *PREFIX(malloc)(size_t);				///< The standard function.
-extern void    *PREFIX(realloc)(void *, size_t);	///< The standard function.
-extern void    *PREFIX(calloc)(size_t, size_t);		///< The standard function.
-extern void     PREFIX(free)(void *);				///< The standard function.
+extern void    *PREFIX(malloc)(size_t);                ///< The standard function.
+extern void    *PREFIX(realloc)(void *, size_t);    ///< The standard function.
+extern void    *PREFIX(calloc)(size_t, size_t);        ///< The standard function.
+extern void     PREFIX(free)(void *);                ///< The standard function.
 
 
 #ifdef __cplusplus

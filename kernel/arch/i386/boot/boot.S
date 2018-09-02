@@ -29,7 +29,7 @@
 #define MULTIBOOT2_ARCH     0
 #define MULTIBOOT2_LENGTH   (multiboot2_header_end - multiboot2_header_start)
 #define MULTIBOOT2_CHECKSUM -(MULTIBOOT2_MAGIC + MULTIBOOT2_ARCH + \
-	MULTIBOOT2_LENGTH)
+    MULTIBOOT2_LENGTH)
 
 # Framebuffer preferences
 #define FRAMEBUFFER_TYPE    0
@@ -40,139 +40,139 @@
 .set KERNEL_VIRTUAL_BASE, 0x80000000
 
 .section .multiboot, "awx"
-	# Multiboot2 Header
-	.align 8
+    # Multiboot2 Header
+    .align 8
 multiboot2_header_start:
-	.long MULTIBOOT2_MAGIC
-	.long MULTIBOOT2_ARCH
-	.long MULTIBOOT2_LENGTH
-	.long MULTIBOOT2_CHECKSUM
+    .long MULTIBOOT2_MAGIC
+    .long MULTIBOOT2_ARCH
+    .long MULTIBOOT2_LENGTH
+    .long MULTIBOOT2_CHECKSUM
 
-	# Multiboot2 Tags
+    # Multiboot2 Tags
 
-	# Request Tags
-	tag1_start:
-	.word 1
-	.word 0x0000
-	.long tag1_end - tag1_start
-	.long 0x00000004 # Basic Meminfo
-	.long 0x00000006 # MMap
-	.long 0x00000008 # Framebuffer
-	tag1_end:
+    # Request Tags
+    tag1_start:
+    .word 1
+    .word 0x0000
+    .long tag1_end - tag1_start
+    .long 0x00000004 # Basic Meminfo
+    .long 0x00000006 # MMap
+    .long 0x00000008 # Framebuffer
+    tag1_end:
 
-	.long 0 # Same as .align 8
-	tag5_start:
-	.word 5 # Frambuffer
-	.word 0x0001
-	.long tag5_end - tag5_start
-	.long FRAMEBUFFER_WIDTH
-	.long FRAMEBUFFER_HEIGHT
-	.long FRAMEBUFFER_BPP
-	tag5_end:
+    .long 0 # Same as .align 8
+    tag5_start:
+    .word 5 # Frambuffer
+    .word 0x0001
+    .long tag5_end - tag5_start
+    .long FRAMEBUFFER_WIDTH
+    .long FRAMEBUFFER_HEIGHT
+    .long FRAMEBUFFER_BPP
+    tag5_end:
 
-	.long 0 # Same as .align 8
-	tag6_start:
-	.word 6 # Align modules to page boundaries
-	.word 0x0000
-	.long tag6_end - tag6_start
-	tag6_end:
+    .long 0 # Same as .align 8
+    tag6_start:
+    .word 6 # Align modules to page boundaries
+    .word 0x0000
+    .long tag6_end - tag6_start
+    tag6_end:
 
-	.align 8
-	# End Of Header
-	.long 0, 8
+    .align 8
+    # End Of Header
+    .long 0, 8
 multiboot2_header_end:
-	.align 4
-	# Multiboot Header
-	.long MULTIBOOT_MAGIC
-	.long MULTIBOOT_FLAGS
-	.long MULTIBOOT_CHECKSUM
+    .align 4
+    # Multiboot Header
+    .long MULTIBOOT_MAGIC
+    .long MULTIBOOT_FLAGS
+    .long MULTIBOOT_CHECKSUM
 
-	# Addresses (Unused)
-	.long 0
-	.long 0
-	.long 0
-	.long 0
-	.long 0
+    # Addresses (Unused)
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
 
-	# Framebuffer Preferences
-	.long FRAMEBUFFER_TYPE
-	.long FRAMEBUFFER_WIDTH
-	.long FRAMEBUFFER_HEIGHT
-	.long FRAMEBUFFER_BPP
+    # Framebuffer Preferences
+    .long FRAMEBUFFER_TYPE
+    .long FRAMEBUFFER_WIDTH
+    .long FRAMEBUFFER_HEIGHT
+    .long FRAMEBUFFER_BPP
 
 .section .bss
-	.align 4096
+    .align 4096
 bootstrap_pd:
-	.skip 4096
+    .skip 4096
 bootstrap_pt0:
-	.skip 4096
+    .skip 4096
 bootstrap_pt1:
-	.skip 4096
+    .skip 4096
 
 bootstack_bottom:
-	.skip 16384 # 16KiB
+    .skip 16384 # 16KiB
 bootstack_top:
 .global bootstack_top
 
 .section .data
-	.align 4096
-	# GDT32
+    .align 4096
+    # GDT32
 gdt_begin:
-	.long 0, 0
-	# R0 Code32 Descriptor
-	.word 0xFFFF, 0x0000
-	.byte 0x00
-	.byte 0b10011010
-	.byte 0b11001111
-	.byte 0x00
-	# R0 Data32 Descriptor
-	.word 0xFFFF, 0x0000
-	.byte 0x00
-	.byte 0b10010010
-	.byte 0b11001111
-	.byte 0x00
-	# R3 Code32 Descriptor
-	.word 0xFFFF, 0x0000
-	.byte 0x00
-	.byte 0b11111110
-	.byte 0b11001111
-	.byte 0x00
-	# R3 Data32 Descriptor
-	.word 0xFFFF, 0x0000
-	.byte 0x00
-	.byte 0b11110010
-	.byte 0b11001111
-	.byte 0x00
+    .long 0, 0
+    # R0 Code32 Descriptor
+    .word 0xFFFF, 0x0000
+    .byte 0x00
+    .byte 0b10011010
+    .byte 0b11001111
+    .byte 0x00
+    # R0 Data32 Descriptor
+    .word 0xFFFF, 0x0000
+    .byte 0x00
+    .byte 0b10010010
+    .byte 0b11001111
+    .byte 0x00
+    # R3 Code32 Descriptor
+    .word 0xFFFF, 0x0000
+    .byte 0x00
+    .byte 0b11111110
+    .byte 0b11001111
+    .byte 0x00
+    # R3 Data32 Descriptor
+    .word 0xFFFF, 0x0000
+    .byte 0x00
+    .byte 0b11110010
+    .byte 0b11001111
+    .byte 0x00
 tss_descriptor:
-	# TSS32 Descriptor
-	.word 0x67
-	.word 0 # Base to set
-	.byte 0 # Base to set
-	.byte 0b10001001
-	.byte 0b10000000
-	.byte 0 # Base to set
+    # TSS32 Descriptor
+    .word 0x67
+    .word 0 # Base to set
+    .byte 0 # Base to set
+    .byte 0b10001001
+    .byte 0b10000000
+    .byte 0 # Base to set
 
 gdt_end:
-	.align 4096
+    .align 4096
 idt_table:
-	.skip (8*256)
+    .skip (8*256)
 idt_end:
 .global idt_table
 
 gdtr:
-	.word (gdt_end - gdt_begin)
-	.long gdt_begin
+    .word (gdt_end - gdt_begin)
+    .long gdt_begin
 idtr:
-	.word (idt_end - idt_table)
-	.long idt_table
+    .word (idt_end - idt_table)
+    .long idt_table
 
 .global tss_begin
 tss_begin:
-	.word 0 # Previous task link
-	.word 0
-	.long bootstack_bottom # ESP0
-	.long 0x10 # SS0
-	.skip 4*23
+    .word 0 # Previous task link
+    .word 0
+    .long bootstack_bottom # ESP0
+    .long 0x10 # SS0
+    .skip 4*23
 tss_end:
 
 .section .text
@@ -182,103 +182,103 @@ tss_end:
 .extern kernel_start, kernel_end, kmain, setup_idt
 .extern multiboot_ptr, multiboot_magic
 _start:
-	cli
+    cli
 
-	# Setup paging
-	movl $0, %esi                                      # Phyiscal Address
-	movl $0, %edx                                      # Scratch
-	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE), %edi  # PTE
-	movl $4096, %ecx                                   # Map 4096 Pages
+    # Setup paging
+    movl $0, %esi                                      # Phyiscal Address
+    movl $0, %edx                                      # Scratch
+    movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE), %edi  # PTE
+    movl $4096, %ecx                                   # Map 4096 Pages
 
 begin:
-	#cmp $(kernel_start - KERNEL_VIRTUAL_BASE), %esi
-	#jl skip
-	cmp $(kernel_end - KERNEL_VIRTUAL_BASE + 0x8000), %esi
-	jg done
-	cmp $(rodata_end - KERNEL_VIRTUAL_BASE), %esi
-	jle ro
+    #cmp $(kernel_start - KERNEL_VIRTUAL_BASE), %esi
+    #jl skip
+    cmp $(kernel_end - KERNEL_VIRTUAL_BASE + 0x8000), %esi
+    jg done
+    cmp $(rodata_end - KERNEL_VIRTUAL_BASE), %esi
+    jle ro
 
-	# Read/Write Page
-	movl %esi, %edx
-	orl $0x003, %edx
-	movl %edx, (%edi)
-	jmp skip
+    # Read/Write Page
+    movl %esi, %edx
+    orl $0x003, %edx
+    movl %edx, (%edi)
+    jmp skip
 ro:
-	# Read Only Page
-	movl %esi, %edx
-	orl $0x001, %edx
-	movl %edx, (%edi)
+    # Read Only Page
+    movl %esi, %edx
+    orl $0x001, %edx
+    movl %edx, (%edi)
 skip:
-	addl $0x1000, %esi
-	addl $4, %edi
-	loop begin
+    addl $0x1000, %esi
+    addl $4, %edi
+    loop begin
 done:
-	# Identity (Just map the first 8 MiB, the specialized tables are really only needed for the kernel pages)
-	movl $(0x00000000 + 0x083), bootstrap_pd - KERNEL_VIRTUAL_BASE + 0
-	movl $(0x00400000 + 0x083), bootstrap_pd - KERNEL_VIRTUAL_BASE + 4
+    # Identity (Just map the first 8 MiB, the specialized tables are really only needed for the kernel pages)
+    movl $(0x00000000 + 0x083), bootstrap_pd - KERNEL_VIRTUAL_BASE + 0
+    movl $(0x00400000 + 0x083), bootstrap_pd - KERNEL_VIRTUAL_BASE + 4
 
-	# HH
-	movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 0
-	movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 4
+    # HH
+    movl $(bootstrap_pt0 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 0
+    movl $(bootstrap_pt1 - KERNEL_VIRTUAL_BASE + 0x003), bootstrap_pd - KERNEL_VIRTUAL_BASE + (KERNEL_VIRTUAL_BASE >> 20) + 4
 
-	# Recursive mapping
-	movl $(bootstrap_pd - KERNEL_VIRTUAL_BASE + 0x003), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xffc)
+    # Recursive mapping
+    movl $(bootstrap_pd - KERNEL_VIRTUAL_BASE + 0x003), (bootstrap_pd - KERNEL_VIRTUAL_BASE + 0xffc)
 
-	movl %cr4, %edx
-	orl $0x00000090, %edx # PGE, PSE
-	movl %edx, %cr4
+    movl %cr4, %edx
+    orl $0x00000090, %edx # PGE, PSE
+    movl %edx, %cr4
 
-	movl $(bootstrap_pd - KERNEL_VIRTUAL_BASE), %edx
-	movl %edx, %cr3
+    movl $(bootstrap_pd - KERNEL_VIRTUAL_BASE), %edx
+    movl %edx, %cr3
 
-	movl %cr0, %edx
-	orl $0x80000000, %edx # Paging
-	movl %edx, %cr0
+    movl %cr0, %edx
+    orl $0x80000000, %edx # Paging
+    movl %edx, %cr0
 
-	leal cont, %edx
+    leal cont, %edx
 
-	jmp *%edx
+    jmp *%edx
 
 cont:
-	# Fixup TSS Descriptor
-	movl $tss_begin, %edx
-	movl $tss_descriptor, %edi
-	movw %dx, 2(%edi)
-	shrl $16, %edx
-	movb %dl, 4(%edi)
-	movb %dh, 7(%edi)
+    # Fixup TSS Descriptor
+    movl $tss_begin, %edx
+    movl $tss_descriptor, %edi
+    movw %dx, 2(%edi)
+    shrl $16, %edx
+    movb %dl, 4(%edi)
+    movb %dh, 7(%edi)
 
-	# Load GDT
-	lgdt (gdtr)
+    # Load GDT
+    lgdt (gdtr)
 
-	# Load TSS
-	movl $0x28, %edx
-	ltr %dx
+    # Load TSS
+    movl $0x28, %edx
+    ltr %dx
 
-	mov $0x10, %dx
-	mov %dx, %ds
-	mov %dx, %ss
-	# Setup stack
-	movl $bootstack_bottom, %esp
-	subl $10*4, %esp
-	mov %dx, %es
-	mov %dx, %fs
-	mov %dx, %gs
-	ljmp $0x8, $flush_cs
+    mov $0x10, %dx
+    mov %dx, %ds
+    mov %dx, %ss
+    # Setup stack
+    movl $bootstack_bottom, %esp
+    subl $10*4, %esp
+    mov %dx, %es
+    mov %dx, %fs
+    mov %dx, %gs
+    ljmp $0x8, $flush_cs
 flush_cs:
 
-	# Set multiboot pointer
-	movl %eax, (multiboot_magic)
-	movl %ebx, (multiboot_ptr)
+    # Set multiboot pointer
+    movl %eax, (multiboot_magic)
+    movl %ebx, (multiboot_ptr)
 
-	# Load IDTR
-	lidt (idtr)
-	call setup_idt
+    # Load IDTR
+    lidt (idtr)
+    call setup_idt
 
-	jmp kmain
+    jmp kmain
 
 .code32
 halt:
-	cli
-	hlt
-	jmp halt
+    cli
+    hlt
+    jmp halt

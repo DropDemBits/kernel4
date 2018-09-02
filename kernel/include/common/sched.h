@@ -25,8 +25,8 @@
 
 struct thread_queue
 {
-	thread_t *queue_head;
-	thread_t *queue_tail;
+    thread_t *queue_head;
+    thread_t *queue_tail;
 };
 
 void sched_init();

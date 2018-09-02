@@ -30,49 +30,49 @@
  */
 .global switch_stack
 switch_stack:
-	push %rbp
-	push %rbx
-	push %r12
-	push %r13
-	push %r14
-	push %r15
+    push %rbp
+    push %rbx
+    push %r12
+    push %r13
+    push %r14
+    push %r15
 
-	movq %rdx, %r11
+    movq %rdx, %r11
 
-	# Update KRSP in old thread
-	movq $0xFFFFDEAD00000000, %rax
-	cmpq %rax, %rsi
-	jz 1f
-	movq %rsp, 2*8(%rsi)
+    # Update KRSP in old thread
+    movq $0xFFFFDEAD00000000, %rax
+    cmpq %rax, %rsi
+    jz 1f
+    movq %rsp, 2*8(%rsi)
 1:
-	# Skip stack change (if needed)
-	cmpq %rax, %rdi
-	jz 3f
+    # Skip stack change (if needed)
+    cmpq %rax, %rdi
+    jz 3f
 
-	# Update RSP0
-	movabsq $tss_begin, %rdx
-	movq 2*8(%rdi), %rdi	# KESP
-	movq %rdi, 4(%rdx)		# RSP0
+    # Update RSP0
+    movabsq $tss_begin, %rdx
+    movq 2*8(%rdi), %rdi    # KESP
+    movq %rdi, 4(%rdx)        # RSP0
 
-	# Change CR3 (if needed)
-	movq 0(%r11), %r11		# Get New CR3
-	movq %cr3, %rdx
-	cmpq %rdx, %r11			# Going back to old CR3?
-	jz 2f
+    # Change CR3 (if needed)
+    movq 0(%r11), %r11        # Get New CR3
+    movq %cr3, %rdx
+    cmpq %rdx, %r11            # Going back to old CR3?
+    jz 2f
 
-	movq %r11, %cr3			# Change CR3 to new context
+    movq %r11, %cr3            # Change CR3 to new context
 2:
-	# Change stack
-	movq %rdi, %rsp
+    # Change stack
+    movq %rdi, %rsp
 3:
-	popq %r15
-	popq %r14
-	popq %r13
-	popq %r12
-	popq %rbx
-	popq %rbp
-	xorq %rax, %rax
-	ret
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    popq %rbx
+    popq %rbp
+    xorq %rax, %rax
+    ret
 
 /**
  * Entry point of a new thread.
@@ -85,22 +85,22 @@ switch_stack:
 .extern initialize_thread
 .global __initialize_thread
 __initialize_thread:
-	movq %rbp, %rdi
-	call initialize_thread
+    movq %rbp, %rdi
+    call initialize_thread
 
-	# Cleanup registers
-	xor %rbp, %rbp
-	xor %r11, %r11
-	xor %r10, %r10
-	xor %r9, %r9
-	xor %r8, %r8
-	xor %rdi, %rdi
-	xor %rsi, %rsi
-	xor %rax, %rax
-	xor %rdx, %rdx
-	xor %rcx, %rcx
+    # Cleanup registers
+    xor %rbp, %rbp
+    xor %r11, %r11
+    xor %r10, %r10
+    xor %r9, %r9
+    xor %r8, %r8
+    xor %rdi, %rdi
+    xor %rsi, %rsi
+    xor %rax, %rax
+    xor %rdx, %rdx
+    xor %rcx, %rcx
 
-	iretq
+    iretq
 
 /**
  * Enters Ring 3.
@@ -111,43 +111,43 @@ __initialize_thread:
  */
 .global enter_usermode
 enter_usermode:
-	xchg %bx, %bx
-	movq 2*8(%rdi), %rdi	# TCB->KRSP
-	movq %rdi, %r11			# Store KRSP
+    xchg %bx, %bx
+    movq 2*8(%rdi), %rdi    # TCB->KRSP
+    movq %rdi, %r11            # Store KRSP
 
-	# Update RSP0
-	movq %rsp, %rdi
-	addq $8, %rdi			# Exclude return address
-	movq %rdi, 0(%r11)		# Update KRSP
-	call set_rsp0
+    # Update RSP0
+    movq %rsp, %rdi
+    addq $8, %rdi            # Exclude return address
+    movq %rdi, 0(%r11)        # Update KRSP
+    call set_rsp0
 
-	# Construct IRET Stack
-	# 0x1B = R3 Code, 0x23 = R3 Data
+    # Construct IRET Stack
+    # 0x1B = R3 Code, 0x23 = R3 Data
 
-	push $0x23 # SS
-	push 8(%r11) # CPL3_RSP
+    push $0x23 # SS
+    push 8(%r11) # CPL3_RSP
 
-	pushf # RFLAGS
-	push $0x1B # CS
-	push %rsi # RIP
+    pushf # RFLAGS
+    push $0x1B # CS
+    push %rsi # RIP
 
-	# Cleanup Registers
-	xor %r15, %r15
-	xor %r14, %r14
-	xor %r13, %r13
-	xor %r12, %r12
-	xor %r11, %r11
-	xor %r10, %r10
-	xor %r9, %r9
-	xor %r8, %r8
-	xor %rbp, %rbp
-	xor %rdi, %rdi
-	xor %rsi, %rsi
-	xor %rdx, %rdx
-	xor %rcx, %rcx
-	xor %rbx, %rbx
-	xor %rax, %rax
-	iretq
+    # Cleanup Registers
+    xor %r15, %r15
+    xor %r14, %r14
+    xor %r13, %r13
+    xor %r12, %r12
+    xor %r11, %r11
+    xor %r10, %r10
+    xor %r9, %r9
+    xor %r8, %r8
+    xor %rbp, %rbp
+    xor %rdi, %rdi
+    xor %rsi, %rsi
+    xor %rdx, %rdx
+    xor %rcx, %rcx
+    xor %rbx, %rbx
+    xor %rax, %rax
+    iretq
 
 .extern tss_begin
 .global set_rsp0
@@ -159,33 +159,33 @@ enter_usermode:
  * RDI: new RSP value
  */
 set_rsp0:
-	movabsq $tss_begin, %rdx
-	movq %rdi, 4(%rdx)
-	ret
+    movabsq $tss_begin, %rdx
+    movq %rdi, 4(%rdx)
+    ret
 
 .global usermode_code
 usermode_code:
 
-	# Print out test string
-	xor %rax, %rax
-	movq $1, %rax
-	movq $(strval - usermode_code + 0x400000), %rbx
-	int $0x80
+    # Print out test string
+    xor %rax, %rax
+    movq $1, %rax
+    movq $(strval - usermode_code + 0x400000), %rbx
+    int $0x80
 
-	# Sleep for 1 second
-	xor %rax, %rax
-	movq $2, %rax
-	movq $1000, %rbx
-	int $0x80
+    # Sleep for 1 second
+    xor %rax, %rax
+    movq $2, %rax
+    movq $1000, %rbx
+    int $0x80
 
-	xor %rax, %rax
-	int $0x80
-	jmp usermode_code
+    xor %rax, %rax
+    int $0x80
+    jmp usermode_code
 
 strval:
-	.asciz "Hello World! "
+    .asciz "Hello World! "
 endcode:
-	.skip 4096 - (endcode - usermode_code)
+    .skip 4096 - (endcode - usermode_code)
 
 /**
  * Sets up the kernel stack of a thread.
@@ -202,41 +202,41 @@ endcode:
  */
 .global setup_kernel_stack
 setup_kernel_stack:
-	push %rbp
+    push %rbp
 
-	# From here on out, no one should use the stack
+    # From here on out, no one should use the stack
 
-	movq %cr3, %rax   # RAX contains current CR3
-	movq (%rdi), %rdi # RDI contains new CR3
+    movq %cr3, %rax   # RAX contains current CR3
+    movq (%rdi), %rdi # RDI contains new CR3
 
-	cmp %rax, %rdi
-	jz 1f
-	movq %rdi, %cr3
+    cmp %rax, %rdi
+    jz 1f
+    movq %rdi, %cr3
 
 1:
-	# Initialize stack
-	movq %rcx, %rbp
-	#subq $7*8, %rbp				# Set stack to correct level
+    # Initialize stack
+    movq %rcx, %rbp
+    #subq $7*8, %rbp                # Set stack to correct level
 
-	movabsq $initialize_thread, %r9
-	movq   %rsi, -7*8(%rbp)		# New thread RBP (thread block pointer)
-	movq    %r9, -6*8(%rbp)		# Return ip for switch_stack
+    movabsq $initialize_thread, %r9
+    movq   %rsi, -7*8(%rbp)        # New thread RBP (thread block pointer)
+    movq    %r9, -6*8(%rbp)        # Return ip for switch_stack
 
-	movq   %rdx, -5*8(%rbp)		# RIP
-	movq $0x008, -4*8(%rbp)		# CS
-	movq $0x202, -3*8(%rbp)		# EFLAGS
-	movq   %rcx, -2*8(%rbp)		# New RSP
-	movq $0x000, -1*8(%rbp)		# SS
+    movq   %rdx, -5*8(%rbp)        # RIP
+    movq $0x008, -4*8(%rbp)        # CS
+    movq $0x202, -3*8(%rbp)        # EFLAGS
+    movq   %rcx, -2*8(%rbp)        # New RSP
+    movq $0x000, -1*8(%rbp)        # SS
 
 
-	# Restore old CR3
-	xchg %rax, %rdi
-	cmp %rax, %rdi
-	jz 2f
-	movq %rdi, %cr3
+    # Restore old CR3
+    xchg %rax, %rdi
+    cmp %rax, %rdi
+    jz 2f
+    movq %rdi, %cr3
 
 2:
-	popq %rbp
+    popq %rbp
 
-	movq $12*8, %rax		# Subtract stack by this much
-	ret
+    movq $12*8, %rax        # Subtract stack by this much
+    ret

@@ -4,23 +4,23 @@
 #define __TTY_H__
 
 enum OutputType {
-	VGA_CONSOLE = 0,
-	FB_CONSOLE = 1,
-	SERIAL = 2,
+    VGA_CONSOLE = 0,
+    FB_CONSOLE = 1,
+    SERIAL = 2,
 };
 
 typedef struct {
-	uint8_t fg_colour : 4;
-	uint8_t bg_colour : 4;
+    uint8_t fg_colour : 4;
+    uint8_t bg_colour : 4;
 } tty_colour_t;
 
 typedef struct {
-	tty_colour_t colour;
-	char actual_char;
+    tty_colour_t colour;
+    char actual_char;
 } tty_char_t;
 
 typedef struct {
-	size_t base;
+    size_t base;
 } tty_device_t;
 
 void tty_init();

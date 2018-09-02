@@ -29,9 +29,9 @@
 
 typedef struct
 {
-	char normal_char;
-	char shift_char;
-	char altgr_char;
+    char normal_char;
+    char shift_char;
+    char altgr_char;
 } key_mapping_t;
 
 void kbd_init();

@@ -55,100 +55,100 @@
 
 uint16_t pic_read_irr()
 {
-	uint16_t irr = 0;
-	outb(PIC1_CMD, OCW3_WREN | OCW3_RREG);
-	irr |= inb(PIC1_CMD);
-	outb(PIC2_CMD, OCW3_WREN | OCW3_RREG);
-	irr |= inb(PIC2_CMD) << 8;
-	return irr;
+    uint16_t irr = 0;
+    outb(PIC1_CMD, OCW3_WREN | OCW3_RREG);
+    irr |= inb(PIC1_CMD);
+    outb(PIC2_CMD, OCW3_WREN | OCW3_RREG);
+    irr |= inb(PIC2_CMD) << 8;
+    return irr;
 }
 
 void pic_init()
 {
-	// Save Masks
-	uint8_t mask_a = inb(PIC1_DATA);
-	uint8_t mask_b = inb(PIC2_DATA);
+    // Save Masks
+    uint8_t mask_a = inb(PIC1_DATA);
+    uint8_t mask_b = inb(PIC2_DATA);
 
-	// (ICW1) Init PICS
-	outb(PIC1_CMD, ICW1_INIT | ICW1_IC4);
-	io_wait();
-	outb(PIC2_CMD, ICW1_INIT | ICW1_IC4);
-	io_wait();
+    // (ICW1) Init PICS
+    outb(PIC1_CMD, ICW1_INIT | ICW1_IC4);
+    io_wait();
+    outb(PIC2_CMD, ICW1_INIT | ICW1_IC4);
+    io_wait();
 
-	// (ICW2) Set vector bases
-	outb(PIC1_DATA, 0x20);
-	io_wait();
-	outb(PIC2_DATA, 0x28);
-	io_wait();
+    // (ICW2) Set vector bases
+    outb(PIC1_DATA, 0x20);
+    io_wait();
+    outb(PIC2_DATA, 0x28);
+    io_wait();
 
-	// (ICW3) Cascade Setup
-	outb(PIC1_DATA, 0b00000100);
-	io_wait();
-	outb(PIC2_DATA, 0x02);
-	io_wait();
+    // (ICW3) Cascade Setup
+    outb(PIC1_DATA, 0b00000100);
+    io_wait();
+    outb(PIC2_DATA, 0x02);
+    io_wait();
 
-	// (ICW4) 8086 Mode
-	// Do we need AEOI?
-	outb(PIC1_DATA, ICW4_MPM);
-	io_wait();
-	outb(PIC2_DATA, ICW4_MPM);
-	io_wait();
+    // (ICW4) 8086 Mode
+    // Do we need AEOI?
+    outb(PIC1_DATA, ICW4_MPM);
+    io_wait();
+    outb(PIC2_DATA, ICW4_MPM);
+    io_wait();
 
-	// Restore Masks
-	outb(PIC1_DATA, mask_a);
-	outb(PIC2_DATA, mask_b);
+    // Restore Masks
+    outb(PIC1_DATA, mask_a);
+    outb(PIC2_DATA, mask_b);
 }
 
 void pic_mask(uint8_t irq)
 {
-	uint8_t port;
-	if(irq >= 8)
-	{
-		port = PIC2_DATA;
-		irq -= 8;
-	} else
-	{
-		port = PIC1_DATA;
-	}
+    uint8_t port;
+    if(irq >= 8)
+    {
+        port = PIC2_DATA;
+        irq -= 8;
+    } else
+    {
+        port = PIC1_DATA;
+    }
 
-	uint8_t mask = inb(port) | (1 << irq);
-	outb(port, mask);
+    uint8_t mask = inb(port) | (1 << irq);
+    outb(port, mask);
 }
 
 void pic_unmask(uint8_t irq)
 {
-	uint8_t port;
-	if(irq >= 8)
-	{
-		port = PIC2_DATA;
-		irq -= 8;
-	} else
-	{
-		port = PIC1_DATA;
-	}
+    uint8_t port;
+    if(irq >= 8)
+    {
+        port = PIC2_DATA;
+        irq -= 8;
+    } else
+    {
+        port = PIC1_DATA;
+    }
 
-	uint8_t mask = inb(port) & ~(1 << irq);
-	outb(port, mask);
+    uint8_t mask = inb(port) & ~(1 << irq);
+    outb(port, mask);
 }
 
 bool pic_check_spurious(uint8_t irq)
 {
-	if(irq != 7 && irq != 15) return false;
-	uint16_t irr = pic_read_irr();
+    if(irq != 7 && irq != 15) return false;
+    uint16_t irr = pic_read_irr();
 
-	if(irq == 7  && ~(irr & 0x08))
-	{
-		return true;
-	} else if(irq == 15 && ~(irr & 0x80))
-	{
-		outb(PIC1_CMD, OCW2_EOI);
-		return true;
-	}
-	return false;
+    if(irq == 7  && ~(irr & 0x08))
+    {
+        return true;
+    } else if(irq == 15 && ~(irr & 0x80))
+    {
+        outb(PIC1_CMD, OCW2_EOI);
+        return true;
+    }
+    return false;
 }
 
 void pic_eoi(uint8_t irq)
 {
-	if(irq >= 8) outb(PIC2_CMD, OCW2_EOI);
-	outb(PIC1_CMD, OCW2_EOI);
+    if(irq >= 8) outb(PIC2_CMD, OCW2_EOI);
+    outb(PIC1_CMD, OCW2_EOI);
 }

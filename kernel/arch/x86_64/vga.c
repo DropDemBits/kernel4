@@ -22,5 +22,5 @@
 
 void* get_fb_address()
 {
-	return (void*) 0xFFFFE00000000000;
+    return (void*) 0xFFFFE00000000000;
 }
