@@ -65,6 +65,11 @@ void semaphore_release(semaphore_t* semapore)
     taskswitch_enable();
 }
 
+bool semaphore_can_acquire(semaphore_t* semaphore)
+{
+    return semaphore->count < semaphore->max_count;
+}
+
 mutex_t* mutex_create()
 {
     return semaphore_create(1);
@@ -83,4 +88,10 @@ void mutex_acquire(mutex_t* mutex)
 void mutex_release(mutex_t* mutex)
 {
     semaphore_release(mutex);
+}
+
+bool mutex_can_acquire(mutex_t* mutex)
+{
+    // Simplifies to the inverted count
+    return !mutex->count;
 }

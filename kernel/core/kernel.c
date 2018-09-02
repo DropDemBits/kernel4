@@ -67,7 +67,6 @@ void usermode_entry()
     while(1);
 }
 
-extern unsigned long long ticks_since_boot;
 extern unsigned long long tswp_counter;
 extern struct thread_queue run_queue;
 void info_display()
@@ -142,7 +141,7 @@ void info_display()
 
         tswp_counter = 0;
 
-        ulltoa(ticks_since_boot / 1000000, buf, 10);
+        ulltoa(timer_read_counter(0) / 1000000, buf, 10);
 
         for(int i = 0; i < strlen(buf); i++)
         {
@@ -197,20 +196,20 @@ void kmain()
 
     tty_prints("Initialising HAL\n");
     hal_init();
-    hal_enable_interrupts();
     
     // Resume init in other thread
     tty_prints("Starting up threads for init\n");
     tasks_init("init", (void*)core_fini);
     thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread");
 
-    // Scheduler is initialized after tasks as it uses the init_process structure
+    // sched_init depends on init_process
     tty_prints("Initialising Scheduler\n");
     sched_init();
 
     sched_print_queues();
     tty_reshow();
 
+    hal_enable_interrupts();
     while(1)
     {
         sched_lock();

@@ -18,13 +18,13 @@
  * 
  */
 
+#include <common/locks.h>
 #include <common/types.h>
 
 #ifndef __HAL_H__
 #define __HAL_H__ 1
 
-#define TM_MODE_INTERVAL 1
-#define TM_MODE_ONESHOT  2
+typedef void (*timer_handler_t)(struct timer_dev* dev);
 
 struct intr_stack;
 
@@ -32,6 +32,29 @@ struct heap_info
 {
     size_t base;
     size_t length;
+};
+
+enum timer_type
+{
+    PERIODIC,
+    ONESHOT,
+};
+
+struct timer_handler_node
+{
+    struct timer_handler_node* next;
+    timer_handler_t handler;
+};
+
+struct timer_dev
+{
+    // These two need to be updated by the timer itself
+    uint64_t resolution;        // Resolution of the timer, in nanos
+    uint64_t counter;           // Current count of the timer, in nanos
+
+    // These two are managed by the HAL layer
+    unsigned long id;
+    struct timer_handler_node* list_head;
 };
 
 void hal_init();
@@ -42,6 +65,14 @@ void hal_restore_interrupts();
 void busy_wait();
 void intr_wait();
 
+unsigned long timer_add(struct timer_dev* device, enum timer_type type);
+void timer_set_default(unsigned long id);
+// For the timer related interfaces, passing an id of zero means the default counter
+void timer_add_handler(unsigned long id, timer_handler_t handler_function);
+void timer_broadcast_update(unsigned long id);
+uint64_t timer_read_counter(unsigned long id);
+
+// Deprecated interface
 void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode);
 void timer_reset_counter(uint16_t id);
 void timer_set_counter(uint16_t id, uint16_t frequency);

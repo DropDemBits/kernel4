@@ -56,11 +56,6 @@ static bool taskswitch_postponed = false;
 static bool is_idle = false;
 static bool preempt_enabled = false;
 
-// To be moved into the generic timer code
-// 1000000000 / (1193181 / 1000)
-#define TIMER_RESOLUTION (838222)
-unsigned long long ticks_since_boot = 0;
-
 static struct thread_queue thread_queues[PRIORITY_COUNT];
 static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
@@ -85,13 +80,10 @@ static unsigned int get_timeslice(enum thread_priority priority)
     }
 }
 
-static void sched_timer()
+static void sched_timer(struct timer_dev* dev)
 {
-    // We may not return to this thing here before we exit, so eoi early.
-    ic_eoi(0);
-
     taskswitch_disable();
-    ticks_since_boot += TIMER_RESOLUTION;
+    uint64_t now = dev->counter;
 
     // Iterate through the sleep stack
     thread_t* current_node = KNULL;
@@ -104,7 +96,7 @@ static void sched_timer()
         current_node = next_node;
         next_node = current_node->next;
 
-        if(ticks_since_boot >= current_node->sleep_until)
+        if(now >= current_node->sleep_until)
         {
             // Don't pull the entire sleep queue along with us
             current_node->next = KNULL;
@@ -123,10 +115,10 @@ static void sched_timer()
     {
         // There is a time quanta (as we can't achieve a 1 ns timer resolution)
 
-        if(current_timeslice <= TIMER_RESOLUTION)
+        if(current_timeslice <= dev->resolution)
             sched_switch_thread();
         else
-            current_timeslice -= TIMER_RESOLUTION;
+            current_timeslice -= dev->resolution;
     }
 
     taskswitch_enable();
@@ -207,14 +199,15 @@ void sched_init()
     if(run_queue.queue_head != KNULL)
         cleanup_thread = thread_create(run_queue.queue_head->parent, cleanup_task, PRIORITY_LOW, "cleanup_task");
 
-    irq_add_handler(0, sched_timer);
+    timer_add_handler(0, sched_timer);
 }
 
 void sched_sleep_until(uint64_t when)
 {
     taskswitch_disable();
 
-    if(when < ticks_since_boot)
+    uint64_t now = timer_read_counter(0);
+    if(when < now)
     {
         // Only enable the scheduler in order to not fire scheduling
         sched_unlock();
@@ -234,7 +227,8 @@ void sched_sleep_until(uint64_t when)
 
 void sched_sleep_ns(uint64_t ns)
 {
-    sched_sleep_until(ticks_since_boot + ns);
+    uint64_t now = timer_read_counter(0);
+    sched_sleep_until(now + ns);
 }
 
 void sched_sleep_ms(uint64_t ms)
