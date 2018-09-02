@@ -30,7 +30,6 @@ struct thread_queue
 };
 
 void sched_init();
-void sched_gc();
 void sched_queue_thread(thread_t *thread);
 void sched_setidle(thread_t* thread);
 void sched_switch_thread();
@@ -39,6 +38,7 @@ void sched_unblock_thread(thread_t *thread);
 void sched_sleep_until(uint64_t when);
 void sched_sleep_ns(uint64_t ns);
 void sched_sleep(uint64_t ms);
+void sched_terminate();
 
 process_t* sched_active_process();
 thread_t* sched_active_thread();
@@ -51,6 +51,7 @@ void preempt_enable();
 
 // Deprecated methods
 // void sched_set_thread_state(thread_t *thread, enum thread_state state);
+void sched_gc();
 void sched_sleep_millis(uint64_t millis);
 void switch_thread(thread_t *old_thread, thread_t *new_thread);
 

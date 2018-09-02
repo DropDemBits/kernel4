@@ -109,10 +109,10 @@ bootstrap_pt0:
 bootstrap_pt1:
 	.skip 4096
 
+bootstack_bottom:
+	.skip 16384 # 16KiB
 bootstack_top:
 .global bootstack_top
-	.skip 16384 # 16KiB
-stack_bottom:
 
 .section .data
 	.align 4096
@@ -170,7 +170,7 @@ idtr:
 tss_begin:
 	.word 0 # Previous task link
 	.word 0
-	.long stack_bottom # ESP0
+	.long bootstack_bottom # ESP0
 	.long 0x10 # SS0
 	.skip 4*23
 tss_end:
@@ -259,7 +259,7 @@ cont:
 	mov %dx, %ds
 	mov %dx, %ss
 	# Setup stack
-	movl $stack_bottom, %esp
+	movl $bootstack_bottom, %esp
 	subl $10*4, %esp
 	mov %dx, %es
 	mov %dx, %fs

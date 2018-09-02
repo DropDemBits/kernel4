@@ -110,7 +110,7 @@ err_not_lm:
 .type _start, @function
 
 .extern kernel_start, kernel_end, lm_entry, halt
-.extern bootstrap_pml4, stack_bottom, gdtr32
+.extern bootstrap_pml4, gdtr32
 .code32
 _start:
 	cli

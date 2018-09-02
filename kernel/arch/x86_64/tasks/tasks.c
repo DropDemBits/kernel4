@@ -49,7 +49,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
 {
 	//thread->register_state.rsp = alloc_address();
 	thread->kernel_sp = (unsigned long)kernel_stack;
-	thread->kernel_sp += THREAD_STACK_SIZE;
+	thread->kernel_stacktop = (unsigned long)kernel_stack;
 
 	uint64_t* thread_stack = (uint64_t*)thread->kernel_sp;
 	// IRET structure
@@ -69,5 +69,5 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
 
 void cleanup_register_state(thread_t *thread)
 {
-	kfree(thread->kernel_sp);
+	kfree(thread->kernel_stacktop - THREAD_STACK_SIZE);
 }

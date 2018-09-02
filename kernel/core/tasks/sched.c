@@ -36,17 +36,25 @@ struct sleep_node
 	struct sleep_node* next;
 };
 
+#define QUANTA_LENGTH (15 * 1000000) // 15000000ns =  15ms
+
 static thread_t* active_thread = KNULL;
-static bool preempt_enabled = false;
-// Queue of threads that can be run, but aren't actively running
-struct thread_queue run_queue;
 static thread_t* idle_thread;
+static thread_t* cleanup_thread;
+
+// Queue of threads that can be run, but aren't actively running
+struct thread_queue run_queue = {.queue_head = KNULL, .queue_tail = KNULL};
+static struct thread_queue exit_queue = {.queue_head = KNULL, .queue_tail = KNULL};
 static thread_t* sleep_filo_head = KNULL;
+
+static uint64_t current_timeslice = 0;
+
 static int sched_semaphore = 0;
 static int taskswitch_semaphore = 0;
 static bool taskswitch_postponed = false;
 // Set if we are in the idle state (used for postponing postponed task switches)
 static bool is_idle = false;
+static bool preempt_enabled = false;
 
 // To be moved into the generic timer code
 // 1000000000 / (1193181 / 1000)
@@ -56,7 +64,6 @@ unsigned long long ticks_since_boot = 0;
 static struct thread_queue thread_queues[PRIORITY_COUNT];
 static struct thread_queue sleep_queue;
 static struct thread_queue blocked_queue;
-static struct thread_queue exit_queue;
 static struct sleep_node* sleepers = KNULL;
 static struct sleep_node* done_sleepers = KNULL;
 static bool cleanup_needed = false;
@@ -111,7 +118,40 @@ static void sched_timer()
 		}
 	}
 
+	// Deal with the time-slice if we aren't in the idle thread
+	if(current_timeslice != 0)
+	{
+		// There is a time quanta (as we can't achieve a 1 ns timer resolution)
+
+		if(current_timeslice <= TIMER_RESOLUTION)
+			sched_switch_thread();
+		else
+			current_timeslice -= TIMER_RESOLUTION;
+	}
+
 	taskswitch_enable();
+}
+
+static void cleanup_task()
+{
+	while(1)
+	{
+		taskswitch_disable();
+		struct thread_queue *queue = &exit_queue;
+
+		if(queue->queue_head != KNULL)
+		{
+			while(queue->queue_head != KNULL)
+			{
+				thread_t* thread = queue->queue_head;
+				queue->queue_head = queue->queue_head->next;
+				thread_destroy(thread);
+			}
+		}
+
+		sched_block_thread(STATE_SUSPENDED);
+		taskswitch_enable();
+	}
 }
 
 static void sched_queue_remove(thread_t* thread, struct thread_queue *queue)
@@ -164,47 +204,10 @@ static thread_t* sched_next_thread()
 
 void sched_init()
 {
-	run_queue.queue_head = KNULL;
-	run_queue.queue_tail = KNULL;
+	if(run_queue.queue_head != KNULL)
+		cleanup_thread = thread_create(run_queue.queue_head->parent, cleanup_task, PRIORITY_LOW, "cleanup_task");
+
 	irq_add_handler(0, sched_timer);
-}
-
-void sched_gc()
-{
-	if(cleanup_needed)
-	{
-		cleanup_needed = false;
-		struct thread_queue *queue = &exit_queue;
-
-		if(queue->queue_head != KNULL)
-		{
-			thread_t *next_thread = queue->queue_head;
-			thread_t *current_thread = KNULL;
-
-			while(next_thread != KNULL)
-			{
-				current_thread = next_thread;
-				next_thread = next_thread->next;
-				sched_queue_remove(current_thread, queue);
-				thread_destroy(current_thread);
-			}
-		}
-	}
-
-	if(done_sleepers != KNULL && clean_sleepers)
-	{
-		clean_sleepers = false;
-		struct sleep_node* node = done_sleepers;
-
-		do
-		{
-			kfree(node);
-			node = node->next;
-		}
-		while(node != KNULL);
-
-		done_sleepers = KNULL;
-	}
 }
 
 void sched_sleep_until(uint64_t when)
@@ -317,6 +320,11 @@ static void switch_to_thread(thread_t* next_thread)
 	}
 
 	active_thread = next_thread;
+
+	if(next_thread == idle_thread)
+		current_timeslice = 0;
+	else
+		current_timeslice = QUANTA_LENGTH;
 
 	next_thread->current_state = STATE_RUNNING;
 	mmu_set_context(next_thread->parent->page_context_base);
@@ -431,6 +439,26 @@ void sched_unblock_thread(thread_t* thread)
 	}
 
 	sched_unlock();
+}
+
+void sched_terminate()
+{
+	taskswitch_disable();
+
+	// Put thread onto exit queue
+	sched_lock();
+	sched_queue_thread_to(active_thread, &exit_queue);
+	sched_unlock();
+
+	// Block that thread
+	sched_block_thread(STATE_EXITED);
+
+	// Wakeup the cleaner
+	sched_unblock_thread(cleanup_thread);
+	taskswitch_enable();
+
+	// In case we failed to exit
+	while(1);
 }
 
 void sched_setidle(thread_t* thread)

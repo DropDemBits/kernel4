@@ -25,15 +25,15 @@
 .section .bss
 	.align 4096
 
+bootstack_bottom:
+.global bootstack_bottom
+	.skip 16384 # 16KiB
 bootstack_top:
 .global bootstack_top
-	.skip 16384 # 16KiB
-stack_bottom:
-.global stack_bottom
-isr_stack_top:
-	.skip 8192 # 8KiB
 isr_stack_bottom:
-.global isr_stack_bottom
+	.skip 8192 # 8KiB
+isr_stack_top:
+.global isr_stack_top
 
 .section .data
 	.align 4096
@@ -107,11 +107,11 @@ idtr:
 .global tss_begin
 tss_begin:
 	.long 0
-	.quad stack_bottom       # RSP0
+	.quad bootstack_top      # RSP0
 	.quad 0xdead000000000000 # RSP1
 	.quad 0xdead000000000000 # RSP2
 	.quad 0
-	.quad isr_stack_bottom   # IST1
+	.quad isr_stack_top      # IST1
 	.quad 0xdead000000000000 # IST2
 	.quad 0xdead000000000000 # IST3
 	.quad 0xdead000000000000 # IST4
@@ -158,7 +158,7 @@ gdtr32:
 .global lm_entry, halt
 .type lm_entry, @function
 
-.extern kmain, setup_idt, stack_bottom
+.extern kmain, setup_idt
 .extern multiboot_magic, multiboot_ptr
 
 lm_entry:
@@ -181,7 +181,7 @@ lm_entry:
 	movl %edx, 8(%rdi)
 
 	# Load stack
-	movabs $stack_bottom, %rsp
+	movabs $bootstack_top, %rsp
 	# Make space for canabalizing stack
 	subq $12*8, %rsp
 

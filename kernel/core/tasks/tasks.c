@@ -99,7 +99,7 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
 	thread->priority = priority;
 	thread->name = name;
 	// TODO: Use a dedicated aligned stack allocator (ie. buddy)
-	init_register_state(thread, entry_point, kmalloc(THREAD_STACK_SIZE));
+	init_register_state(thread, entry_point, kmalloc(THREAD_STACK_SIZE) + THREAD_STACK_SIZE);
 
 	process_add_child(parent, thread);
 

@@ -45,6 +45,9 @@ typedef struct thread
 
 	unsigned long kernel_sp;
 	unsigned long user_sp;
+	unsigned long kernel_stacktop;
+	unsigned long user_stacktop;
+	
 	enum thread_state current_state;
 
 	unsigned int tid;

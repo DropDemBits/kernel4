@@ -18,6 +18,7 @@
  * 
  */
 
+#include <common/hal.h>
 #include <common/tty.h>
 #include <common/fb.h>
 #include <common/mm.h>
@@ -207,6 +208,7 @@ void tty_set_colour(uint8_t fg, uint8_t bg)
  */
 void tty_reshow()
 {
+	hal_save_interrupts();
 	uint16_t current_draw = (column + (row + screen_row) * width);
 
 	// Write to UART
@@ -225,11 +227,11 @@ void tty_reshow()
 			uart_writec('\r');
 		}
 		else {
-			if((uart_base % width) == width - 1)
+			/*if((uart_base % width) == width - 1)
 			{
 				uart_writec('\n');
 				uart_writec('\r');
-			}
+			}*/
 			uart_writec(window[uart_base].actual_char);
 		}
 	}
@@ -313,6 +315,7 @@ void tty_reshow()
 	}
 
 	last_draw = current_draw;
+	hal_restore_interrupts();
 }
 
 /*

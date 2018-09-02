@@ -177,7 +177,7 @@ void a_print()
 {
 	while(1)
 	{
-		tty_set_colour(0xF, 0xC);
+		tty_set_colour(0x0, 0xC);
 		tty_printchar('a');
 
 		sched_sleep(200);
@@ -213,6 +213,16 @@ void b_print()
 
 		sched_sleep(50);
 	}
+}
+
+void terminating_task()
+{
+	tty_set_colour(0xF, 0x7);
+	printf("hello...");
+	sched_sleep(2000);
+	tty_set_colour(0xF, 0x7);
+	printf("goodbye!");
+	sched_terminate();
 }
 
 extern process_t init_process;
@@ -261,18 +271,20 @@ void kmain()
 	tty_prints("Initialising HAL\n");
 	hal_init();
 	hal_enable_interrupts();
-
-	tty_prints("Initialising Scheduler\n");
-	sched_init();
 	
 	// Resume init in other thread
 	tty_prints("Starting up threads for init\n");
-	tasks_init("init", (void*)a_print);
-	thread_create(&init_process, (void*)b_print, PRIORITY_NORMAL, "b_print");
+	tasks_init("init", (void*)b_print);
+	thread_create(&init_process, (void*)a_print, PRIORITY_NORMAL, "b_print");
 	thread_create(&init_process, (void*)c_print, PRIORITY_NORMAL, "c_print");
 	thread_create(&init_process, (void*)info_display, PRIORITY_NORMAL, "info_thread");
 	thread_create(&init_process, (void*)wake_test, PRIORITY_NORMAL, "woke_bro");
 	thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread");
+
+	// Scheduler is initialized after tasks as it uses the init_process structure
+	tty_prints("Initialising Scheduler\n");
+	sched_init();
+	thread_create(&init_process, (void*)terminating_task, PRIORITY_NORMAL, "termi_thread");
 
 	sched_print_queues();
 	tty_reshow();
@@ -365,12 +377,5 @@ void core_fini()
 
 	preempt_enable();
 	// Now we are done, exit thread.
-	//sched_set_thread_state(sched_active_thread(), STATE_EXITED);
-	sched_block_thread(STATE_SUSPENDED);
-	while(1)
-	{
-		sched_lock();
-		sched_switch_thread();
-		sched_unlock();
-	}
+	sched_terminate();
 }
