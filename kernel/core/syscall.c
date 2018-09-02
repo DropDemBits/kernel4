@@ -7,7 +7,9 @@ syscall_func_t syscalls[NR_SYSCALLS];
 
 syscall_ret syscall_yield(struct syscall_args* frame)
 {
+    sched_lock();
     sched_switch_thread();
+    sched_unlock();
     return 0;
 }
 
@@ -18,7 +20,7 @@ syscall_ret syscall_print(struct syscall_args* frame)
 
 syscall_ret syscall_sleep(struct syscall_args* frame)
 {
-    sched_sleep_millis(frame->arg1);
+    sched_sleep_ms(frame->arg1);
     return 0;
 }
 

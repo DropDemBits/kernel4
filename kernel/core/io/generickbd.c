@@ -76,7 +76,7 @@ uint8_t kbd_read()
 	if(keycode == 0)
 	{
 		// We only block usermode-type threads, so remove this later
-		sched_sleep_millis(10);
+		sched_sleep_ms(10);
 	}
 	return keycode;
 }

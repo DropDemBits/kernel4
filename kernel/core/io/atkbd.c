@@ -69,11 +69,13 @@ static void send_command(uint8_t command, uint8_t subcommand)
 
 static void at_keyboard_isr()
 {
+	taskswitch_disable();
 	uint8_t data = ps2_device_read(kbd_device, false);
 	keycode_push(data);
 	sched_unblock_thread(decoder_thread);
 
 	ic_eoi(ps2_device_irqs()[kbd_device]);
+	taskswitch_enable();
 }
 
 static void keycode_decoder()

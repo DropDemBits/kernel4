@@ -149,6 +149,7 @@ void tty_printchar(const char c)
 			else column = 0;
 			if(--row < 0) row = 0;
 		}
+		background_reshow = true;
 	}
 	if(c == '\n') pchar = '\n';
 

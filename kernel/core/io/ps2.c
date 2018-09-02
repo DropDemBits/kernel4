@@ -32,7 +32,7 @@
 do { \
 	int cval = (timeout); \
 	do { \
-		sched_sleep_millis(1); \
+		sched_sleep_ms(1); \
 	} while((condition) && --cval); \
 	if(!cval) (timedout) = true; \
 } while(0); \
@@ -41,7 +41,7 @@ do { \
 do { \
 	int cval = (timeout); \
 	do { \
-		sched_sleep_millis(1); \
+		sched_sleep_ms(1); \
 	} while((condition) && --cval); \
 } while(0); \
 

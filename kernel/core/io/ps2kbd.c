@@ -75,6 +75,7 @@ static bool send_command(uint8_t command, uint8_t subcommand)
 
 static void ps2_keyboard_isr()
 {
+	taskswitch_disable();
 	uint8_t data = ps2_device_read(kbd_device, false);
 	
 	if(data < 0xF0)
@@ -98,6 +99,7 @@ static void ps2_keyboard_isr()
 	}
 	
 	ic_eoi(ps2_device_irqs()[kbd_device]);
+	taskswitch_enable();
 }
 
 static void keycode_decoder()

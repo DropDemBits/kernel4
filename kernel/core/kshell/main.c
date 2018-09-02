@@ -58,8 +58,8 @@ void wakeup_task()
 {
 	while(1)
 	{
-		puts("I'M AWAKE NOW");
 		sched_block_thread(STATE_SUSPENDED);
+		puts("I'M AWAKE NOW\n");
 	}
 }
 
@@ -71,7 +71,8 @@ void refresh_task()
 		{
 			if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
 			{
-				fb_clear();
+				// fb_clear();
+				fb_fillrect(get_fb_address(), 0, 0, fb_info.width, 25 << 4, 0);
 			} else
 			{
 				for(int i = 0; i < fb_info.width * fb_info.height; i++)
@@ -118,9 +119,6 @@ static void shell_readline()
 		}
 
 		sched_unblock_thread(refresh_thread);
-		sched_lock();
-		sched_switch_thread();
-		sched_unlock();
 	}
 }
 
@@ -167,7 +165,7 @@ static bool shell_parse()
 		return true;
 	} else if(is_command("help", command) || is_command("?", command))
 	{
-		puts("Kshell version 0.3\n");
+		puts("Kshell version 0.4\n");
 		puts("Available commands (slashes = aliases, square brackets = arguments):");
 		puts("\thelp/?:          \tShows this information");
 		puts("\thelloworld/hw:   \tShows an example string");
@@ -214,7 +212,7 @@ static bool shell_parse()
 		}
 
 		printf("Sleeping for %ld milliseconds\n", sleep_for);
-		sched_sleep_millis(sleep_for);
+		sched_sleep_ms(sleep_for);
 		return true;
 	}
 
@@ -229,15 +227,17 @@ void kshell_main()
 		PRIORITY_HIGHER,
 		"refresh_thread");
 
-	/*test_wakeup = thread_create(
+	test_wakeup = thread_create(
 		sched_active_process(),
 		(uint64_t*)wakeup_task,
 		PRIORITY_NORMAL,
-		"test_wakeup");*/
+		"test_wakeup");
 
 	tty_set_colour(0xF, 0x0);
 	printf("Welcome to K4!\n");
 	tty_set_colour(0x7, 0x0);
+	tty_reshow();
+
 	input_buffer = kmalloc(INPUT_SIZE+1);
 	memset(input_buffer, 0x00, INPUT_SIZE+1);
 
@@ -253,13 +253,9 @@ void kshell_main()
 		}
 
 		sched_unblock_thread(refresh_thread);
-		sched_lock();
-		sched_switch_thread();
-		sched_unlock();
 	}
 
 	puts("kshell is exiting, nothing left to do");
 	// sched_set_thread_state(refresh_thread, STATE_EXITED);
-	// sched_set_thread_state(sched_active_thread(), STATE_EXITED);
-	while(1);
+	sched_terminate();
 }

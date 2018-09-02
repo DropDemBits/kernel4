@@ -111,8 +111,9 @@ __initialize_thread:
  */
 .global enter_usermode
 enter_usermode:
-	movq 3*8(%rdi), %rdi
-	movq %rdi, %r11
+	xchg %bx, %bx
+	movq 2*8(%rdi), %rdi	# TCB->KRSP
+	movq %rdi, %r11			# Store KRSP
 
 	# Update RSP0
 	movq %rsp, %rdi
@@ -146,7 +147,6 @@ enter_usermode:
 	xor %rcx, %rcx
 	xor %rbx, %rbx
 	xor %rax, %rax
-
 	iretq
 
 .extern tss_begin

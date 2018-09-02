@@ -47,15 +47,6 @@ void idle_loop()
 {
 	while(1)
 	{
-		/*preempt_disable();
-		if(tty_background_dirty())
-		{
-			fb_clear();
-		}
-		tty_reshow();
-		tty_make_clean();
-		sched_gc();
-		preempt_enable();*/
 		intr_wait();
 	}
 }
@@ -67,7 +58,6 @@ extern void usermode_code();
 void usermode_entry()
 {
 	unsigned long retaddr = 0x400000;
-	// doot
 
 	mmu_map(retaddr);
 	memcpy((void*)retaddr, &usermode_code, 4096);
@@ -79,7 +69,6 @@ void usermode_entry()
 extern unsigned long long ticks_since_boot;
 extern unsigned long long tswp_counter;
 extern struct thread_queue run_queue;
-int count = 0;
 void info_display()
 {
 	const char* switches = "Swaps/s: ";
@@ -158,71 +147,8 @@ void info_display()
 		{
 			fb_fill_putchar(get_fb_address(), i << 3, 28 << 4, buf[i], ~0, 0);
 		}
-		sched_sleep(1000);
+		sched_sleep_ms(1000);
 	}
-}
-
-void wake_test()
-{
-	while(1)
-	{
-		tty_set_colour(0xF, 0x0);
-		printf("WOKEN");
-
-		sched_sleep(1000);
-	}
-}
-
-void a_print()
-{
-	while(1)
-	{
-		tty_set_colour(0x0, 0xC);
-		tty_printchar('a');
-
-		sched_sleep(200);
-	}
-}
-
-void c_print()
-{
-	while(1)
-	{
-		tty_set_colour(0x0, 0x9);
-		tty_printchar('c');
-		tty_reshow();
-
-		// sched_lock();
-		// sched_switch_thread();
-		// sched_unlock();
-		sched_sleep(100);
-	}
-}
-
-void b_print()
-{
-	while(1)
-	{
-		tty_set_colour(0x0, 0x2);
-		tty_printchar('b');
-
-		if(tty_background_dirty())
-			fb_fillrect(get_fb_address(), 0, 0, fb_info.width, 25 << 4, 0);
-		tty_reshow();
-		tty_make_clean();
-
-		sched_sleep(50);
-	}
-}
-
-void terminating_task()
-{
-	tty_set_colour(0xF, 0x7);
-	printf("hello...");
-	sched_sleep(2000);
-	tty_set_colour(0xF, 0x7);
-	printf("goodbye!");
-	sched_terminate();
 }
 
 extern process_t init_process;
@@ -274,26 +200,18 @@ void kmain()
 	
 	// Resume init in other thread
 	tty_prints("Starting up threads for init\n");
-	tasks_init("init", (void*)b_print);
-	thread_create(&init_process, (void*)a_print, PRIORITY_NORMAL, "b_print");
-	thread_create(&init_process, (void*)c_print, PRIORITY_NORMAL, "c_print");
-	thread_create(&init_process, (void*)info_display, PRIORITY_NORMAL, "info_thread");
-	thread_create(&init_process, (void*)wake_test, PRIORITY_NORMAL, "woke_bro");
+	tasks_init("init", (void*)core_fini);
 	thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread");
 
 	// Scheduler is initialized after tasks as it uses the init_process structure
 	tty_prints("Initialising Scheduler\n");
 	sched_init();
-	thread_create(&init_process, (void*)terminating_task, PRIORITY_NORMAL, "termi_thread");
 
 	sched_print_queues();
 	tty_reshow();
 
-	// preempt_enable();
-
 	while(1)
 	{
-		tty_reshow();
 		sched_lock();
 		sched_switch_thread();
 		sched_unlock();
@@ -307,7 +225,7 @@ void core_fini()
 	tty_prints("Initialising keyboard driver\n");
 	kbd_init();
 	tty_prints("Setting up system calls\n");
-	//syscall_init();
+	syscall_init();
 
 	// TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS
@@ -365,17 +283,13 @@ void core_fini()
 
 	tty_prints("Finished Initialisation\n");
 
-	preempt_disable();
-	/*process_t *p1 = process_create();
+	taskswitch_disable();
+	process_t *p1 = process_create();
 	thread_create(p1, (uint64_t*)kshell_main, PRIORITY_NORMAL, "kshell");
-	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
-	thread_create(p1, (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");*/
-	
-	// thread_create(process_create(), (uint64_t*)b_print, PRIORITY_NORMAL, "b_print");
-	// thread_create(process_create(), (uint64_t*)a_print, PRIORITY_NORMAL, "a_print");
-	//thread_create(process_create(), (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
+	thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread");
+	thread_create(process_create(), (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
+	taskswitch_enable();
 
-	preempt_enable();
 	// Now we are done, exit thread.
 	sched_terminate();
 }

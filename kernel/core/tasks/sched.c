@@ -237,15 +237,15 @@ void sched_sleep_ns(uint64_t ns)
 	sched_sleep_until(ticks_since_boot + ns);
 }
 
-void sched_sleep(uint64_t ms)
+void sched_sleep_ms(uint64_t ms)
 {
 	sched_sleep_ns(ms * 1000000);
 }
 
-void sched_sleep_millis(uint64_t millis)
+/*void sched_sleep_ms(uint64_t millis)
 {
-	sched_sleep(millis);
-	/*
+	sched_sleep_ms(millis);
+	
 	if(active_thread == KNULL)
 		// Can't sleep when we haven't initialized
 		return;
@@ -295,8 +295,8 @@ void sched_sleep_millis(uint64_t millis)
 		}
 	}
 
-	sched_block_thread(STATE_SLEEPING);*/
-}
+	sched_block_thread(STATE_SLEEPING);
+}*/
 
 static void switch_to_thread(thread_t* next_thread)
 {
@@ -331,6 +331,10 @@ static void switch_to_thread(thread_t* next_thread)
 	switch_stack(next_thread, old_thread, next_thread->parent->page_context_base);
 }
 
+/**
+ * NOTE: This must be surrounded using a sched_lock/unlock pair for sync reasons,
+ * 		 or a taskswitch_disable/enable pair when unblocking threads (ie. during interrupts)
+ */
 void sched_switch_thread()
 {
 	if(taskswitch_semaphore != 0)
