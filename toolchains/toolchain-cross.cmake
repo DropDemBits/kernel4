@@ -17,12 +17,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_C_FLAGS_INIT "-ffreestanding -nostdlib")
 set(CMAKE_CXX_FLAGS_INIT "-ffreestanding -nostdlib")
 
-set(CMAKE_EXE_LINKER_FLAGS_INIT "")
+set(LINKER_FLAGS "")
 
 if(TARGET_ARCH STREQUAL "x86_64")
     set(CMAKE_C_FLAGS_INIT "${CMAKE_C_FLAGS_INIT} -mcmodel=large -mno-red-zone")
     set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} -mcmodel=large -mno-red-zone")
-    set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} -z max-page-size=0x1000")
+    set(LINKER_FLAGS "${LINKER_FLAGS} -z max-page-size=0x1000")
 endif()
 
 #set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT}")

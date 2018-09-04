@@ -1,5 +1,5 @@
 PROJECTS := libk kernel
-HOSTS := i386 x86_64
+TARGETS := i386 x86_64
 COMPILERS := i686-elf-gcc x86_64-elf-gcc
 INITRD_FILES := $(addprefix initrd/files/,$(shell /bin/bash scripts/list_initrd.sh))
 
@@ -8,22 +8,22 @@ INITRD_FILES := $(addprefix initrd/files/,$(shell /bin/bash scripts/list_initrd.
 all: geniso
 
 sysroot:
-	$(foreach PROJECT,$(PROJECTS),$(foreach HOST,$(HOSTS),make -C libk TARGET_ARCH=$(HOST) SYSROOT=../sysroot install &&))
+	$(foreach PROJECT,$(PROJECTS),$(foreach TARGET,$(TARGETS),make -C libk TARGET_ARCH=$(TARGET) SYSROOT=../sysroot install &&))
 
 build-libk:
-	@$(foreach HOST,$(HOSTS),make -C libk TARGET_ARCH=$(HOST) SYSROOT=../sysroot all install &&) echo Done building libk
+	@$(foreach TARGET,$(TARGETS),make -C libk TARGET_ARCH=$(TARGET) SYSROOT=../sysroot all install &&) echo Done building libk
 
 build-kernel: build-libk
-	@$(foreach HOST,$(HOSTS),make -C kernel TARGET_ARCH=$(HOST) SYSROOT=../sysroot all install && ) echo Done building kernel
+	@$(foreach TARGET,$(TARGETS),scripts/build_arch.sh $(TARGET) && ) echo Done building kernel
 
 clean-libk:
-	@$(foreach HOST,$(HOSTS),make -C libk TARGET_ARCH=$(HOST) clean &&) echo Done cleaning libk
+	@$(foreach TARGET,$(TARGETS),make -C libk TARGET_ARCH=$(TARGET) clean &&) echo Done cleaning libk
 
 clean-kernel:
-	@$(foreach HOST,$(HOSTS),make -C kernel TARGET_ARCH=$(HOST) clean &&) echo Done cleaning kernel
+	@$(foreach TARGET,$(TARGETS),cmake -E chdir build/$(TARGET) make clean &&) echo Done cleaning kernel
 
 clean: clean-libk clean-kernel
-	@$(foreach HOST,$(HOSTS),rm -f k4-$(HOST).iso;)
+	@$(foreach TARGET,$(TARGETS),rm -f k4-$(TARGET).iso;)
 	rm -rf isodir
 	rm -rf sysroot
 	rm -rf pxedest
@@ -32,10 +32,10 @@ initrd/initrd/initrd.tar: $(INITRD_FILES)
 	@scripts/gen_initrd.sh
 
 geniso: build-libk build-kernel initrd/initrd/initrd.tar
-	@$(foreach HOST,$(HOSTS),/bin/bash scripts/gen_iso.sh $(HOST) &&) echo Done
+	@$(foreach TARGET,$(TARGETS),/bin/bash scripts/gen_iso.sh $(TARGET) &&) echo Done
 
 pxeboot: build-libk build-kernel initrd/initrd/initrd.tar
 	mkdir -p pxedest
-	@$(foreach HOST,$(HOSTS),cp kernel/bin/$(HOST)/k4-$(HOST).kern pxedest/ &&) echo Done
+	@$(foreach TARGET,$(TARGETS),cp kernel/bin/$(TARGET)/k4-$(TARGET).kern pxedest/ &&) echo Done
 	cp initrd/initrd/initrd.tar pxedest/
 	gksu cp pxedest/* /var/lib/tftpboot/

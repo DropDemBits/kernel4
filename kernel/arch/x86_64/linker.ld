@@ -28,10 +28,10 @@ SECTIONS {
     . = BOOTSTRAP_VMA;
     .bootstrap : ALIGN(4K) {
         *(.multiboot)
-        *bootstrap.o (.text, .text.*)
-        *bootstrap.o (.rodata, .rodata.*)
-        *bootstrap.o (.data, .data.*)
-        *bootstrap.o (.bss)
+        *bootstrap.* (.text, .text.*)
+        *bootstrap.* (.rodata, .rodata.*)
+        *bootstrap.* (.data, .data.*)
+        *bootstrap.* (.bss)
     }
 
     .init : ALIGN(4K) {

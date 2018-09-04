@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 if [ $# -ne 1 ]; then
     echo "Error: No architechture specified"
     exit 1
@@ -23,9 +21,11 @@ menuentry "K4 (Multiboot2)" {
 }
 EOF
 
+rm -f k4-$1.iso
 rm -f isodir/k4-*.kern
+
+set -e
 cp build/$1/k4-$1.kern isodir/
 cp initrd/initrd/initrd.tar isodir/
 
-rm -f k4-$1.iso
 grub-mkrescue --product-name="DURRR" isodir -o k4-$1.iso
