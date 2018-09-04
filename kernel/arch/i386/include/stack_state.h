@@ -1,4 +1,4 @@
-#include <i386/types.h>
+#include <types.h>
 
 #ifndef __STACK_STATE_H__
 #define __STACK_STATE_H__ 1

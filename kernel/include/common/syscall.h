@@ -5,6 +5,18 @@
 
 #define NR_SYSCALLS 32768
 
+typedef unsigned long syscall_ret;
+struct syscall_args
+{
+    unsigned long retidx; // rax
+    unsigned long arg1; // rbx
+    unsigned long arg2; // rcx
+    unsigned long arg3; // rdx
+    unsigned long arg4; // rsi
+    unsigned long arg5; // rdi
+    unsigned long arg6; // rbp
+};
+
 typedef syscall_ret(*syscall_func_t)(struct syscall_args*);
 
 void syscall_init();

@@ -21,7 +21,7 @@
 #include <common/hal.h>
 #include <common/kfuncs.h>
 #include <arch/idt.h>
-#include <i386/stack_state.h>
+#include <stack_state.h>
 
 #define IDT_TYPE_TASK            0x5
 #define IDT_TYPE_INTERRUPT16    0x6

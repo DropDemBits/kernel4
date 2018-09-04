@@ -12,16 +12,4 @@ typedef uint64_t uintptr_t;
 typedef int64_t ssize_t;
 typedef uint32_t ino_t;
 
-typedef uint64_t syscall_ret;
-struct syscall_args
-{
-    uint64_t retidx; // rax
-    uint64_t arg1; // rbx
-    uint64_t arg2; // rcx
-    uint64_t arg3; // rdx
-    uint64_t arg4; // rsi
-    uint64_t arg5; // rdi
-    uint64_t arg6; // rbp
-};
-
 #endif /* __TYPES_H__ */

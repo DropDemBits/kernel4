@@ -25,7 +25,7 @@
 #include <common/tty.h>
 #include <common/kfuncs.h>
 #include <arch/idt.h>
-#include <x86_64/stack_state.h>
+#include <stack_state.h>
 
 struct PageError {
     uint32_t was_present : 1;

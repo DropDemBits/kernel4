@@ -23,7 +23,6 @@
 #include <common/tasks.h>
 #include <common/hal.h>
 #include <common/mm.h>
-#include <x86_64/stack_state.h>
 
 extern void __initialize_thread();
 

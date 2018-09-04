@@ -1,10 +1,11 @@
 CC :=
-ARCH_OBJ :=
+SOURCE_DIRS :=
+ARCH_SRCS :=
 ARCH_CFLAGS :=
 ARCH_LFLAGS :=
 ARCH_LINKER :=
 LIBS :=
-BUILD_OBJ :=
+BUILD_SRCS :=
 SYSROOT ?=
 PREFIX ?=/usr/local
 # Note: add -D__NO_OPTIMIZE__ when using -O0
@@ -18,8 +19,14 @@ LFLAGS := -ffreestanding -nostdlib -lgcc
 HAS_LOADER := n
 
 ifdef TARGET_ARCH
+
+ifneq ($(or $(filter x86_64, $(TARGET_ARCH)), $(filter i386, $(TARGET_ARCH))),)
+include arch/x86/make.config
+else
 include arch/$(TARGET_ARCH)/make.config
-CFLAGS += $(ARCH_CFLAGS) -D _$(TARGET_ARCH)_
+endif
+
+CFLAGS += $(ARCH_CFLAGS) -D __$(TARGET_ARCH)__
 CFLAGS += -L$(SYSROOT)$(PREFIX)/lib
 LFLAGS += $(ARCH_LFLAGS)
 LFLAGS += -L$(SYSROOT)$(PREFIX)/lib
@@ -29,25 +36,31 @@ endif
 include core/make.config
 
 BIN_PREFIX := bin/$(TARGET_ARCH)/
-OBJS := $(addprefix $(BIN_PREFIX), $(ARCH_OBJ) $(BUILD_OBJ))
 
+C_SRCS := $(shell find $(SOURCE_DIRS) -type f -name "*.c")
+ASM_SRCS := $(shell find $(SOURCE_DIRS) -type f -name "*.S")
+OBJS := $(foreach DIR,$(SOURCE_DIRS),$(subst $(DIR),$(BIN_PREFIX),$(shell find $(DIR) -type f -name "*.[cS]")))
 
 .PHONY: all clean include
 
-bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.S
-	mkdir -p $(dir $@)
-	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
+#bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.S
+#	mkdir -p $(dir $@)
+#	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
+#
+#bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.c
+#	mkdir -p $(dir $@)
+#	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
+#
+#bin/$(TARGET_ARCH)/%.o: %.c
+#	mkdir -p $(dir $@)
+#	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
+#
+#bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern: $(OBJS)
+#	$(CC) -T $(ARCH_LINKER) $(OBJS) $(LIBS) $(LFLAGS) -o $@
 
-bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.c
-	mkdir -p $(dir $@)
-	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
-
-bin/$(TARGET_ARCH)/%.o: %.c
-	mkdir -p $(dir $@)
-	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
-
-bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern: $(OBJS)
-	$(CC) -T $(ARCH_LINKER) $(OBJS) $(LIBS) $(LFLAGS) -o $@
+bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern:
+	@$(foreach SRCFILE,$(OBJS),echo $(SRCFILE);)
+	$(CC) none
 
 all: bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern
 

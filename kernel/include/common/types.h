@@ -24,12 +24,12 @@
 #ifndef __TYPES_COMMON__
 #define __TYPES_COMMON__
 
-#ifdef _i386_
-#include <i386/types.h>
+#ifdef __i386__
+#include <types.h>
 #endif
 
-#ifdef _x86_64_
-#include <x86_64/types.h>
+#ifdef __x86_64__
+#include <types.h>
 #endif
 
 typedef void(*isr_t)(void*);

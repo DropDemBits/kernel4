@@ -53,7 +53,7 @@ OBJ := $(addprefix $(BIN_PREFIX), $(BUILD_OBJ))
 
 LIBK_OBJ:=$(OBJ:.o=.libk.o)
 
-BINARIES=$(BIN_PREFIX)libk-$(TARGET_ARCH).a #$(BIN_PREFIX)libc-$(TARGET_ARCH).a
+BINARIES=$(BIN_PREFIX)libk.a #$(BIN_PREFIX)libc-$(TARGET_ARCH).a
 
 all: $(BINARIES)
 
@@ -71,16 +71,16 @@ $(BIN_PREFIX)%.libk.o: %.S
 	mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< $(LIBK_CFLAGS) $(LIBK_CPPFLAGS)
 
-$(BIN_PREFIX)libc-$(TARGET_ARCH).a: $(OBJ)
+$(BIN_PREFIX)libc.a: $(OBJ)
 	$(AR) rcs $@ $(OBJ)
-$(BIN_PREFIX)libk-$(TARGET_ARCH).a: $(LIBK_OBJ)
+$(BIN_PREFIX)libk.a: $(LIBK_OBJ)
 	$(AR) rcs $@ $(LIBK_OBJ)
 clean:
 	rm -rf bin/ #*.o */*.o */*/*.o
 
 install-binaries: $(BINARIES)
-	mkdir -p $(SYSROOT)$(PREFIX)/lib/
-	cp $(BINARIES) $(SYSROOT)$(PREFIX)/lib/
+	mkdir -p $(SYSROOT)$(PREFIX)/lib/$(TARGET_ARCH)/
+	cp $(BINARIES) $(SYSROOT)$(PREFIX)/lib/$(TARGET_ARCH)/
 install-headers:
 	mkdir -p $(SYSROOT)$(PREFIX)/include
 	cp -rp ./include $(SYSROOT)$(PREFIX)

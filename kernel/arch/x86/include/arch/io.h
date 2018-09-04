@@ -6,7 +6,7 @@
 #ifdef __NO_OPTIMIZE__
 #    define FPREFIX static
 #else
-#    define FPREFIX inline
+#    define FPREFIX static inline
 #endif
 
 FPREFIX void outb(uint16_t port, uint8_t value)

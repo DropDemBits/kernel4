@@ -22,7 +22,6 @@
 
 #include <common/tasks.h>
 #include <common/mm.h>
-#include <i386/stack_state.h>
 
 extern void __initialize_thread();
 
