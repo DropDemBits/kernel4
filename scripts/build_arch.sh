@@ -8,6 +8,7 @@ fi
 
 TARGET_ARCH=$1
 
-cmake -E make_directory build/$TARGET_ARCH
-cmake -E chdir build/$TARGET_ARCH cmake ../../ -DTARGET_ARCH=$TARGET_ARCH -DCMAKE_TOOLCHAIN_FILE=toolchains/toolchain-cross.cmake
-cmake -E chdir build/$TARGET_ARCH make
+#cmake -E make_directory build/$TARGET_ARCH
+#cmake -E chdir build/$TARGET_ARCH cmake ../../ -DTARGET_ARCH=$TARGET_ARCH -DCMAKE_TOOLCHAIN_FILE=toolchains/toolchain-cross.cmake
+#cmake -E chdir build/$TARGET_ARCH make
+make -C kernel TARGET_ARCH=$TARGET_ARCH SYSROOT=$(pwd)/sysroot k4-kernel

@@ -27,44 +27,32 @@ include arch/$(TARGET_ARCH)/make.config
 endif
 
 CFLAGS += $(ARCH_CFLAGS) -D __$(TARGET_ARCH)__
-CFLAGS += -L$(SYSROOT)$(PREFIX)/lib
 LFLAGS += $(ARCH_LFLAGS)
-LFLAGS += -L$(SYSROOT)$(PREFIX)/lib
-LIBS += -lk-$(TARGET_ARCH)
+LFLAGS += -L$(SYSROOT)$(PREFIX)/lib/$(TARGET_ARCH)
+LIBS += -lk
 endif
 
 include core/make.config
 
 BIN_PREFIX := bin/$(TARGET_ARCH)/
 
-C_SRCS := $(shell find $(SOURCE_DIRS) -type f -name "*.c")
-ASM_SRCS := $(shell find $(SOURCE_DIRS) -type f -name "*.S")
-OBJS := $(foreach DIR,$(SOURCE_DIRS),$(subst $(DIR),$(BIN_PREFIX),$(shell find $(DIR) -type f -name "*.[cS]")))
+OBJS := $(addprefix $(BIN_PREFIX),$(addsuffix .obj,$(ARCH_SRCS) $(BUILD_SRCS)))
+BIN_DIRS := $(addprefix $(BIN_PREFIX),$(shell find $(SOURCE_DIRS) -type d -not -path "*include*"))
 
-.PHONY: all clean include
+.PHONY: all clean include k4-kernel make_bindirs
 
-#bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.S
-#	mkdir -p $(dir $@)
-#	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
-#
-#bin/$(TARGET_ARCH)/%.o: arch/$(TARGET_ARCH)/%.c
-#	mkdir -p $(dir $@)
-#	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
-#
-#bin/$(TARGET_ARCH)/%.o: %.c
-#	mkdir -p $(dir $@)
-#	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
-#
-#bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern: $(OBJS)
-#	$(CC) -T $(ARCH_LINKER) $(OBJS) $(LIBS) $(LFLAGS) -o $@
+make_bindirs:
+	@$(foreach dir,$(BIN_DIRS),mkdir -p $(dir);)
 
-bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern:
-	@$(foreach SRCFILE,$(OBJS),echo $(SRCFILE);)
-	$(CC) none
+$(BIN_PREFIX)%.obj: %
+	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
 
-all: bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern
+k4-kernel: make_bindirs $(OBJS)
+	$(CC) -T $(ARCH_LINKER) $(OBJS) $(LIBS) $(LFLAGS) -o bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern
+
+all: k4-kernel
 
 clean:
-	rm -rf bin/
+	rm -rf bin/$(TARGET_ARCH)
 
 install:

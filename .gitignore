@@ -11,3 +11,4 @@ initrd/initrd/*.tar
 com*.txt
 *.sym
 build/
+*/bin/
