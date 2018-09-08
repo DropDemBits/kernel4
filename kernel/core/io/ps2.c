@@ -19,9 +19,10 @@
  */
 
 #include <stdio.h>
-#include <common/ps2.h>
+
 #include <common/hal.h>
-#include <common/sched.h>
+#include <common/sched/sched.h>
+#include <common/io/ps2.h>
 
 #define STATUS_READREADY 0x01
 #define STATUS_WRITEREADY 0x02

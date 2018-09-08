@@ -18,10 +18,11 @@
  * 
  */
 
-#include <common/sched.h>
-#include <common/kfuncs.h>
+#include <common/sched/sched.h>
+
+#include <common/util/kfuncs.h>
 #include <common/hal.h>
-#include <common/liballoc.h>
+#include <common/mm/liballoc.h>
 
 extern void switch_stack(
     thread_t *new_state,

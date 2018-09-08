@@ -21,11 +21,11 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include <common/sched.h>
-#include <common/kbd.h>
-#include <common/ps2.h>
 #include <common/hal.h>
-#include <common/keycodes.h>
+#include <common/io/kbd.h>
+#include <common/io/ps2.h>
+#include <common/io/keycodes.h>
+#include <common/sched/sched.h>
 
 #define MOD_SCROLL_LOCK 0x01
 #define MOD_NUM_LOCK 0x02

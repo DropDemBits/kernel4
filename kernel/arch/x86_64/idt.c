@@ -18,11 +18,12 @@
  * 
  */
 
-#include <common/fb.h>
 #include <common/hal.h>
-#include <common/kfuncs.h>
-#include <common/mm.h>
-#include <common/tty.h>
+#include <common/util/kfuncs.h>
+#include <common/mm/mm.h>
+#include <common/tty/fb.h>
+#include <common/tty/tty.h>
+
 #include <arch/idt.h>
 #include <stack_state.h>
 

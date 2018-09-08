@@ -18,12 +18,11 @@
  * 
  */
 
-#include <common/kfuncs.h>
-#include <common/liballoc.h>
 #include <common/hal.h>
-#include <common/mm.h>
-#include <common/tty.h>
-#include <common/sched.h>
+#include <common/util/kfuncs.h>
+#include <common/mm/liballoc.h>
+#include <common/mm/mm.h>
+#include <common/tty/tty.h>
 
 static size_t heap_base = 0;
 static size_t heap_limit = 0;

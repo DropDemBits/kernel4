@@ -20,9 +20,10 @@
 
 #include <string.h>
 
-#include <common/mm.h>
-#include <common/tty.h>
-#include <common/kfuncs.h>
+#include <common/mm/mm.h>
+#include <common/tty/tty.h>
+#include <common/util/kfuncs.h>
+
 #include <arch/idt.h>
 #include <stack_state.h>
 

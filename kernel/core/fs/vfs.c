@@ -19,8 +19,9 @@
  */
 
 #include <string.h>
-#include <common/vfs.h>
-#include <common/mm.h>
+
+#include <common/fs/vfs.h>
+#include <common/mm/mm.h>
 
 struct vfs_mount
 {

@@ -19,7 +19,8 @@
  */
 
 #include <common/hal.h>
-#include <common/kfuncs.h>
+#include <common/util/kfuncs.h>
+
 #include <arch/idt.h>
 #include <stack_state.h>
 

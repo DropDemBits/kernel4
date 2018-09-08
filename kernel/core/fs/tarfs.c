@@ -20,8 +20,9 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <common/tarfs.h>
-#include <common/mm.h>
+
+#include <common/fs/tarfs.h>
+#include <common/mm/mm.h>
 
 /*
 typedef struct vfs_inode {

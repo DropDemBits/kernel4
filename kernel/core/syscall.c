@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#include <common/sched.h>
 #include <common/syscall.h>
+#include <common/sched/sched.h>
 
 syscall_func_t syscalls[NR_SYSCALLS];
 

@@ -18,7 +18,6 @@
  * 
  */
 
-#include <common/locks.h>
 #include <common/types.h>
 
 #ifndef __HAL_H__

@@ -18,8 +18,8 @@
  * 
  */
 
-#include <common/fb.h>
-#include <common/tty.h>
+#include <common/tty/fb.h>
+#include <common/tty/tty.h>
 
 extern unsigned char font_bits[];
 

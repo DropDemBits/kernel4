@@ -19,6 +19,7 @@
  */
 
 #include <common/hal.h>
+
 #include <arch/pit.h>
 #include <arch/idt.h>
 #include <arch/io.h>

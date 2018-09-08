@@ -21,9 +21,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <common/tasks.h>
-#include <common/sched.h>
-#include <common/mm.h>
+#include <common/mm/mm.h>
+#include <common/sched/sched.h>
+#include <common/tasks/tasks.h>
 
 extern void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack);
 extern void cleanup_register_state(thread_t *thread);

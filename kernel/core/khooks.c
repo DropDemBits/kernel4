@@ -19,8 +19,8 @@
  */
 
 #include <kernhooks.h>
-#include <common/kfuncs.h>
-#include <common/tty.h>
+#include <common/util/kfuncs.h>
+#include <common/tty/tty.h>
 
 void kabort()
 {

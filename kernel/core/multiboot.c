@@ -22,11 +22,11 @@
 #include <stdio.h>
 
 #include <common/types.h>
-#include <common/mm.h>
-#include <common/fb.h>
-#include <common/tty.h>
 #include <common/multiboot.h>
 #include <common/multiboot2.h>
+#include <common/mm/mm.h>
+#include <common/tty/tty.h>
+#include <common/tty/fb.h>
 
 typedef multiboot2_memory_map_t mb2_mmap_t;
 typedef multiboot_memory_map_t mb_mmap_t;

@@ -22,22 +22,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <common/locks.h>
-#include <common/mm.h>
-#include <common/fb.h>
+
 #include <common/hal.h>
+#include <common/util/kfuncs.h>
 #include <common/mb2parse.h>
-#include <common/uart.h>
-#include <common/tty.h>
-#include <common/kfuncs.h>
-#include <common/sched.h>
-#include <common/tasks.h>
-#include <common/ps2.h>
-#include <common/kbd.h>
-#include <common/vfs.h>
-#include <common/tarfs.h>
 #include <common/syscall.h>
+#include <common/io/uart.h>
+#include <common/io/ps2.h>
+#include <common/io/kbd.h>
 #include <common/kshell/kshell.h>
+#include <common/mm/mm.h>
+#include <common/sched/sched.h>
+#include <common/tasks/tasks.h>
+#include <common/fs/tarfs.h>
+#include <common/fs/vfs.h>
+#include <common/tty/fb.h>
+#include <common/tty/tty.h>
 
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;

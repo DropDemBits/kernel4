@@ -20,9 +20,9 @@
 
 #include <string.h>
 
-#include <common/tasks.h>
 #include <common/hal.h>
-#include <common/mm.h>
+#include <common/mm/mm.h>
+#include <common/tasks/tasks.h>
 
 extern void __initialize_thread();
 

@@ -18,7 +18,7 @@
  * 
  */
 
-#include <common/vfs.h>
+#include <common/fs/vfs.h>
 
 #ifndef __TARFS_H__
 #define __TARFS_H__

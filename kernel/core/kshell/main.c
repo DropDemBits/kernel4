@@ -23,14 +23,14 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include <common/keycodes.h>
-#include <common/kbd.h>
-#include <common/tty.h>
-#include <common/mm.h>
-#include <common/sched.h>
-#include <common/fb.h>
 #include <common/mb2parse.h>
+#include <common/io/keycodes.h>
+#include <common/io/kbd.h>
 #include <common/kshell/kshell.h>
+#include <common/mm/mm.h>
+#include <common/tty/tty.h>
+#include <common/tty/fb.h>
+#include <common/sched/sched.h>
 
 /*
  * KSHELL: Basic command line interface

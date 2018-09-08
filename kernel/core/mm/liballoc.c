@@ -1,4 +1,4 @@
-#include <common/liballoc.h>
+#include <common/mm/liballoc.h>
 
 /**  Durand's Amazing Super Duper Memory functions.  */
 /**  Modified to work with this kernel  */

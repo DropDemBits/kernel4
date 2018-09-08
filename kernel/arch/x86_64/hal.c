@@ -20,8 +20,9 @@
 
 #include <stdio.h>
 
-#include <common/sched.h>
 #include <common/hal.h>
+#include <common/sched/sched.h>
+
 #include <arch/pic.h>
 #include <arch/pit.h>
 #include <arch/idt.h>

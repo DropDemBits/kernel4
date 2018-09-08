@@ -18,7 +18,7 @@
  * 
  */
 
-#include <common/tasks.h>
+#include <common/tasks/tasks.h>
 
 #ifndef __SCHED_H__
 #define __SCHED_H__

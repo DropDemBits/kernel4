@@ -19,9 +19,9 @@
  */
 
 #include <stdio.h>
-#include <common/kfuncs.h>
+#include <common/util/kfuncs.h>
 #include <common/hal.h>
-#include <common/tty.h>
+#include <common/tty/tty.h>
 
 extern void __attribute__((noreturn)) halt();
 

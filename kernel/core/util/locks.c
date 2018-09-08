@@ -1,4 +1,5 @@
-#include <common/locks.h>
+#include <common/sched/sched.h>
+#include <common/util/locks.h>
 
 semaphore_t* semaphore_create(long max_count)
 {

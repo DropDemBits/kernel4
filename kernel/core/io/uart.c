@@ -18,7 +18,7 @@
  * 
  */
 
-#include <common/uart.h>
+#include <common/io/uart.h>
 
 extern void uart_writeb(uint8_t device, uint8_t offset, uint8_t data);
 extern uint8_t uart_readb(uint8_t device, uint8_t offset);

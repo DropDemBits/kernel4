@@ -18,8 +18,8 @@
  * 
  */
 
-#include <common/kfuncs.h>
-#include <common/mm.h>
+#include <common/mm/mm.h>
+#include <common/util/kfuncs.h>
 
 extern size_t kernel_phystart;
 extern size_t kernel_physize;
