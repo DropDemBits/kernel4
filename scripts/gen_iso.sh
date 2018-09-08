@@ -25,7 +25,7 @@ rm -f k4-$1.iso
 rm -f isodir/k4-*.kern
 
 set -e
-cp build/$1/k4-$1.kern isodir/
+cp kernel/bin/$1/k4-$1.kern isodir/
 cp initrd/initrd/initrd.tar isodir/
 
 grub-mkrescue --product-name="DURRR" isodir -o k4-$1.iso

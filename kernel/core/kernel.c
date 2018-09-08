@@ -27,9 +27,11 @@
 #include <common/util/kfuncs.h>
 #include <common/mb2parse.h>
 #include <common/syscall.h>
-#include <common/io/uart.h>
-#include <common/io/ps2.h>
+#include <common/ata/ata.h>
 #include <common/io/kbd.h>
+#include <common/io/pci.h>
+#include <common/io/ps2.h>
+#include <common/io/uart.h>
 #include <common/kshell/kshell.h>
 #include <common/mm/mm.h>
 #include <common/sched/sched.h>
@@ -226,6 +228,9 @@ void core_fini()
     kbd_init();
     tty_prints("Setting up system calls\n");
     syscall_init();
+
+    ata_init();
+    pci_init();
 
     // TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS

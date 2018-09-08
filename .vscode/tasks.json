@@ -38,7 +38,7 @@
         {
             "label": "Run QEMU (x86_64)",
             "type": "shell",
-            "command": "make geniso && qemu-system-x86_64 -enable-kvm -cdrom k4-x86_64.iso -monitor stdio -d cpu_reset,int",
+            "command": "make geniso && qemu-system-x86_64 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-x86_64.iso",
             "problemMatcher": [
                 "$gcc"
             ],
@@ -58,7 +58,7 @@
         {
             "label": "Debug QEMU (i386)",
             "type": "shell",
-            "command": "make geniso && qemu-system-i386 -enable-kvm -S -s -cdrom k4-i386.iso",
+            "command": "make geniso && qemu-system-x86_64 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-x86_64.iso -S -s",
             "problemMatcher": [
                 "$gcc"
             ]

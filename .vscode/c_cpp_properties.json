@@ -26,19 +26,11 @@
         {
             "name": "Linux",
             "includePath": [
-                "/usr/include/c++/7",
-                "/usr/include/x86_64-linux-gnu/c++/7",
-                "/usr/include/c++/7/backward",
-                "/usr/lib/gcc/x86_64-linux-gnu/7/include",
-                "/usr/local/include",
-                "/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed",
-                "/usr/include/x86_64-linux-gnu",
                 "/usr/include",
-                "${workspaceRoot}",
                 "${workspaceRoot}/kernel/include",
-                "${workspaceRoot}/kernel/include/x86",
-                "${workspaceRoot}/kernel/include/x86_64",
-                "${workspaceRoot}/kernel/include/i386",
+                "${workspaceRoot}/kernel/arch/x86/include",
+                "${workspaceRoot}/kernel/arch/x86_64/include",
+                "${workspaceRoot}/kernel/arch/i386/include",
                 "${workspaceRoot}/libk/include"
             ],
             "defines": [],

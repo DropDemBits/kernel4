@@ -15,7 +15,8 @@ syscall_ret syscall_yield(struct syscall_args* frame)
 
 syscall_ret syscall_print(struct syscall_args* frame)
 {
-    return printf((char*)frame->arg1);
+    // return printf((char*)frame->arg1);
+    return 0;
 }
 
 syscall_ret syscall_sleep(struct syscall_args* frame)

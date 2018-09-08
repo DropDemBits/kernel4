@@ -111,7 +111,6 @@ __initialize_thread:
  */
 .global enter_usermode
 enter_usermode:
-    xchg %bx, %bx
     movq 2*8(%rdi), %rdi    # TCB->KRSP
     movq %rdi, %r11            # Store KRSP
 

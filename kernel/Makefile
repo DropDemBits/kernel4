@@ -39,7 +39,7 @@ BIN_PREFIX := bin/$(TARGET_ARCH)/
 OBJS := $(addprefix $(BIN_PREFIX),$(addsuffix .obj,$(ARCH_SRCS) $(BUILD_SRCS)))
 BIN_DIRS := $(addprefix $(BIN_PREFIX),$(shell find $(SOURCE_DIRS) -type d -not -path "*include*"))
 
-.PHONY: all clean include k4-kernel make_bindirs
+.PHONY: all clean include make_bindirs
 
 make_bindirs:
 	@$(foreach dir,$(BIN_DIRS),mkdir -p $(dir);)
@@ -47,10 +47,10 @@ make_bindirs:
 $(BIN_PREFIX)%.obj: %
 	$(CC) -o $@ $< $(LIBS) $(CFLAGS)
 
-k4-kernel: make_bindirs $(OBJS)
-	$(CC) -T $(ARCH_LINKER) $(OBJS) $(LIBS) $(LFLAGS) -o bin/$(TARGET_ARCH)/k4-$(TARGET_ARCH).kern
+k4-$(TARGET_ARCH).kern: make_bindirs $(OBJS)
+	$(CC) -T $(ARCH_LINKER) $(OBJS) $(LIBS) $(LFLAGS) -o bin/$(TARGET_ARCH)/$@
 
-all: k4-kernel
+all: k4-$(TARGET_ARCH).kern
 
 clean:
 	rm -rf bin/$(TARGET_ARCH)
