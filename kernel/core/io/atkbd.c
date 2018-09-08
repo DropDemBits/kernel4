@@ -87,7 +87,10 @@ static void keycode_decoder()
         data = keycode_pop();
 
         if(data == 0x00)
+        {
             sched_block_thread(STATE_SUSPENDED);
+            goto keep_consume;
+        }
 
         switch(data)
         {
@@ -160,7 +163,7 @@ void atkbd_init(int device)
 
     ps2_device_write(kbd_device, true, 0xF4);
     if(ps2_device_read(kbd_device, true) != 0xFA)
-        puts("[KBD] Scanning enable failed");
+        puts("[ATKB] Scanning enable failed");
     ps2_handle_device(kbd_device, at_keyboard_isr);
     send_command(0xF0, 0x01);
     send_command(0xF3, 0x20);

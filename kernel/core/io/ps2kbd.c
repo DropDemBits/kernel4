@@ -38,7 +38,7 @@ static uint16_t write_head = 0;
 static int kbd_device = 0;
 static thread_t* decoder_thread;
 /*
- * 0: xF0 Flag
+ * 0: xF0 Flag (Release)
  * 1: xE0 Flag
  * 2: xE1 Flag
  * 3: Finish Flag
@@ -112,7 +112,10 @@ static void keycode_decoder()
         data = keycode_pop();
         
         if(data == 0x00)
+        {
             sched_block_thread(STATE_SUSPENDED);
+            goto keep_consume;
+        }
 
         switch(data)
         {
@@ -173,7 +176,7 @@ void ps2kbd_init(int device)
     decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2");
 
     if(!send_command(0xF4, 0x00))
-        puts("[KBD] Scanning enable failed");
+        puts("[PSKB] Scanning enable failed");
 
     ps2_handle_device(kbd_device, ps2_keyboard_isr);
     send_command(0xF0, 0x02);

@@ -58,6 +58,7 @@ static uint8_t input_pop()
 
 void kbd_init()
 {
+    tty_prints("[KBDG] Initialising keyboard driver\n");
     charmap = default_charmap;
     is_inited = true;
 }
