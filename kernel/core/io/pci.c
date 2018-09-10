@@ -10,11 +10,11 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     uint16_t device_id =    pci_read(bus, device, function, 0x002, 2);
     uint8_t header_type =   pci_read(bus, device, function, 0x00E, 1);
 
-    uint8_t class_code =    pci_read(bus, device, function, 0x00B, 1);
-    uint8_t subclass_code = pci_read(bus, device, function, 0x00A, 1);
-    uint8_t prog_if =       pci_read(bus, device, function, 0x009, 1);
+    uint8_t class_code =    pci_read(bus, device, function, PCI_CLASS_CODE, 1);
+    uint8_t subclass_code = pci_read(bus, device, function, PCI_SUBCLASS_CODE, 1);
+    uint8_t prog_if =       pci_read(bus, device, function, PCI_PROG_IF, 1);
 
-    printf("[PCI ] %x:%x.%x ", bus, device, function);
+    printf("[PCI ] %x:%x.%x: ", bus, device, function);
 
          if(vendor_id == 0x1234 && device_id == 0x1111) printf("Bochs VBE-Compatible VGA Controller");
     else if(vendor_id == 0x8086 && device_id == 0x100e) printf("Intel 82540EM Gigabit Ethernet Controller");
@@ -33,6 +33,14 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     else if(vendor_id == 0x8086 && device_id == 0x2935) printf("Intel ICH9 USB UHCI Controller #2");
     else if(vendor_id == 0x8086 && device_id == 0x2936) printf("Intel ICH9 USB UHCI Controller #3");
     else if(vendor_id == 0x8086 && device_id == 0x293a) printf("Intel ICH9 USB2 EHCI Controller #1");
+
+    else if(vendor_id == 0x8086 && device_id == 0x2415) printf("Intel AC'97 Audio Controller");
+
+    else if(vendor_id == 0x10ec && device_id == 0x8139) printf("Realtek RTL-8139 PCI Fast Ethernet Adapter");
+
+    else if(vendor_id == 0x1af4 && device_id == 0x1002) printf("Virtio memory balloon");
+    else if(vendor_id == 0x1af4 && device_id == 0x1003) printf("Virtio console");
+    else if(vendor_id == 0x1b36 && device_id == 0x0100) printf("QXL Paravirtual Graphic Card");
 
     printf(" (%x:%x)\n", vendor_id, device_id);
 

@@ -224,7 +224,6 @@ void core_fini()
 {
     tty_prints("Initialising PS/2 controller\n");
     ps2_init();
-    tty_prints("Initialising keyboard driver\n");
     kbd_init();
     tty_prints("Setting up system calls\n");
     syscall_init();

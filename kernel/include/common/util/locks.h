@@ -1,4 +1,5 @@
 #include <common/types.h>
+#include <common/sched/sched.h>
 
 #ifndef __LOCKS_H__
 #define __LOCKS_H__
