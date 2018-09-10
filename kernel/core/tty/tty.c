@@ -140,7 +140,6 @@ void tty_printchar(const char c)
         if(window[index-1].actual_char == '\t')
         {
             tty_tabunput();
-            return;
         }
 
         if(--column < 0)
@@ -149,7 +148,8 @@ void tty_printchar(const char c)
             else column = 0;
             if(--row < 0) row = 0;
         }
-        background_reshow = true;
+
+        return;
     }
     if(c == '\n') pchar = '\n';
 
