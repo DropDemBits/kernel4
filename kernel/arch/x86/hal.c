@@ -20,8 +20,8 @@
 
 #include <stdio.h>
 
-#include <common/sched/sched.h>
 #include <common/hal.h>
+#include <common/sched/sched.h>
 
 #include <arch/pic.h>
 #include <arch/pit.h>
@@ -33,8 +33,14 @@
 extern void irq_common(struct intr_stack *frame);
 
 static bool use_apic = false;
-static size_t native_flags;
-static struct heap_info heap_context = {.base=0x90000000, .length=0x10000000};
+static size_t native_flags = 0;
+static struct heap_info heap_context = {
+#if defined(__x86_64__)
+    .base=0xFFFF900000000000, .length=0x0000100000000000
+#else
+    .base=0x90000000, .length=0x10000000
+#endif
+};
 
 // ID 0 is reserved
 static uint64_t timer_id_bitmap = 0;
@@ -82,39 +88,15 @@ void hal_init()
     {
         for(int i = 0; i < 16; i++) pic_eoi(i);
     }
+
     for(int i = 0; i < MAX_TIMERS; i++)
         timers[i] = KNULL;
-
+    
     pit_init();
 
     pic_unmask(0);
     pic_mask(8);
-}
 
-void hal_enable_interrupts()
-{
-    asm volatile("sti");
-}
-
-void hal_disable_interrupts()
-{
-    asm volatile("cli");
-}
-
-void hal_save_interrupts()
-{
-    asm volatile("pushf\n\tpopl %%eax":"=a"(native_flags));
-    hal_disable_interrupts();
-}
-
-void hal_restore_interrupts()
-{
-    asm volatile("push %%eax\n\tpopf"::"a"(native_flags));
-}
-
-inline void busy_wait()
-{
-    asm volatile("pause");
 }
 
 unsigned long timer_add(struct timer_dev* device, enum timer_type type)
@@ -152,7 +134,7 @@ void timer_add_handler(unsigned long id, timer_handler_t handler_function)
     struct timer_handler_node* node = kmalloc(sizeof(struct timer_handler_node));
     if(node == NULL)
         return;
-
+    
     node->handler = handler_function;
     node->next = KNULL;
 
@@ -165,7 +147,7 @@ void timer_add_handler(unsigned long id, timer_handler_t handler_function)
 
     // We'll have to go through the entire loop to append the node
     struct timer_handler_node* current_node;
-    struct timer_handler_node* next_node = timers[id]->list_head;
+    struct timer_handler_node* next_node = timers[timer_id]->list_head;
 
     while(next_node != KNULL)
     {
@@ -189,7 +171,7 @@ void timer_broadcast_update(unsigned long id)
 
     if(timers[timer_id]->list_head == KNULL)  // No point in going through the loop
         return;
-    
+
     struct timer_handler_node* node = timers[timer_id]->list_head;
 
     while(node != KNULL)
@@ -201,7 +183,7 @@ void timer_broadcast_update(unsigned long id)
 
 uint64_t timer_read_counter(unsigned long id)
 {
-    unsigned int timer_id = id;
+    unsigned int timer_id = id - 1;
     if(id > MAX_TIMERS)
         return;
     else if(id == 0)
@@ -212,6 +194,7 @@ uint64_t timer_read_counter(unsigned long id)
     return timers[timer_id]->counter;
 }
 
+/*
 void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
 {
     pit_init_counter(id, frequency, mode);
@@ -226,6 +209,7 @@ void timer_set_counter(uint16_t id, uint16_t frequency)
 {
     pit_set_counter(id, frequency);
 }
+*/
 
 void ic_mask(uint16_t irq)
 {
@@ -257,6 +241,71 @@ struct heap_info* get_heap_info()
     return &heap_context;
 }
 
+void intr_wait()
+{
+    asm("hlt");
+}
+
+void hal_enable_interrupts()
+{
+    asm volatile("sti");
+}
+
+void hal_disable_interrupts()
+{
+    asm volatile("cli");
+}
+
+inline void busy_wait()
+{
+    asm volatile("pause");
+}
+
+#if defined(__x86_64__)
+void hal_save_interrupts()
+{
+    asm volatile("pushfq\n\tpopq %%rax":"=a"(native_flags));
+    hal_disable_interrupts();
+}
+
+void hal_restore_interrupts()
+{
+    asm volatile("push %%rax\n\tpopfq"::"a"(native_flags));
+}
+
+void dump_registers(struct intr_stack *stack)
+{
+    printf("***BEGIN REGISTER DUMP***\n");
+    puts("RAX RBX RCX RDX");
+    printf("%#p %#p %#p %#p\n", stack->rax, stack->rbx, stack->rcx, stack->rdx);
+    puts("RSI RDI RSP RBP");
+    printf("%#p %#p %#p %#p\n", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
+    printf("RIP: %#p\n", stack->rip);
+    printf("Error code: %x\n", stack->err_code);
+    thread_t* at = sched_active_thread();
+    printf("Current Thread: %#p\n", at);
+    if(at != KNULL)
+    {
+        printf("\tID: %d (%s)\n", at->tid, at->name);
+        printf("\tPriority: %d\n", at->priority);
+        printf("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
+    } else
+    {
+        puts("(Pre-scheduler)");
+    }
+}
+#elif defined(__i386__)
+void hal_save_interrupts()
+{
+    asm volatile("pushf\n\tpopl %%eax":"=a"(native_flags));
+    hal_disable_interrupts();
+}
+
+void hal_restore_interrupts()
+{
+    asm volatile("push %%eax\n\tpopf"::"a"(native_flags));
+}
+
 void dump_registers(struct intr_stack *stack)
 {
     printf("***BEGIN REGISTER DUMP***\n");
@@ -271,14 +320,10 @@ void dump_registers(struct intr_stack *stack)
     {
         printf("\tID: %d (%s)\n", at->tid, at->name);
         printf("\tPriority: %d\n", at->priority);
-        printf("\tKESP: %#p, ESP: %#p", at->kernel_sp, at->user_sp);
+        printf("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
     } else
     {
         puts("(Pre-scheduler)");
     }
 }
-
-void intr_wait()
-{
-    asm("hlt");
-}
+#endif
