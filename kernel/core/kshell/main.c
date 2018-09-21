@@ -98,7 +98,9 @@ static void shell_readline()
 
         if(kcode && kchr)
         {
-            if((kchr != '\b' || index > 0) && (index < INPUT_SIZE || kchr == '\n'))
+            // Don't put the charachter on screen if it is a backspace and it
+            // is at the beginning of the index buffer
+            if((kchr != '\b' && index < INPUT_SIZE) || kchr == '\n' || (kchr == '\b' && index > 0))
                 putchar(kchr);
 
             if(kchr == '\n')
