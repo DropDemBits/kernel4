@@ -231,6 +231,27 @@ void core_fini()
     ata_init();
     pci_init();
 
+    uint8_t eject_command[] = {0x1B /* START STOP UNIT */, 0x00, 0x00, 0x00, /* LoEJ */ 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t read_command[]  = {0xA8 /* READ(12) */, 0x00, /* LBA */ 0x00, 0x00, 0x00, 0x01, /* Sector Count */ 0x00, 0x00, 0x00, 0x01, /**/ 0x00, 0x00};
+    uint16_t* transfer_buffer = kmalloc(4096);
+    int err_code = 0;
+
+    printf("HEY\n");
+    err_code = atapi_send_command(2, read_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
+    printf("OHH (%d)\n", err_code);
+    printf("HEY\n");
+    err_code = atapi_send_command(2, eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
+    printf("OHH (%d)\n", err_code);
+
+    for(int i = 0; i < 1024; i++)
+    {
+        printf("%x ", transfer_buffer[i]);
+        if((i & 0x1F) == 0x1F)
+            putchar('\n');
+        if((i & 0x3F) == 0x3F)
+            tty_reshow();
+    }
+
     // TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS
     uint8_t* alloc_test = kmalloc(16);

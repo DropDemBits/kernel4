@@ -48,10 +48,11 @@ struct pit_timer_dev timer_devs[2];
 
 static void pit_handler()
 {
+    // We EOI here as sched_timer may switch to another task that is the only one and never returns.
+    ic_eoi(0);
     struct pit_timer_dev* timer = &(timer_devs[0]);
     timer->raw_dev.counter += timer->raw_dev.resolution;
     timer_broadcast_update(timer->raw_dev.id);
-    ic_eoi(0);
 }
 
 void pit_init_counter(uint16_t id, uint16_t frequency, uint8_t mode)

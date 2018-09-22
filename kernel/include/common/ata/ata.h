@@ -9,6 +9,9 @@
 #define TYPE_SATA 2
 #define TYPE_SATAPI 3
 
+#define TRANSFER_READ 1
+#define TRANSFER_WRITE 0
+
 struct ata_dev_info
 {
     uint16_t general_config;
@@ -43,6 +46,7 @@ struct ata_dev
 
     mutex_t* dev_lock;
     bool processing_command;
+    uint8_t interrupt; // The interrupt of this device 
 
     // Common info
     uint64_t num_sectors; // Number of sectors, in the sector size. Zero indicates a dynamic capacity
@@ -66,5 +70,24 @@ struct pata_dev
 };
 
 void ata_init();
+
+/**
+ * @brief  Sends an ATAPI command to the device
+ * @note   If the command does not require any data to be transfered, the transfer buffer, direction, and size are ignored.
+ *         If the command uses DMA, the size is ignored.
+ *         If is_16b is true and the device doesn't support the command or the device isn't an ATAPI device, EINVAL is returned.
+ * @param  id: The id of the target ATAPI device
+ * @param  command: The command buffer composed of the appropriate amount of bytes
+ * @param  transfer_buffer: The buffer containing the data to transfer
+ * @param  transfer_size: The size of how large one transfer block can be
+ * @param  transfer_dir: The transfer direction of the command (0 = write, 1 = read)
+ * @param  is_dma: Whether the command will use DMA
+ * @param  is_16b: Whether the command is 16 bytes long (only if the device supports it)
+ * @retval EINVAL if the device isn't ATAPI or doesn't support the command length
+ *         EABSET if the device doesn't exist
+ *         0 if the command was sent successfully
+ */
+int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer, uint16_t transfer_size, int transfer_dir, bool is_dma, bool is_16b);
+
 
 #endif /* __ATA_H__ */
