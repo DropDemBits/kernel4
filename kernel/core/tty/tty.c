@@ -237,6 +237,13 @@ void tty_reshow()
         }
     }
 
+    for(int i = current_draw; i < last_draw; i++)
+    {
+        uart_writec('\b');
+        uart_writec('\0');
+        uart_writec('\b');
+    }
+
     if(extra_devices[VGA_CONSOLE].base != (size_t)KNULL &&
         mmu_is_usable(extra_devices[VGA_CONSOLE].base))
     {
