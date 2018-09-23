@@ -89,5 +89,6 @@ void ata_init();
  */
 int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer, uint16_t transfer_size, int transfer_dir, bool is_dma, bool is_16b);
 
+int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint32_t sector_count, int transfer_dir, bool is_dma, bool is_48bit);
 
 #endif /* __ATA_H__ */

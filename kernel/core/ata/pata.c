@@ -43,9 +43,28 @@ void ata_init_controller(uint16_t bus, uint16_t device, uint16_t function);
 #define INTR_IO     0x02
 #define INTR_REL    0x04
 
-#define IDENTIFY 0xEC
-#define IDENTIFY_PACKET 0xA1
-#define PACKET 0xA0
+#define IDENTIFY            0xEC
+#define IDENTIFY_PACKET     0xA1
+#define PACKET              0xA0
+
+#define READ_SECTORS        0x20
+#define READ_SECTORS_EXT    0x24
+#define READ_DMA_EXT        0x25
+#define READ_MULTIPLE_EXT   0x29
+
+#define WRITE_SECTORS       0x30
+#define WRITE_SECTORS_EXT   0x34
+#define WRITE_DMA_EXT       0x35
+#define WRITE_MULTIPLE_EXT  0x39
+
+#define READ_MULTIPLE       0xC4
+#define WRITE_MULTIPLE      0xC5
+
+#define READ_DMA            0xC8
+#define WRITE_DMA           0xCA
+
+#define FLUSH_CACHE         0xE7
+#define FLUSH_CACHE_EXT     0xEA
 
 #define FIXUP_BAR(x, val) \
     if(!(x & 0xFE)) { printf("[PATA] Fixing up IDE quirk (%#lx -> %#lx)\n", x, val); (x) = (val); }
@@ -139,9 +158,16 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
     return true;
 }
 
+static void ata_wait()
+{
+    // TODO: Block current thread & awake on interrupt
+    while(!irq_fired)
+        busy_wait();
+}
+
 // Handles the sending part of a command
 // Returns 0 if the command was handled, 1 if the command was aborted / errored, negative otherwise
-int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t lba, uint16_t sector_count, bool is48bit)
+int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t lba, uint16_t sector_count, int transfer_dir, bool is48bit)
 {
     if(!switch_device(id, (lba >> 24) & 0x0F))
         return EINVAL;
@@ -194,18 +220,16 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     if((inb(control_base + ATA_ALT_STATUS) & STATUS_ERR) == 1)
         return 1;
 
-    // NOTE: PACKET doesn't raise interrupts, so we can't wait for them and have to use a busy loop
-    if(command == PACKET)
-        goto packet_wait;
+    // NOTE: Writes don't initially raise interrupts, so we can't wait for them and have to use a busy loop
+    if(transfer_dir == TRANSFER_WRITE)
+        goto write_wait;
 
     // Wait until busy bit clears
-    // TODO: Block current thread & awake on interrupt
-    while(!irq_fired)
-        busy_wait();
+    ata_wait();
 
     goto normal_exit;
 
-    packet_wait:
+    write_wait:
     last_status = inb(control_base + ATA_ALT_STATUS);
     while((last_status & STATUS_BSY) && (last_status & (STATUS_ERR | STATUS_DRDY)) == 0)
     {
@@ -226,8 +250,82 @@ int ata_end_command(uint16_t id)
     return 0;
 }
 
-int pata_do_transfer(uint16_t id, uint16_t* transfer_buffer, uint16_t sector_count, uint16_t transfer_size, int transfer_dir, bool is_dma)
+int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint32_t sector_count, int transfer_dir, bool is_dma, bool is_48bit)
 {
+    // Initial checks
+    if((transfer_buffer == NULL || transfer_buffer == KNULL))
+        return 0;
+    if(!sector_count)
+        return 0;
+    if(get_device(id) == KNULL)
+        return EABSENT;
+    if(get_device(id)->device_type & TYPE_ATA != TYPE_ATA)
+        return EINVAL_ARG;
+    if(!get_device(id)->has_lba48 && (lba > 0x10000000 || sector_count > 0x100 || is_48bit))
+        return EINVAL_ARG;
+
+    if(!switch_device(id, 0))
+        return EINVAL;
+    else if(current_device->dev.processing_command)
+        return EBUSY;
+
+    // Send Read/Write Command
+    int error_code = 0;
+    uint16_t command_base = current_device->command_base;
+    uint16_t control_base = current_device->control_base;
+
+    uint8_t command = 0;
+
+         if(!is_dma && !is_48bit && transfer_dir == TRANSFER_READ ) command = READ_SECTORS;
+    else if(!is_dma &&  is_48bit && transfer_dir == TRANSFER_READ ) command = READ_SECTORS_EXT;
+    else if( is_dma && !is_48bit && transfer_dir == TRANSFER_READ ) command = READ_DMA;
+    else if( is_dma &&  is_48bit && transfer_dir == TRANSFER_READ ) command = READ_DMA_EXT;
+    else if(!is_dma && !is_48bit && transfer_dir == TRANSFER_WRITE) command = WRITE_SECTORS;
+    else if(!is_dma &&  is_48bit && transfer_dir == TRANSFER_WRITE) command = WRITE_SECTORS_EXT;
+    else if( is_dma && !is_48bit && transfer_dir == TRANSFER_WRITE) command = WRITE_DMA;
+    else if( is_dma &&  is_48bit && transfer_dir == TRANSFER_WRITE) command = WRITE_DMA_EXT;
+    
+    error_code = ata_send_command(id, command, 0, lba, sector_count, transfer_dir, is_48bit);
+
+    uint64_t buffer_index = 0;
+    uint64_t word_count = (sector_count * current_device->dev.sector_size) >> 1;
+
+    resume_tranfer:
+    irq_fired = false;
+
+    if((inb(control_base + ATA_ALT_STATUS) & STATUS_DRQ) == 0 && (inb(control_base + ATA_ALT_STATUS) & STATUS_ERR) != 0)
+    {
+        // We got an error here
+        ata_end_command(id);
+        return 1;
+    }
+
+    if((inb(control_base + ATA_ALT_STATUS) & (STATUS_DRQ | STATUS_BSY)) == 0 || word_count == 0)
+        goto normal_exit;
+
+    // We are in data transfer mode, do it
+    printf("[PATA] Beginning Data Transfer (%lld bytes)\n", word_count << 1);
+    if(transfer_dir == TRANSFER_READ)
+    {
+        while(word_count--)
+            transfer_buffer[buffer_index++] = inw(command_base + ATA_DATA);
+    }
+    else
+    {
+        while(word_count--)
+            outw(command_base + ATA_DATA, transfer_buffer[buffer_index++]);
+    }
+
+    // Nothing else needs to be done for read
+    if(transfer_dir == TRANSFER_READ)
+        goto normal_exit;
+
+    // Writes, on the other hand
+    ata_wait();
+    goto resume_tranfer;
+
+    normal_exit:
+    ata_end_command(id);
     return 0;
 }
 
@@ -251,7 +349,7 @@ int pata_do_transfer(uint16_t id, uint16_t* transfer_buffer, uint16_t sector_cou
 int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer, uint16_t transfer_size, int transfer_dir, bool is_dma, bool is_16b)
 {
     // Initial checks
-    if(transfer_buffer == NULL || transfer_buffer == KNULL)
+    if((transfer_buffer == NULL || transfer_buffer == KNULL) && transfer_dir == TRANSFER_WRITE)
         return 0;
     if(get_device(id) == KNULL)
         return EABSENT;
@@ -270,7 +368,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
     uint16_t command_base = current_device->command_base;
     uint16_t control_base = current_device->control_base;
 
-    error_code = ata_send_command(id, PACKET, /*(transfer_dir & 1) << 2 |*/ is_dma, transfer_size << 8, 0, false);
+    error_code = ata_send_command(id, PACKET, /*(transfer_dir & 1) << 2 |*/ is_dma, transfer_size << 8, 0, TRANSFER_WRITE, false);
     irq_fired = false;
 
     if(error_code < 0)
@@ -285,8 +383,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
         outw(command_base, command[i]);
 
     // Wait for an IRQ indicating the device is ready to begin the transfer
-    while(!irq_fired)
-        busy_wait();
+    ata_wait();
 
     // Check current status
     if((inb(control_base + ATA_ALT_STATUS) & (STATUS_BSY | STATUS_DRQ)) == 0)
@@ -310,8 +407,16 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
 
     if(transfer_dir == 1)
     {
-        while(word_count--)
-            transfer_buffer[buffer_index++] = inw(command_base + ATA_DATA);
+        if(transfer_buffer == NULL || transfer_buffer == KNULL)
+        {
+            while(word_count--)
+                inw(command_base + ATA_DATA);
+        }
+        else
+        {
+            while(word_count--)
+                transfer_buffer[buffer_index++] = inw(command_base + ATA_DATA);
+        }
     }
     else
     {
@@ -319,8 +424,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
             outw(command_base + ATA_DATA, transfer_buffer[buffer_index++]);
     }
 
-    while(!irq_fired)
-        busy_wait();
+    ata_wait();
 
     if(inb(control_base + ATA_ALT_STATUS) & STATUS_DRQ)
     {
@@ -387,7 +491,7 @@ static void init_atapi_device()
     ata_end_command(current_id);
     
     // Send the identify packet command
-    ata_send_command(current_id, IDENTIFY_PACKET, 0x0000, 0, 0, false);
+    ata_send_command(current_id, IDENTIFY_PACKET, 0x0000, 0, 0, TRANSFER_READ, false);
 
     uint16_t* buffer = kmalloc(256*2); // 256 words
 
@@ -431,7 +535,7 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
 
     ata_add_device(controller);
 
-    int err = ata_send_command(controller->dev.id, IDENTIFY, 0x0000, 0, 0, false);
+    int err = ata_send_command(controller->dev.id, IDENTIFY, 0x0000, 0, 0, TRANSFER_READ, false);
     if(err == EABSENT)
     {
         controller->dev.is_active = false;

@@ -242,8 +242,11 @@ void core_fini()
     printf("HEY\n");
     err_code = atapi_send_command(2, eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
     printf("OHH (%d)\n", err_code);
+    printf("HEY\n");
+    err_code = pata_do_transfer(0, 1, transfer_buffer, 1, TRANSFER_READ, false, false);
+    printf("OHH (%d)\n");
 
-    for(int i = 0; i < 1024; i++)
+    for(int i = 0; i < 256; i++)
     {
         printf("%x ", transfer_buffer[i]);
         if((i & 0x1F) == 0x1F)
