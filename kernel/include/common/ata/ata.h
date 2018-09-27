@@ -40,17 +40,19 @@ struct ata_dev_info
 
 struct ata_dev
 {
+    struct pci_dev_t* dev;  // PCI Device backing
+
     uint8_t device_type;
     bool is_active;
     uint16_t id;
 
     mutex_t* dev_lock;
     bool processing_command;
-    uint8_t interrupt; // The interrupt of this device 
+    uint8_t interrupt;      // The interrupt of this device 
 
     // Common info
-    uint64_t num_sectors; // Number of sectors, in the sector size. Zero indicates a dynamic capacity
-    uint32_t sector_size; // The size of a sector in bytes
+    uint64_t num_sectors;   // Number of sectors, in the sector size. Zero indicates a dynamic capacity
+    uint32_t sector_size;   // The size of a sector in bytes
 
     // Common features
     bool has_lba48;
@@ -84,7 +86,7 @@ void ata_init();
  * @param  is_dma: Whether the command will use DMA
  * @param  is_16b: Whether the command is 16 bytes long (only if the device supports it)
  * @retval EINVAL if the device isn't ATAPI or doesn't support the command length
- *         EABSET if the device doesn't exist
+ *         EABSENT if the device doesn't exist
  *         0 if the command was sent successfully
  */
 int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer, uint16_t transfer_size, int transfer_dir, bool is_dma, bool is_16b);

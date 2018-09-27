@@ -246,14 +246,14 @@ void core_fini()
     err_code = pata_do_transfer(0, 1, transfer_buffer, 1, TRANSFER_READ, false, false);
     printf("OHH (%d)\n");
 
-    for(int i = 0; i < 256; i++)
+    /*for(int i = 0; i < 256; i++)
     {
         printf("%x ", transfer_buffer[i]);
         if((i & 0x1F) == 0x1F)
             putchar('\n');
         if((i & 0x3F) == 0x3F)
             tty_reshow();
-    }
+    }*/
 
     // TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS

@@ -6,7 +6,7 @@ uint64_t ecam_base;
 
 // PCI Config Space Acess (ECAM Only)
 // bus_base is the starting host bridge decode address
-inline uint32_t pci_get_ecam_addr(uint8_t bus_base, uint8_t bus, uint8_t device, uint8_t function)
+inline uint32_t pci_get_ecam_addr(uint16_t bus_base, uint16_t bus, uint8_t device, uint8_t function)
 {
     if(!ecam_base)
         return 0xFFFFFFFF;
@@ -16,7 +16,7 @@ inline uint32_t pci_get_ecam_addr(uint8_t bus_base, uint8_t bus, uint8_t device,
 
 // PCI Config Space Access
 // If the offset is outside of the accessable space, the read functions return 0xFF / 0xFFFF / 0xFFFFFFFF respectively
-uint32_t pci_read(uint8_t bus, uint8_t device, uint8_t function, uint16_t reg, uint8_t len)
+uint32_t pci_read_raw(uint16_t bus, uint8_t device, uint8_t function, uint16_t reg, uint8_t len)
 {
     uint32_t address = 0x80000000 | (reg & 0xF00) << 16 | bus << 16 | (device & 0x1F) << 11 | (function & 0x7) << 8 | (reg & 0xFC);
     outl(0xCF8, address);
@@ -34,7 +34,7 @@ uint32_t pci_read(uint8_t bus, uint8_t device, uint8_t function, uint16_t reg, u
     return 0xFFFFFFFF;
 }
 
-void pci_write(uint8_t bus, uint8_t device, uint8_t function, uint16_t reg, uint8_t len, uint32_t data)
+void pci_write_raw(uint16_t bus, uint8_t device, uint8_t function, uint16_t reg, uint8_t len, uint32_t data)
 {
     uint32_t address = 0x80000000 | (reg & 0xF00) << 16 | bus << 16 | (device & 0x1F) << 11 | (function & 0x7) << 8 | (reg & 0xFC);
     outl(0xCF8, address);

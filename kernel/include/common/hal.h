@@ -23,8 +23,8 @@
 #ifndef __HAL_H__
 #define __HAL_H__ 1
 
-#define IRQ_NOT_HANDLED 0
-#define IRQ_HANDLED 1
+#define IRQ_HANDLED 0
+#define IRQ_NOT_HANDLED 1
 
 // Forward Decleration
 struct timer_dev;
@@ -32,7 +32,8 @@ struct ic_dev;
 struct intr_stack;
 
 typedef void (*timer_handler_t)(struct timer_dev* dev);
-typedef int (*irq_handler_t)(struct ic_dev* dev);
+typedef int irq_ret_t;
+typedef irq_ret_t (*irq_function_t)(struct ic_dev* dev);
 
 struct heap_info
 {
@@ -63,17 +64,17 @@ struct timer_dev
     struct timer_handler_node* list_head;
 };
 
-typedef void (ic_enable_func*)();
-typedef void (ic_disable_func*)();
+typedef void (*ic_enable_func)(void);
+typedef void (*ic_disable_func)(void);
 
-typedef void (ic_mask_func*)(uint8_t irq);
-typedef void (ic_unmask_func*)(uint8_t irq);
-typedef bool (ic_spurious_func*)(uint8_t irq);
-typedef void (ic_eoi_func*)(uint8_t irq);
+typedef void (*ic_mask_func)(uint8_t irq);
+typedef void (*ic_unmask_func)(uint8_t irq);
+typedef bool (*ic_spurious_func)(uint8_t irq);
+typedef void (*ic_eoi_func)(uint8_t irq);
 
-typedef int (ic_alloc_func*)(uint8_t irq);
-typedef int (ic_free_func*)(uint8_t irq);
-typedef int (ic_handle_func*)(uint8_t irq, irq_handler_t handler);
+typedef int (*ic_alloc_func)(uint8_t irq);
+typedef int (*ic_free_func)(uint8_t irq);
+typedef int (*ic_handle_func)(uint8_t irq, irq_function_t handler);
 
 struct ic_dev
 {
@@ -84,9 +85,15 @@ struct ic_dev
     ic_unmask_func unmask;
     ic_spurious_func is_spurious;
     ic_eoi_func eoi;
-    ic_free_func free_irq;
     ic_alloc_func alloc_irq;
+    ic_free_func free_irq;
     ic_handle_func handle_irq;
+};
+
+struct irq_handler
+{
+    struct irq_handler* next;
+    irq_function_t function;
 };
 
 void hal_init();
@@ -114,11 +121,11 @@ struct ic_dev* hal_get_ic();
 // Wrappers around ic_dev
 void ic_mask(uint16_t irq);
 void ic_unmask(uint16_t irq);
-void ic_check_spurious(uint16_t irq);
+bool ic_check_spurious(uint16_t irq);
 void ic_eoi(uint16_t irq);
 int ic_irq_alloc(uint8_t irq);
 int ic_irq_free(uint8_t irq);
-int ic_irq_handle(uint8_t irq, irq_handler_t handler);
+int ic_irq_handle(uint8_t irq, irq_function_t handler);
 
 void irq_add_handler(uint16_t irq, isr_t handler);
 void dump_registers(struct intr_stack *stack);

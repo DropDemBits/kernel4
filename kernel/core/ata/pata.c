@@ -6,7 +6,7 @@
 
 #include <arch/io.h>
 
-void ata_init_controller(uint16_t bus, uint16_t device, uint16_t function);
+pci_handle_ret_t ata_init_controller(struct pci_dev* dev);
 
 #define ATA_INVALID_ID 0xFFFF
 
@@ -588,18 +588,17 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
  * @param  function: The function of the controller.
  * @retval None
  */
-void ata_init_controller(uint16_t bus, uint16_t device, uint16_t function)
+pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
 {
     bool init_primary = true;
     bool init_secondary = true;
 
-    printf("[PATA] Initializing IDE controller at %x:%x.%x\n", bus, device, function);
-    uint8_t operating_mode = pci_read(bus, device, function, PCI_PROG_IF, 1);
-
-    uint32_t command0_base = pci_read(bus, device, function, PCI_BAR0, 4) & ~0x3;
-    uint32_t command1_base = pci_read(bus, device, function, PCI_BAR2, 4) & ~0x3;
-    uint32_t control0_base = pci_read(bus, device, function, PCI_BAR1, 4) & ~0x3;
-    uint32_t control1_base = pci_read(bus, device, function, PCI_BAR3, 4) & ~0x3;
+    printf("[PATA] Initializing IDE controller at %x:%x.%x\n", dev->bus, dev->device, dev->function);
+    uint8_t operating_mode = pci_read(dev, PCI_PROG_IF, 1);
+    uint32_t command0_base = pci_read(dev, PCI_BAR0, 4) & ~0x3;
+    uint32_t command1_base = pci_read(dev, PCI_BAR2, 4) & ~0x3;
+    uint32_t control0_base = pci_read(dev, PCI_BAR1, 4) & ~0x3;
+    uint32_t control1_base = pci_read(dev, PCI_BAR3, 4) & ~0x3;
 
     if((operating_mode & 0b0001) != (operating_mode & 0b0100) && (operating_mode & 0b1010) == 0)
     {
@@ -651,6 +650,8 @@ void ata_init_controller(uint16_t bus, uint16_t device, uint16_t function)
 
     current_id = ATA_INVALID_ID;
     current_device = KNULL;
+
+    return PCI_DEV_HANDLED;
 }
 
 /**

@@ -24,6 +24,8 @@
 #ifndef __TYPES_COMMON__
 #define __TYPES_COMMON__
 
+#include <common/mm/liballoc.h>
+
 #ifdef __i386__
 #include <types.h>
 #endif

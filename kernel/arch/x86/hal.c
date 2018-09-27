@@ -79,7 +79,7 @@ void hal_init()
         //outb(PIC1_DATA, 0xFF);
         //outb(PIC2_DATA, 0xFF);
     }
-    pic_init();
+    pic_setup();
 
     for(int i = 0; i < 16; i++)
         irq_add_handler(i, (isr_t)irq_common);
@@ -97,6 +97,9 @@ void hal_init()
     pic_unmask(0);
     pic_mask(8);
 
+    // Unmask IDE IRQs
+    pic_unmask(14);
+    pic_unmask(15);
 }
 
 unsigned long timer_add(struct timer_dev* device, enum timer_type type)
@@ -221,14 +224,19 @@ void ic_unmask(uint16_t irq)
     pic_unmask(irq);
 }
 
-void ic_check_spurious(uint16_t irq)
+bool ic_check_spurious(uint16_t irq)
 {
-    pic_check_spurious(irq);
+    return pic_check_spurious(irq);
 }
 
 void ic_eoi(uint16_t irq)
 {
     pic_eoi(irq);
+}
+
+struct ic_dev* hal_get_ic()
+{
+    return pic_get_dev();
 }
 
 void irq_add_handler(uint16_t irq, isr_t handler)
@@ -256,7 +264,7 @@ void hal_disable_interrupts()
     asm volatile("cli");
 }
 
-inline void busy_wait()
+void busy_wait()
 {
     asm volatile("pause");
 }

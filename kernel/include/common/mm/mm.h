@@ -19,7 +19,6 @@
  */
 
 #include <common/types.h>
-#include <common/mm/liballoc.h>
 
 #ifndef __MM_H__
 #define __MM_H__ 1

@@ -6,13 +6,13 @@ struct pci_dev_handler* driver_head = KNULL;
 
 void test_function(uint8_t bus, uint8_t device, uint8_t function)
 {
-    uint16_t vendor_id =    pci_read(bus, device, function, 0x000, 2);
-    uint16_t device_id =    pci_read(bus, device, function, 0x002, 2);
-    uint8_t header_type =   pci_read(bus, device, function, 0x00E, 1);
+    uint16_t vendor_id =    pci_read_raw(bus, device, function, PCI_VENDOR, 2);
+    uint16_t device_id =    pci_read_raw(bus, device, function, PCI_DEVICE, 2);
+    uint8_t header_type =   pci_read_raw(bus, device, function, PCI_HEADER, 1);
 
-    uint8_t class_code =    pci_read(bus, device, function, PCI_CLASS_CODE, 1);
-    uint8_t subclass_code = pci_read(bus, device, function, PCI_SUBCLASS_CODE, 1);
-    uint8_t prog_if =       pci_read(bus, device, function, PCI_PROG_IF, 1);
+    uint8_t class_code =    pci_read_raw(bus, device, function, PCI_CLASS_CODE, 1);
+    uint8_t subclass_code = pci_read_raw(bus, device, function, PCI_SUBCLASS_CODE, 1);
+    uint8_t prog_if =       pci_read_raw(bus, device, function, PCI_PROG_IF, 1);
 
     printf("[PCI ] %x:%x.%x: ", bus, device, function);
 
@@ -45,41 +45,50 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     printf(" (%x:%x)\n", vendor_id, device_id);
 
     struct pci_dev_handler *node = driver_head;
+    struct pci_dev* dev = kmalloc(sizeof(struct pci_dev));
+
+    dev->bus = bus;
+    dev->device = device;
+    dev->function = function;
+    dev->handler_list = NULL;
     
     while(node != KNULL)
     {
         if(node->vendor_id == vendor_id && node->device_id == device_id)
         {
-            node->found(bus, device, function);
-            break;
+            if(node->found(dev) == PCI_DEV_HANDLED)
+                break;
         }
         else if(node->vendor_id == PCI_MATCH_ANY && node->device_id == PCI_MATCH_ANY)
         {
             if(node->class_code == class_code && node->subclass_code == subclass_code && (node->prog_if == prog_if || node->prog_if == PCI_ANY_PROG_IF))
             {
-                node->found(bus, device, function);
-                break;
+                if(node->found(dev) == PCI_DEV_HANDLED)
+                    break;
             }
         }
         node = node->next;
     }
+
+    if(node == KNULL)
+        kfree(dev);
 }
 
 void pci_test_device(uint8_t bus, uint8_t device)
 {
-    uint16_t vendor_id = pci_read(bus, device, 0, 0x000, 2);
+    uint16_t vendor_id = pci_read_raw(bus, device, 0, PCI_VENDOR, 2);
     if(vendor_id == 0xFFFF)
         return; // Non-existant device
 
     test_function(bus, device, 0);
 
-    uint8_t header_type = pci_read(bus, device, 0, 0x00E, 1);
+    uint8_t header_type = pci_read_raw(bus, device, 0, PCI_HEADER, 1);
     if(header_type & 0x80)
     {
         // Enumerate functions
         for(int function = 1; function < 8; function++)
         {
-            if(pci_read(bus, device, function, 0x000, 2) != 0xFFFF)
+            if(pci_read_raw(bus, device, function, PCI_VENDOR, 2) != 0xFFFF)
                 test_function(bus, device, function);
         }
     }

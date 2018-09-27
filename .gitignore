@@ -12,3 +12,4 @@ com*.txt
 *.sym
 build/
 */bin/
+bochslog.txt

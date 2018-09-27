@@ -10,9 +10,9 @@ floppy_bootsig_check: disabled=0
 # no floppya
 # no floppyb
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
-ata0-master: type=cdrom, path="k4-x86_64.iso", status=inserted, biosdetect=auto, model="CDROM Pro"
-#ata0-master: type=cdrom, path="k4-i386.iso", status=inserted, biosdetect=auto, model="CDROM Pro"
 ata1: enabled=1, ioaddr1=0x170, ioaddr2=0x370, irq=15
+ata1-master: type=cdrom, path="k4-x86_64.iso", status=inserted, biosdetect=auto, model="CDROM Pro"
+#ata1-master: type=cdrom, path="k4-i386.iso", status=inserted, biosdetect=auto, model="CDROM Pro"
 ata2: enabled=0
 ata3: enabled=0
 pci: enabled=1, chipset=i440fx, slot1=pcivga
@@ -31,7 +31,7 @@ private_colormap: enabled=0
 clock: sync=none, time0=utc, rtc_sync=1
 # no cmosimage
 # no loader
-log: -
+log: bochslog.txt
 logprefix: %t%e%d
 panic: action=ask
 error: action=report

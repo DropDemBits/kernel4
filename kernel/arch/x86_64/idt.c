@@ -158,7 +158,14 @@ void isr_common(struct intr_stack *frame)
         isr_t function = function_table[frame->int_num];
         
         if(function != KNULL)
-            function(frame);
+        {
+            // Hacky way of doing things
+
+            if(frame->int_num < 32)
+                function(frame);
+            else
+                function(hal_get_ic());
+        }
     }
 }
 

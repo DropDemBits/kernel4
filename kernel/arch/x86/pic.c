@@ -18,6 +18,7 @@
  * 
  */
 
+#include <common/hal.h>
 #include <arch/pic.h>
 #include <arch/io.h>
 
@@ -53,6 +54,18 @@
 #define OCW3_SSMM 0x20 // Set Special Mask
 #define OCW3_ESMM 0x40 // Enable writes to Special Mask
 
+struct ic_dev pic_dev = {
+    .enable = pic_setup,
+    .disable = pic_disable,
+    .mask = pic_mask,
+    .unmask = pic_unmask,
+    .is_spurious = pic_check_spurious,
+    .eoi = pic_eoi,
+    // .alloc_irq = pic_alloc_irq,
+    // .free_irq = pic_free_irq,
+    // .handle_irq = pic_handle_irq,
+};
+
 uint16_t pic_read_irr()
 {
     uint16_t irr = 0;
@@ -63,7 +76,7 @@ uint16_t pic_read_irr()
     return irr;
 }
 
-void pic_init()
+void pic_setup()
 {
     // Save Masks
     uint8_t mask_a = inb(PIC1_DATA);
@@ -97,6 +110,10 @@ void pic_init()
     // Restore Masks
     outb(PIC1_DATA, mask_a);
     outb(PIC2_DATA, mask_b);
+}
+
+void pic_disable()
+{
 }
 
 void pic_mask(uint8_t irq)
@@ -151,4 +168,25 @@ void pic_eoi(uint8_t irq)
 {
     if(irq >= 8) outb(PIC2_CMD, OCW2_EOI);
     outb(PIC1_CMD, OCW2_EOI);
+}
+
+int pic_alloc_irq(uint8_t irq)
+{
+    return 0;
+}
+
+int pic_free_irq(uint8_t irq)
+{
+    return 0;
+}
+
+int pic_handle_irq(uint8_t irq, irq_function_t handler)
+{
+    irq_add_handler(irq, handler);
+    return 0;
+}
+
+struct ic_dev* pic_get_dev()
+{
+    return &pic_dev;
 }
