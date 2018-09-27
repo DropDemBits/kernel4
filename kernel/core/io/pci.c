@@ -16,15 +16,25 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
 
     printf("[PCI ] %x:%x.%x: ", bus, device, function);
 
-         if(vendor_id == 0x1234 && device_id == 0x1111) printf("Bochs VBE-Compatible VGA Controller");
+    // TODO: Just replace below with an array of pointers to pci device name structs
+         if(vendor_id == 0x1022 && device_id == 0x2000) printf("AMD PCnet32 FAST III (Am79C973)");
+
+    else if(vendor_id == 0x106b && device_id == 0x003f) printf("Apple USB Controller");
+
+    else if(vendor_id == 0x10ec && device_id == 0x8139) printf("Realtek RTL-8139 PCI Fast Ethernet Adapter");
+
+    else if(vendor_id == 0x1234 && device_id == 0x1111) printf("Bochs VBE-Compatible VGA Controller");
+
+    else if(vendor_id == 0x1af4 && device_id == 0x1002) printf("Virtio memory balloon");
+    else if(vendor_id == 0x1af4 && device_id == 0x1003) printf("Virtio console");
+
+    else if(vendor_id == 0x1b36 && device_id == 0x0100) printf("QXL Paravirtual Graphic Card");
+
     else if(vendor_id == 0x8086 && device_id == 0x100e) printf("Intel 82540EM Gigabit Ethernet Controller");
     else if(vendor_id == 0x8086 && device_id == 0x1237) printf("Intel i440FX \"Natoma\" Northbridge PMC");
-    else if(vendor_id == 0x8086 && device_id == 0x7000) printf("Intel PIIX3 Southbridge - ISA Controller");
-    else if(vendor_id == 0x8086 && device_id == 0x7010) printf("Intel PIIX3 Southbridge - IDE Controller");
-    else if(vendor_id == 0x8086 && device_id == 0x7020) printf("Intel PIIX3 Southbridge - USB Controller");
-    else if(vendor_id == 0x8086 && device_id == 0x7113) printf("Intel PIIX4 Southbridge - ACPI Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x2415) printf("Intel AC'97 Audio Controller");
 
-    else if(vendor_id == 0x8086 && device_id == 0x29c0) printf("Intel 82G33/G31/P35/P31 DRAM Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x269e) printf("Intel 631xESB/632xESB IDE Controller");
     else if(vendor_id == 0x8086 && device_id == 0x2918) printf("Intel ICH9 LPC Controller");
     else if(vendor_id == 0x8086 && device_id == 0x2920) printf("Intel ICH9R/DO/DH SATA Controller [IDE Mode]");
     else if(vendor_id == 0x8086 && device_id == 0x2922) printf("Intel ICH9R/DO/DH SATA Controller [AHCI Mode]");
@@ -32,15 +42,21 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     else if(vendor_id == 0x8086 && device_id == 0x2934) printf("Intel ICH9 USB UHCI Controller #1");
     else if(vendor_id == 0x8086 && device_id == 0x2935) printf("Intel ICH9 USB UHCI Controller #2");
     else if(vendor_id == 0x8086 && device_id == 0x2936) printf("Intel ICH9 USB UHCI Controller #3");
+    else if(vendor_id == 0x8086 && device_id == 0x2937) printf("Intel ICH9 USB UHCI Controller #4");
+    else if(vendor_id == 0x8086 && device_id == 0x2938) printf("Intel ICH9 USB UHCI Controller #5");
+    else if(vendor_id == 0x8086 && device_id == 0x2939) printf("Intel ICH9 USB UHCI Controller #6");
     else if(vendor_id == 0x8086 && device_id == 0x293a) printf("Intel ICH9 USB2 EHCI Controller #1");
+    else if(vendor_id == 0x8086 && device_id == 0x293b) printf("Intel ICH9 USB2 EHCI Controller #1");
+    else if(vendor_id == 0x8086 && device_id == 0x29c0) printf("Intel 82G33/G31/P35/P31 DRAM Controller");
 
-    else if(vendor_id == 0x8086 && device_id == 0x2415) printf("Intel AC'97 Audio Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x7000) printf("Intel PIIX3 Southbridge - ISA Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x7010) printf("Intel PIIX3 Southbridge - IDE Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x7020) printf("Intel PIIX3 Southbridge - USB Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x7111) printf("Intel PIIX4 Southbridge - IDE Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x7113) printf("Intel PIIX4 Southbridge - ACPI Controller");
 
-    else if(vendor_id == 0x10ec && device_id == 0x8139) printf("Realtek RTL-8139 PCI Fast Ethernet Adapter");
-
-    else if(vendor_id == 0x1af4 && device_id == 0x1002) printf("Virtio memory balloon");
-    else if(vendor_id == 0x1af4 && device_id == 0x1003) printf("Virtio console");
-    else if(vendor_id == 0x1b36 && device_id == 0x0100) printf("QXL Paravirtual Graphic Card");
+    else if(vendor_id == 0x80ee && device_id == 0xbeef) printf("VirtualBox Graphics Adapter");
+    else if(vendor_id == 0x80ee && device_id == 0xcafe) printf("VirtualBox Guest Service");
 
     printf(" (%x:%x)\n", vendor_id, device_id);
 
