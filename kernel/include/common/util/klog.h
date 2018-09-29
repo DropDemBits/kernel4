@@ -11,6 +11,7 @@ enum klog_level
     INFO,
     WARN,
     ERROR,
+    FATAL,
 };
 
 struct klog_entry
@@ -37,6 +38,8 @@ void klog_early_init();
  * @retval None
  */
 void klog_init();
+
+bool klog_is_init();
 
 // Early-init versions of the methods below
 // All of these will use the subsytem id 0 for "EARLY"

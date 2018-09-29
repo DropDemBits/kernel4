@@ -22,6 +22,7 @@
 
 #include <common/hal.h>
 #include <common/sched/sched.h>
+#include <common/util/kfuncs.h>
 
 #include <arch/pic.h>
 #include <arch/pit.h>
@@ -29,6 +30,10 @@
 #include <stack_state.h>
 
 #define MAX_TIMERS 64
+
+#define KLOG_FATAL(msg, ...) \
+    if(klog_is_init()) {klog_logln(0, FATAL, msg, __VA_ARGS__);} \
+    else {klog_early_logln(FATAL, msg, __VA_ARGS__);}
 
 extern void irq_common(struct intr_stack *frame);
 
@@ -304,23 +309,23 @@ uint64_t get_driver_mmio_base()
 
 void dump_registers(struct intr_stack *stack)
 {
-    printf("***BEGIN REGISTER DUMP***\n");
-    puts("RAX RBX RCX RDX");
-    printf("%#p %#p %#p %#p\n", stack->rax, stack->rbx, stack->rcx, stack->rdx);
-    puts("RSI RDI RSP RBP");
-    printf("%#p %#p %#p %#p\n", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
-    printf("RIP: %#p\n", stack->rip);
-    printf("Error code: %x\n", stack->err_code);
+    KLOG_FATAL("***BEGIN REGISTER DUMP***", "");
+    KLOG_FATAL("RAX RBX RCX RDX", "");
+    KLOG_FATAL("%#p %#p %#p %#p", stack->rax, stack->rbx, stack->rcx, stack->rdx);
+    KLOG_FATAL("RSI RDI RSP RBP", "");
+    KLOG_FATAL("%#p %#p %#p %#p", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
+    KLOG_FATAL("RIP: %#p", stack->rip);
+    KLOG_FATAL("Error code: %x", stack->err_code);
     thread_t* at = sched_active_thread();
-    printf("Current Thread: %#p\n", at);
+    KLOG_FATAL("Current Thread: %#p", at);
     if(at != KNULL)
     {
-        printf("\tID: %d (%s)\n", at->tid, at->name);
-        printf("\tPriority: %d\n", at->priority);
-        printf("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
+        KLOG_FATAL("\tID: %d (%s)", at->tid, at->name);
+        KLOG_FATAL("\tPriority: %d", at->priority);
+        KLOG_FATAL("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
     } else
     {
-        puts("(Pre-scheduler)");
+        KLOG_FATAL("\t(Pre-scheduler)", "");
     }
 }
 #elif defined(__i386__)
@@ -347,22 +352,22 @@ uint64_t get_driver_mmio_base()
 
 void dump_registers(struct intr_stack *stack)
 {
-    printf("***BEGIN REGISTER DUMP***\n");
-    printf("EAX: %#p, EBX: %#p, ECX: %#p, EDX: %#p\n", stack->eax, stack->ebx, stack->ecx, stack->edx);
-    printf("ESI: %#p, EDI: %#p, ESP: %#p, EBP: %#p\n", stack->esi, stack->edi, stack->esp, stack->ebp);
-    printf("EIP: %#p\n", stack->eip);
-    printf("Error code: %x\n", stack->err_code);
-    printf("CR2: %p\n", stack->cr2);
+    KLOG_FATAL("***BEGIN REGISTER DUMP***", "");
+    KLOG_FATAL("EAX: %#p, EBX: %#p, ECX: %#p, EDX: %#p", stack->eax, stack->ebx, stack->ecx, stack->edx);
+    KLOG_FATAL("ESI: %#p, EDI: %#p, ESP: %#p, EBP: %#p", stack->esi, stack->edi, stack->esp, stack->ebp);
+    KLOG_FATAL("EIP: %#p", stack->eip);
+    KLOG_FATAL("Error code: %x", stack->err_code);
+    KLOG_FATAL("CR2: %p", stack->cr2);
     thread_t* at = sched_active_thread();
-    printf("Current Thread: %#p\n", at);
+    KLOG_FATAL("Current Thread: %#p", at);
     if(at != KNULL)
     {
-        printf("\tID: %d (%s)\n", at->tid, at->name);
-        printf("\tPriority: %d\n", at->priority);
-        printf("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
+        KLOG_FATAL("\tID: %d (%s)", at->tid, at->name);
+        KLOG_FATAL("\tPriority: %d", at->priority);
+        KLOG_FATAL("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
     } else
     {
-        puts("(Pre-scheduler)");
+        KLOG_FATAL("\t(Pre-scheduler)", "");
     }
 }
 #endif

@@ -196,7 +196,6 @@ void kmain()
         for(int i = 0; i < fb_info.width * fb_info.height; i++)
             ((uint16_t*)framebuffer)[i] = 0x0700;
     }
-
     
     // May want to reserve for later testing
     /*char tbuff[64];

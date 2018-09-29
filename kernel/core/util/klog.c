@@ -24,6 +24,8 @@ uint32_t allocated_limit;       // Last index before a new page has to be alloca
 uint32_t id_bitmap[NUM_ID_BYTES];
 char* subsystem_names[NUM_IDS];
 
+bool is_init = false;
+
 static uint16_t get_id()
 {
     for(uint16_t word_index = 0; word_index < NUM_ID_BYTES; word_index++)
@@ -57,8 +59,10 @@ static void put_id(uint16_t id)
 void klog_early_init()
 {
     // By the time this is called, we don't have any memory management facilities
+    is_init = false;
     memset(early_klog_buffer, 0x00, EARLY_BUFFER_LEN);
     early_index = 0;
+    subsystem_names[0] = "EARLY";
     klog_early_logln(INFO, "Early Logger Initialized");
 }
 
@@ -77,7 +81,13 @@ void klog_init()
 
     log_index = early_index;
     allocated_limit = 8192;
+    is_init = true;
     klog_logln(EARLY_SUBSYSTEM, INFO, "Main Logger Initialzed");
+}
+
+bool klog_is_init()
+{
+    return is_init;
 }
 
 char* klog_get_name(uint16_t id)
@@ -151,7 +161,6 @@ void klog_early_logc(enum klog_level level, char c)
 // TODO: All of the methods below will fail if interrupted or re-entered. Add appropriate locks and atomic operations
 static void check_alloc()
 {
-    asm("xchg %bx, %bx");
     if(allocated_limit - log_index < 4096)
     {
         mmu_map_direct((uintptr_t)log_buffer + allocated_limit, mm_alloc(1));

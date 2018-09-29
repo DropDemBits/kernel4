@@ -19,62 +19,88 @@
  */
 
 #include <stdio.h>
-#include <common/util/kfuncs.h>
 #include <common/hal.h>
 #include <common/tty/tty.h>
+#include <common/util/kfuncs.h>
 
 extern void __attribute__((noreturn)) halt();
+extern char early_klog_buffer[];
+
+static void reshow_log()
+{
+    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+
+    if(!klog_is_init())
+    {
+        entry = (struct klog_entry*)early_klog_buffer;
+    }
+
+    while(entry->level != EOL)
+    {
+        uint64_t timestamp_secs = entry->timestamp / 1000000000;
+        uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
+
+        printf("[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+
+        for(uint16_t i = 0; i < entry->length; i++)
+            tty_printchar(entry->data[i]);
+        
+        tty_reshow();
+        
+        entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
+    }
+
+    fb_clear();
+    tty_reshow_full();
+}
 
 void __attribute__((noreturn)) kpanic(const char* message_string, ...)
 {
     va_list args;
-
-    putchar('\n');
-    printf("Exception occured in kernel: ");
     va_start(args, message_string);
-    vprintf(message_string, args);
+    kvpanic(message_string, args);
     va_end(args);
-    putchar('\n');
-
-    tty_reshow();
-    halt();
 }
 
 void __attribute__((noreturn)) kpanic_intr(struct intr_stack *stack, const char* message_string, ...)
 {
     va_list args;
-
-    putchar('\n');
-    printf("Exception occured in kernel: ");
     va_start(args, message_string);
-    vprintf(message_string, args);
+    kvpanic_intr(stack, message_string, args);
     va_end(args);
-    putchar('\n');
-    dump_registers(stack);
-
-    tty_reshow();
-    halt();
 }
 
 void __attribute__((noreturn)) kvpanic(const char* message_string, va_list args)
 {
-    putchar('\n');
-    printf("Exception occured in kernel: ");
-    vprintf(message_string, args);
-    putchar('\n');
+    if(klog_is_init())
+    {
+        klog_logln(0, FATAL, "Exception occured in kernel:");
+        klog_logln(0, FATAL, message_string, args);
+    }
+    else
+    {
+        klog_early_logln(FATAL, "Exception occured in kernel:");
+        klog_early_logln(FATAL, message_string, args);
+    }
 
-    tty_reshow();
+    reshow_log();
     halt();
 }
 
 void __attribute__((noreturn)) kvpanic_intr(struct intr_stack *stack, const char* message_string, va_list args)
 {
-    putchar('\n');
-    printf("Exception occured in kernel: ");
-    vprintf(message_string, args);
-    putchar('\n');
+    if(klog_is_init())
+    {
+        klog_logln(0, FATAL, "Exception occured in kernel:");
+        klog_logln(0, FATAL, message_string, args);
+    }
+    else
+    {
+        klog_early_logln(FATAL, "Exception occured in kernel:");
+        klog_early_logln(FATAL, message_string, args);
+    }
     dump_registers(stack);
 
-    tty_reshow();
+    reshow_log();
     halt();
 }
