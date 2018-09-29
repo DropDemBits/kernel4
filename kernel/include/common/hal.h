@@ -90,10 +90,20 @@ struct ic_dev
     ic_handle_func handle_irq;
 };
 
+enum irq_type
+{
+    LEGACY,
+    INTX,
+    MSI,
+    MSIX
+};
+
 struct irq_handler
 {
     struct irq_handler* next;
     irq_function_t function;
+    enum irq_type type;
+    uint8_t irq;
 };
 
 void hal_init();
@@ -122,10 +132,32 @@ struct ic_dev* hal_get_ic();
 void ic_mask(uint16_t irq);
 void ic_unmask(uint16_t irq);
 bool ic_check_spurious(uint16_t irq);
-void ic_eoi(uint16_t irq);
-int ic_irq_alloc(uint8_t irq);
-int ic_irq_free(uint8_t irq);
-int ic_irq_handle(uint8_t irq, irq_function_t handler);
+
+/**
+ * @brief  Sends an end of interrupt
+ * @note   This should only be called from inside an irq_handler
+ * @param  irq: The irq to handle
+ * @retval None
+ */
+void ic_eoi(uint8_t irq);
+
+/**
+ * @brief  Handles an IRQ.
+ * @note   The IRQ has no correlation to PC IRQs
+ * @param  irq: The IRQ to handle
+ * @param  type: The type of irq to handle
+ * @param  handler: The handler of the irq
+ * @retval The irq_handler for reference
+ */
+struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_t handler);
+
+/**
+ * @brief  Frees a handler
+ * @note   
+ * @param  handler: The handler allocated from ic_irq_handle
+ * @retval None
+ */
+void ic_irq_free(struct irq_handler* handler);
 
 void irq_add_handler(uint16_t irq, isr_t handler);
 void dump_registers(struct intr_stack *stack);

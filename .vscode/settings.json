@@ -5,6 +5,7 @@
         "*.S": "gas",
         "*.h": "c",
         "typeinfo": "c",
-        "*.tcc": "c"
+        "*.tcc": "c",
+        "system_error": "c"
     },
 }

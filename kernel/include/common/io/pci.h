@@ -24,6 +24,17 @@
 #define PCI_BAR4            0x020
 #define PCI_BAR5            0x024
 
+#define PCI_CAP_PTR         0x034
+#define PCI_INTR_LINE       0x03C
+#define PCI_IRQ_PIN         0x03D
+
+// IRQ Flags
+#define IRQ_LEGACY          0x00000001  // Mutually exclusive with IRQ_INTX
+#define IRQ_INTX            0x00000002  // Mutually exclusive with IRQ_LEGACY
+#define IRQ_MSI             0x00000004
+#define IRQ_MSIX            0x00000008
+#define IRQ_ALL             (IRQ_LEGACY | IRQ_INTX | IRQ_MSI | IRQ_MSIX)
+
 // PCI Config Space Access (Including ECAM)
 // If the offset is outside of the accessable space, the read functions return 0xFF / 0xFFFF / 0xFFFFFFFF respectively
 extern uint32_t pci_read_raw(uint16_t bus, uint8_t device, uint8_t function, uint16_t reg, uint8_t len);
@@ -53,10 +64,17 @@ struct pci_dev
     uint8_t device : 5;
     uint8_t function : 3;
     
-    struct irq_handler** handler_list;
+    uint8_t irq_pin;         // Interrupt Pin (corresponds to IRQ0-15)
+    uint8_t intr_line;       // Interupt Line (corresponds to INTA-D)
+
+    uint8_t num_irqs;
+    struct irq_handler* irq_handler;
+    struct irq_handler** msi_handlers;
 };
 
 void pci_init();
+struct pci_dev* pci_get_dev(uint8_t bus, uint8_t device, uint8_t function);
+void pci_put_dev(struct pci_dev* dev);
 void pci_handle_dev(struct pci_dev_handler *handle);
 
 // pci_*_raw wrappers
@@ -76,8 +94,8 @@ inline void pci_write(struct pci_dev* dev, uint16_t reg, uint8_t len, uint32_t d
 }
 
 int pci_alloc_irq(struct pci_dev* dev, uint8_t num_irqs, uint32_t flags);
-void pci_handle_irq(struct pci_dev* dev, uint8_t irq, irq_function_t handler);
-void pci_unhandle_irq(struct pci_dev* dev, uint8_t irq);
+void pci_handle_irq(struct pci_dev* dev, uint8_t irq_handle, irq_function_t handler);
+void pci_unhandle_irq(struct pci_dev* dev, uint8_t irq_handle);
 void pci_free_irq(struct pci_dev* dev);
 
 #endif /* __PCI_H__ */

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include <common/io/pci.h>
 
@@ -34,7 +35,8 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     else if(vendor_id == 0x8086 && device_id == 0x1237) printf("Intel i440FX \"Natoma\" Northbridge PMC");
     else if(vendor_id == 0x8086 && device_id == 0x2415) printf("Intel AC'97 Audio Controller");
 
-    else if(vendor_id == 0x8086 && device_id == 0x269e) printf("Intel 631xESB/632xESB IDE Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x269e) printf("Intel Enterprise Southbridge IDE Controller");
+    else if(vendor_id == 0x8086 && device_id == 0x27b9) printf("Intel ICH7-M LPC Controller");
     else if(vendor_id == 0x8086 && device_id == 0x2918) printf("Intel ICH9 LPC Controller");
     else if(vendor_id == 0x8086 && device_id == 0x2920) printf("Intel ICH9R/DO/DH SATA Controller [IDE Mode]");
     else if(vendor_id == 0x8086 && device_id == 0x2922) printf("Intel ICH9R/DO/DH SATA Controller [AHCI Mode]");
@@ -46,7 +48,7 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     else if(vendor_id == 0x8086 && device_id == 0x2938) printf("Intel ICH9 USB UHCI Controller #5");
     else if(vendor_id == 0x8086 && device_id == 0x2939) printf("Intel ICH9 USB UHCI Controller #6");
     else if(vendor_id == 0x8086 && device_id == 0x293a) printf("Intel ICH9 USB2 EHCI Controller #1");
-    else if(vendor_id == 0x8086 && device_id == 0x293b) printf("Intel ICH9 USB2 EHCI Controller #1");
+    else if(vendor_id == 0x8086 && device_id == 0x293b) printf("Intel ICH9 USB2 EHCI Controller #2");
     else if(vendor_id == 0x8086 && device_id == 0x29c0) printf("Intel 82G33/G31/P35/P31 DRAM Controller");
 
     else if(vendor_id == 0x8086 && device_id == 0x7000) printf("Intel PIIX3 Southbridge - ISA Controller");
@@ -61,12 +63,7 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     printf(" (%x:%x)\n", vendor_id, device_id);
 
     struct pci_dev_handler *node = driver_head;
-    struct pci_dev* dev = kmalloc(sizeof(struct pci_dev));
-
-    dev->bus = bus;
-    dev->device = device;
-    dev->function = function;
-    dev->handler_list = NULL;
+    struct pci_dev* dev = pci_get_dev(bus, device, function);
     
     while(node != KNULL)
     {
@@ -87,7 +84,7 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     }
 
     if(node == KNULL)
-        kfree(dev);
+        pci_free_irq(dev);
 }
 
 void pci_test_device(uint8_t bus, uint8_t device)
@@ -145,4 +142,69 @@ void pci_handle_dev(struct pci_dev_handler *handle)
     }
 
     handle->next = KNULL;
+}
+
+struct pci_dev* pci_get_dev(uint8_t bus, uint8_t device, uint8_t function)
+{
+    struct pci_dev* dev = kmalloc(sizeof(struct pci_dev));
+
+    if(dev == NULL)
+        return KNULL;
+
+    uint8_t intr_line =     pci_read_raw(bus, device, function, PCI_INTR_LINE, 1);
+    uint8_t irq_pin =       pci_read_raw(bus, device, function, PCI_IRQ_PIN, 1);
+
+    dev->bus = bus;
+    dev->device = device;
+    dev->function = function;
+    dev->num_irqs = 0;
+    dev->intr_line = intr_line;
+    dev->irq_pin = irq_pin;
+    dev->irq_handler = NULL;
+    dev->msi_handlers = NULL;
+
+    return dev;
+}
+
+void pci_put_dev(struct pci_dev* dev)
+{
+    pci_free_irq(dev);
+    kfree(dev);
+}
+
+int pci_alloc_irq(struct pci_dev* dev, uint8_t num_irqs, uint32_t flags)
+{
+    if(dev == KNULL)
+        return -1;
+
+    int irqs_alloc = 0;
+
+    if(flags & IRQ_LEGACY)
+    {
+        printf("HOOPLA\n");
+        dev->irq_handler = NULL;
+        irqs_alloc++;
+    }
+
+    return irqs_alloc;
+}
+
+void pci_handle_irq(struct pci_dev* dev, uint8_t irq_handle, irq_function_t handler)
+{
+    if(dev == KNULL)
+        return;
+
+    if(irq_handle == 0 && dev->irq_handler != NULL) // LEGACY IRQ_HANDLE
+        dev->irq_handler = ic_irq_handle(dev->irq_pin, LEGACY, handler);
+}
+
+void pci_unhandle_irq(struct pci_dev* dev, uint8_t irq_handle)
+{
+    if(irq_handle == 0)
+        ic_irq_free(dev->irq_handler);
+}
+
+void pci_free_irq(struct pci_dev* dev)
+{
+    pci_unhandle_irq(dev, 0);
 }

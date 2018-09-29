@@ -66,8 +66,12 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev);
 #define FLUSH_CACHE         0xE7
 #define FLUSH_CACHE_EXT     0xEA
 
-#define FIXUP_BAR(x, val) \
-    if(!(x & 0xFE)) { printf("[PATA] Fixing up IDE quirk (%#lx -> %#lx)\n", x, val); (x) = (val); }
+#define FIXUP_BAR(dev, bar, x, val) \
+    if(!(x & 0xFE)) { \
+        (x) = (val); \
+        printf("[PATA] Fixing up IDE quirk (%#lx -> %#lx)\n", x, val); \
+        pci_write((dev), (bar), 4, (val)); \
+    }
 
 struct pci_dev_handler pata_driver = 
 {
@@ -158,11 +162,19 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
     return true;
 }
 
-static void ata_wait()
+// Returns true if it timed out
+static bool ata_wait()
 {
     // TODO: Block current thread & awake on interrupt
+    uint64_t timeout = timer_read_counter(0) + (1000000000 * 5); // Delay of 5ms
     while(!irq_fired)
+    {
         busy_wait();
+        if(timeout <= timer_read_counter(0))
+            return true;
+    }
+
+    return false;
 }
 
 // Handles the sending part of a command
@@ -181,8 +193,15 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     uint16_t control_base = current_device->control_base;
     uint8_t last_status = 0;
 
-    while(inb(control_base + ATA_ALT_STATUS) & (STATUS_DRDY) != STATUS_DRDY)
+    int loop_counter = 10;
+    while(inb(control_base + ATA_ALT_STATUS) & (STATUS_DRDY) != STATUS_DRDY && loop_counter > 0)
+    {
         busy_wait();
+        loop_counter--;
+    }
+
+    if(loop_counter <= 0)
+        return EABSENT;
 
     if(current_device->dev.has_lba48 && is48bit)
     {
@@ -225,9 +244,12 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
         goto write_wait;
 
     // Wait until busy bit clears
-    ata_wait();
+    bool timeout = ata_wait();
 
-    goto normal_exit;
+    if(!timeout)
+        goto normal_exit;
+    else
+        return EABSENT;
 
     write_wait:
     last_status = inb(control_base + ATA_ALT_STATUS);
@@ -594,6 +616,19 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
     bool init_secondary = true;
 
     printf("[PATA] Initializing IDE controller at %x:%x.%x\n", dev->bus, dev->device, dev->function);
+    
+    if((pci_read(dev, PCI_PROG_IF, 1) & 0b1010) != 0)
+    {
+        // Try and force the IDE channels into both native
+        pci_write(dev, PCI_PROG_IF, 1, 0x0F);
+        if((pci_read(dev, PCI_PROG_IF, 1) & 0x05) != 0x05)
+        {
+            // Try and force the IDE channels into both compatibility
+            pci_write(dev, PCI_PROG_IF, 1, 0x00);
+        }
+        printf("[PATA] NewOpMode: %x\n", pci_read(dev, PCI_PROG_IF, 1));
+    }
+
     uint8_t operating_mode = pci_read(dev, PCI_PROG_IF, 1);
     uint32_t command0_base = pci_read(dev, PCI_BAR0, 4) & ~0x3;
     uint32_t command1_base = pci_read(dev, PCI_BAR2, 4) & ~0x3;
@@ -603,49 +638,63 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
     if((operating_mode & 0b0001) != (operating_mode & 0b0100) && (operating_mode & 0b1010) == 0)
     {
         printf("[PATA] Error: Operating mode mismatch (%d != %d)\n", (operating_mode & 0b0001), (operating_mode & 0b0100));
-        return;
+        tty_reshow();
+        return PCI_DEV_NOT_HANDLED;
     }
 
-    FIXUP_BAR(command0_base, 0x1F0);
-    FIXUP_BAR(control0_base, 0x3F6);
-    FIXUP_BAR(command1_base, 0x170);
-    FIXUP_BAR(control1_base, 0x376);
+    if((operating_mode & 0b0101) == 5)
+    {
+        pci_alloc_irq(dev, 1, IRQ_LEGACY | IRQ_INTX);
+    }
+
+    FIXUP_BAR(dev, PCI_BAR0, command0_base, 0x1F0);
+    FIXUP_BAR(dev, PCI_BAR1, control0_base, 0x3F6);
+    FIXUP_BAR(dev, PCI_BAR2, command1_base, 0x170);
+    FIXUP_BAR(dev, PCI_BAR3, control1_base, 0x376);
 
     printf("[PATA] Primary channel at %#lx-%#lx, %#lx\n", command0_base, command0_base+7, control0_base);
     printf("[PATA] Secondary channel at %#lx-%#lx, %#lx\n", command1_base, command1_base+7, control1_base);
     printf("[PATA] OpMode: %x\n", operating_mode);
+    tty_reshow();
 
     if(inb(control0_base + ATA_ALT_STATUS) == 0xFF)
         init_primary = false;
-    if(inb(control0_base + ATA_ALT_STATUS) == 0xFF)
+    if(inb(control1_base + ATA_ALT_STATUS) == 0xFF)
         init_secondary = false;
     
     if(!init_primary && !init_secondary)
     {
-        printf("[PATA] Error: Non-existant IDE Controller\n");
-        return;
+        printf("[PATA] Error: No channels exist\n");
+        tty_reshow();
+        return PCI_DEV_NOT_HANDLED;
     }
 
     if(init_primary)
     {
         printf("[PATA] Setting up primary channel\n");
-        // Setup interrupt handler if channel is in compatibility mode
+        // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0001) == 0)
-            irq_add_handler(14, pata_irq_handler);
+            ic_irq_handle(14, LEGACY, pata_irq_handler);
+        else
+            pci_handle_irq(dev, 0, pata_irq_handler);
         
-        init_ide_controller(command0_base, control0_base, 14, false);
-        init_ide_controller(command0_base, control0_base, 14, true);
+        tty_reshow();
+        init_ide_controller(command0_base, control0_base, (operating_mode & 0b0001) ? dev->irq_pin : 14, false);
+        init_ide_controller(command0_base, control0_base, (operating_mode & 0b0001) ? dev->irq_pin : 14, true);
     }
 
     if(init_secondary)
     {
         printf("[PATA] Setting up secondary channel\n");
-        // Setup interrupt handler if channel is in compatibility mode
+        // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0100) == 0)
-            irq_add_handler(15, pata_irq_handler);
+            ic_irq_handle(15, LEGACY, pata_irq_handler);
+        else
+            pci_handle_irq(dev, 0, pata_irq_handler);
 
-        init_ide_controller(command1_base, control1_base, 15, false);
-        init_ide_controller(command1_base, control1_base, 15, true);
+        tty_reshow();
+        init_ide_controller(command1_base, control1_base, (operating_mode & 0b0100) ? dev->irq_pin : 15, false);
+        init_ide_controller(command1_base, control1_base, (operating_mode & 0b0100) ? dev->irq_pin : 15, true);
     }
 
     current_id = ATA_INVALID_ID;

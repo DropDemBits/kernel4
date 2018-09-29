@@ -229,9 +229,20 @@ bool ic_check_spurious(uint16_t irq)
     return pic_check_spurious(irq);
 }
 
-void ic_eoi(uint16_t irq)
+void ic_eoi(uint8_t irq)
 {
     pic_eoi(irq);
+}
+
+struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_t handler)
+{
+    isr_add_handler(irq + 32, handler);
+    return KNULL;
+}
+
+void ic_irq_free(struct irq_handler* handler)
+{
+    return;
 }
 
 struct ic_dev* hal_get_ic()
