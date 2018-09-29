@@ -234,7 +234,8 @@ static void detect_device(int device)
     first_byte = wait_read_data_timeout();
     second_byte = wait_read_data_timeout();
 
-    if(first_byte == 0xFA && second_byte == 0xFF) devices[device].type = TYPE_AT_KBD;
+         if(first_byte == 0xFA && second_byte == 0xFF) devices[device].type = TYPE_AT_KBD;
+    else if(first_byte == 0xFF && second_byte == 0xFF) devices[device].type = TYPE_AT_KBD;
     else if(first_byte == 0x00 && second_byte == 0xFF) devices[device].type = TYPE_2B_MOUSE;
     else if(first_byte == 0x03 && second_byte == 0xFF) devices[device].type = TYPE_3B_MOUSE;
     else if(first_byte == 0x04 && second_byte == 0xFF) devices[device].type = TYPE_5B_MOUSE;

@@ -45,6 +45,7 @@ static thread_t* decoder_thread;
  */
 static uint8_t key_state_machine = 0;
 static uint8_t ps2set1_translation[] = {PS2_SET1_MAP};
+static bool command_successful = false;
 
 static void keycode_push(uint8_t keycode)
 {
@@ -59,21 +60,41 @@ static uint8_t keycode_pop()
     return keycode_buffer[read_head++];
 }
 
-static void send_command(uint8_t command, uint8_t subcommand)
+static bool send_command(uint8_t command, uint8_t subcommand)
 {
+    command_successful = false;
     ps2_device_write(kbd_device, true, command);
-    if(ps2_device_read(kbd_device, true) != 0xFA) return;
+    if(!command_successful && ps2_device_read(kbd_device, true) != 0xFA) return false;
+    command_successful = false;
+
     ps2_device_write(kbd_device, true, subcommand);
-    if(ps2_device_read(kbd_device, true) != 0xFA) return;
+    if(!command_successful && ps2_device_read(kbd_device, true) != 0xFA) return false;
+    command_successful = false;
+    return true;
 }
 
 static void at_keyboard_isr()
 {
     taskswitch_disable();
     uint8_t data = ps2_device_read(kbd_device, false);
-    keycode_push(data);
-    sched_unblock_thread(decoder_thread);
-
+    
+    if(data < 0xF0)
+    {
+        insert_data:
+        keycode_push(data);
+        sched_unblock_thread(decoder_thread);
+    } else
+    {
+        switch(data)
+        {
+            case 0xFA:
+                command_successful = true;
+                break;
+            default:
+                break;
+        }
+    }
+    
     ic_eoi(ps2_device_irqs()[kbd_device]);
     taskswitch_enable();
 }
@@ -85,6 +106,8 @@ static void keycode_decoder()
     {
         keep_consume:
         data = keycode_pop();
+
+        printf("[%x] ", data);
 
         if(data == 0x00)
         {
