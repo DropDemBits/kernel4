@@ -26,6 +26,7 @@
 #include <common/io/kbd.h>
 #include <common/io/ps2.h>
 #include <common/io/keycodes.h>
+#include <common/util/kfuncs.h>
 
 #define MOD_SCROLL_LOCK 0x01
 #define MOD_NUM_LOCK 0x02
@@ -42,6 +43,7 @@ key_mapping_t *charmap;
 static bool caps_pressed = false;
 static bool is_inited = false;
 static bool has_data = false;
+static uint16_t kbd_subsys;
 
 static void input_push(uint8_t keycode)
 {
@@ -58,9 +60,15 @@ static uint8_t input_pop()
 
 void kbd_init()
 {
-    tty_prints("[KBDG] Initialising keyboard driver\n");
+    kbd_subsys = klog_add_subsystem("KBD");
+    klog_logln(kbd_subsys, INFO, "Initialising keyboard driver");
     charmap = default_charmap;
     is_inited = true;
+}
+
+uint16_t kbd_subsytem_id()
+{
+    return kbd_subsys;
 }
 
 void kbd_write(uint8_t keycode)

@@ -163,5 +163,6 @@ void irq_add_handler(uint16_t irq, isr_t handler);
 void dump_registers(struct intr_stack *stack);
 
 struct heap_info* get_heap_info();
+uint64_t get_klog_base();
 
 #endif /* __HAL_H__ */

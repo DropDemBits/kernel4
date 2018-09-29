@@ -25,8 +25,8 @@
 #include <common/multiboot.h>
 #include <common/multiboot2.h>
 #include <common/mm/mm.h>
-#include <common/tty/tty.h>
 #include <common/tty/fb.h>
+#include <common/util/klog.h>
 
 typedef multiboot2_memory_map_t mb2_mmap_t;
 typedef multiboot_memory_map_t mb_mmap_t;
@@ -56,15 +56,25 @@ uint32_t initrd_size = 0;
 void parse_mb1();
 void parse_mb2();
 
+const char* region_names[] = {
+    "Avaliable",
+    "Reserved",
+    "ACPI Reclaimable",
+    "ACPI NVS",
+    "Bad RAM",
+};
+
 void multiboot_parse()
 {
     // Check which multiboot we're working with
 
     switch (multiboot_magic) {
         case MULTIBOOT2_BOOTLOADER_MAGIC:
+            klog_early_logln(DEBUG, "Parsing Multiboot 2 structure");
             parse_mb2();
             break;
         case MULTIBOOT_BOOTLOADER_MAGIC:
+            klog_early_logln(DEBUG, "Parsing Multiboot 1 structure");
             parse_mb1();
             break;
         default:
@@ -109,7 +119,7 @@ void parse_mb1()
         {
             initrd_start = module->mod_start;
             initrd_size = module->mod_end - initrd_start;
-            tty_prints("Loaded initrd.tar\n");
+            klog_early_logln(DEBUG, "Found initrd.tar");
         }
     }
 
@@ -140,20 +150,23 @@ void parse_mb1()
     }
 
     if(flags & MULTIBOOT_INFO_BOOT_LOADER_NAME)
-    {
-        tty_prints("Loaded by bootloader \"");
-        tty_prints((const char*)((uintptr_t)mb1->boot_loader_name));
-        tty_prints("\"\n");
-    }
+        klog_early_logln(INFO, "Loaded by bootloader \"%s\"", (const char*)((uintptr_t)mb1->boot_loader_name));
 
     // This needs to be last as to not overwrite the rest of multiboot things
     if(flags & MULTIBOOT_INFO_MEM_MAP)
     {
+        klog_early_logln(INFO, "Memory Regions:");
         mb_mmap_t* mmap = (mb_mmap_t*)((uintptr_t)mb1->mmap_addr);
 
         bool first_iter = true;
         while((size_t)mmap < mb1->mmap_addr + mb1->mmap_length) {
             mb2_mmap_t* actual = (mb2_mmap_t*)((uintptr_t)mmap + 4);
+
+            klog_early_logln(INFO, "base: 0x%016p, length: 0x%016p, type: %s", actual->addr, actual->len, region_names[actual->type-1]);
+
+            if(actual->type == 0)
+                goto next_entry;
+
             mm_add_region(actual->addr, actual->len, actual->type);
             if(first_iter)
             {
@@ -168,6 +181,7 @@ void parse_mb1()
                 first_iter = false;
             }
 
+            next_entry:
             mmap = (mb_mmap_t*) ((uintptr_t)mmap + mmap->size + sizeof(mmap->size));
         }
     }
@@ -204,7 +218,7 @@ void parse_mb2()
                 {
                     initrd_start = ((struct multiboot_tag_module *) tag)->mod_start;
                     initrd_size = ((struct multiboot_tag_module *) tag)->mod_end - initrd_start;
-                    tty_prints("Loaded initrd.tar\n");
+                    klog_early_logln(DEBUG, "Found initrd.tar");
                 }
                 break;
             case MULTIBOOT_TAG_TYPE_MMAP:
@@ -241,9 +255,7 @@ void parse_mb2()
             case MULTIBOOT_TAG_TYPE_ELF_SECTIONS:
                 break;
             case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME:
-                tty_prints("Loaded by bootloader \"");
-                tty_prints(((struct multiboot_tag_string*)tag)->string);
-                tty_prints("\"\n");
+                klog_early_logln(INFO, "Loaded by bootloader \"%s\"", ((struct multiboot_tag_string*)tag)->string);
                 break;
             default:
                 break;
@@ -258,10 +270,15 @@ void parse_mb2()
 
     bool first_iter = true;
 
+    klog_early_logln(INFO, "Memory Regions:");
     for (mmap = mmap_tag->entries;
         (uint8_t *) mmap < ((uint8_t *) mmap_tag + mmap_tag->size);
         mmap = (mb2_mmap_t *)((unsigned long) mmap + mmap_tag->entry_size))
     {
+        if(mmap->type == 0)
+            continue;
+
+        klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type: %s", mmap->addr, mmap->len, region_names[mmap->type-1]);
         mm_add_region(mmap->addr, mmap->len, mmap->type);
         if(first_iter)
         {

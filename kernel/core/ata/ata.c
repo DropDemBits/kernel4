@@ -4,14 +4,17 @@
 #include <common/util/kfuncs.h>
 
 #ifdef __x86__
-extern void pata_init();
+extern void pata_init(uint16_t ata_subsys);
 #else
-void pata_init() {}
+void pata_init(uint16_t ata_subsys) {}
 #endif
+
+static uint16_t ata_subsys = 0;
 
 void ata_init()
 {
-    tty_prints("[ATA ] Setting up driver\n");
+    ata_subsys = klog_add_subsystem("ATA");
+    klog_logln(ata_subsys, INFO, "Setting up driver");
     
-    pata_init();
+    pata_init(ata_subsys);
 }

@@ -16,13 +16,17 @@ static void print(const char* data, size_t data_length)
 
 int vprintf(const char* format, va_list params)
 {
-    size_t amount;
+    size_t amount = 0;
     bool rejected_formater = false;
     bool pound = false;
     int length = 0;
     int written = 0;
     char buffer[65];
     size_t index = 0;
+
+    // Padding
+    size_t min_chars = 0;
+    char padding_char = ' ';
 
     while(*format)
     {
@@ -35,6 +39,8 @@ int vprintf(const char* format, va_list params)
                 print(format, amount);
                 written += amount;
                 format += amount;
+
+                amount = 0;
                 continue;
         }
 
@@ -51,11 +57,32 @@ int vprintf(const char* format, va_list params)
                 goto printc;
         }
 
-        //Format parsing
+        // Flag parsing
         if(*format == '#')
         {
             pound = true;
             format++;
+        }
+        else if(*format == ' ')
+        {
+            padding_char = ' ';
+            format++;
+        }
+        else if(*format == '0')
+        {
+            padding_char = '0';
+            format++;
+        }
+
+        // Width Parsing
+        parse_next_digit:
+        if(isdigit(*format))
+        {
+            // Number here is base 10
+            min_chars *= 10;
+            min_chars += *format - '0';
+            format++;
+            goto parse_next_digit;
         }
 
         //length
@@ -83,12 +110,27 @@ int vprintf(const char* format, va_list params)
             format++;
             char c = (char) va_arg(params, int /* Gets promoted to char*/);
             print(&c, sizeof(c));
+            amount += 1;
         }
         else if(*format == 's')
         {
             format++;
             const char* s = va_arg(params, const char*);
-            print(s, strlen(s));
+
+            size_t buf_len = strlen(s);
+
+            if(buf_len < min_chars)
+            {
+                // Put padding chars on until we match the limit
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    putchar(padding_char);
+                index += i;
+                amount += i;
+            }
+
+            print(s, buf_len);
+            amount += buf_len;
         }
         else if(*format == 'd' || *format == 'i')
         {
@@ -107,7 +149,19 @@ int vprintf(const char* format, va_list params)
                 break;
             }
 
-            amount += strlen(lltoa(number, buffer, 10));
+            size_t buf_len = strlen(lltoa(number, buffer, 10));
+
+            if(buf_len < min_chars)
+            {
+                // Put padding chars on until we match the limit
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    putchar(padding_char);
+                index += i;
+                amount += i;
+            }
+
+            amount += buf_len;
             print(buffer, strlen(buffer));
             format++;
         }
@@ -128,13 +182,25 @@ int vprintf(const char* format, va_list params)
                 break;
             }
 
-            amount += strlen(ulltoa(number, buffer, 10));
+            size_t buf_len = strlen(ulltoa(number, buffer, 10));
+
+            if(buf_len < min_chars)
+            {
+                // Put padding chars on until we match the limit
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    putchar(padding_char);
+                index += i;
+                amount += i;
+            }
+
+            amount += buf_len;
             print(buffer, strlen(buffer));
             format++;
         }
-        else if(*format == 'x')
+        else if(*format == 'X' || *format == 'x')
         {
-            //Hex (lowercase)
+            // Hex
             unsigned long long number;
             switch(length)
             {
@@ -149,35 +215,45 @@ int vprintf(const char* format, va_list params)
                 break;
             }
 
-            if(pound) print("0x", strlen("0x"));
+            size_t buf_len = strlen(ulltoa(number, buffer, 16));
 
-            amount += strlen(ulltoa(number, buffer, 16));
-            for(size_t i = 0; i < strlen(buffer); i++)
-                buffer[i] = tolower(buffer[i]);
-            print(buffer, strlen(buffer));
-            format++;
-        }
-        else if(*format == 'X')
-        {
-            //Hex (uppercase)
-            unsigned long long number;
-            switch(length)
+            if(buf_len < min_chars && padding_char == ' ')
             {
-            case 1:
-                number = va_arg(params, unsigned long);
-                break;
-            case 2:
-                number = va_arg(params, unsigned long long);
-                break;
-            default:
-                number = va_arg(params, unsigned int);
-                break;
+                // Put spaces on until we match the limit (done before in order to shift num)
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    putchar(padding_char);
+                index += i;
+                amount += i;
             }
 
-            if(pound) print("0X", strlen("0X"));
+            if(pound)
+            {
+                putchar('0');
+                putchar(*format);
+                amount += 2;
+            }
 
-            amount += strlen(ulltoa(number, buffer, 16));
-            print(buffer, strlen(buffer));
+            if(*format == 'x')
+            {
+                // Convert all charachters to lowercase
+                for(size_t i = 0; i < buf_len; i++)
+                    buffer[i] = tolower(buffer[i]);
+            }
+            
+            if(buf_len < min_chars)
+            {
+                // Put padding chars on until we match the limit
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    putchar(padding_char);
+                index += i;
+                amount += i;
+            }
+
+            amount += buf_len;
+            print(buffer, buf_len);
+
             format++;
         }
 		else if(*format == 'p')
@@ -185,10 +261,37 @@ int vprintf(const char* format, va_list params)
             //Pointer (uppercase)
             unsigned long long number = GET_POINTER(params);
 
-            if(pound) print("0x", strlen("0x"));
+            size_t buf_len = strlen(ulltoa(number, buffer, 16));
 
-            amount += strlen(ulltoa(number, buffer, 16));
-            print(buffer, strlen(buffer));
+            if(buf_len < min_chars && padding_char == ' ')
+            {
+                // Put spaces on until we match the limit (done before in order to shift num)
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    putchar(padding_char);
+                index += i;
+                amount += i;
+            }
+
+            if(pound)
+            {
+                print("0x", 2);
+                amount += 2;
+            }
+            
+            if(buf_len < min_chars)
+            {
+                // Put padding chars on until we match the limit
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    putchar(padding_char);
+                index += i;
+                amount += i;
+            }
+
+            amount += buf_len;
+            print(buffer, buf_len);
+
             format++;
         }
         else {
@@ -200,6 +303,8 @@ int vprintf(const char* format, va_list params)
             goto bad_parsing;
         }
 
+        padding_char = ' ';
+        min_chars = 0;
         length = 0;
         written += amount;
         amount = 0;

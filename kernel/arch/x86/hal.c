@@ -292,6 +292,16 @@ void hal_restore_interrupts()
     asm volatile("push %%rax\n\tpopfq"::"a"(native_flags));
 }
 
+uint64_t get_klog_base()
+{
+    return 0xFFFF8C0000000000;
+}
+
+uint64_t get_driver_mmio_base()
+{
+    return 0xFFFFF00000000000;
+}
+
 void dump_registers(struct intr_stack *stack)
 {
     printf("***BEGIN REGISTER DUMP***\n");
@@ -323,6 +333,16 @@ void hal_save_interrupts()
 void hal_restore_interrupts()
 {
     asm volatile("push %%eax\n\tpopf"::"a"(native_flags));
+}
+
+uint64_t get_klog_base()
+{
+    return 0x8C000000;
+}
+
+uint64_t get_driver_mmio_base()
+{
+    return 0xF0000000;
 }
 
 void dump_registers(struct intr_stack *stack)

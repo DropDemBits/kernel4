@@ -125,7 +125,6 @@ static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
 vfs_inode_t* tarfs_init(void* address, size_t tar_len)
 {
     if(address == KNULL) return KNULL;
-    printf("[INTRD] initrd at %p (%lld / %lld KiB)\n", address, tar_len, tar_len >> 10);
 
     // Identity map tarfs into address space (Temporary)
     for(size_t pages = 0; pages < ((tar_len + 0xFFF) >> 12); pages++)

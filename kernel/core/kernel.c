@@ -25,6 +25,7 @@
 
 #include <common/hal.h>
 #include <common/util/kfuncs.h>
+#include <common/util/klog.h>
 #include <common/mb2parse.h>
 #include <common/syscall.h>
 #include <common/ata/ata.h>
@@ -156,17 +157,18 @@ void info_display()
 extern process_t init_process;
 void kmain()
 {
-    tty_init();
-    tty_prints("Initialising UART\n");
+    klog_early_init();
+    klog_early_logln(INFO, "Initialising UART");
     uart_init();
-    tty_prints("Parsing Multiboot info\n");
+    klog_early_logln(INFO, "Parsing Multiboot info");
     multiboot_parse();
-    tty_prints("Initialising MM\n");
+    klog_early_logln(INFO, "Initialising MM");
     mm_init();
     mmu_init();
-    tty_prints("Initialising Framebuffer\n");
+    klog_early_logln(INFO, "Initialising Framebuffer");
     fb_init();
     multiboot_reclaim();
+    tty_init();
 
     unsigned long framebuffer = (unsigned long)get_fb_address();
 
@@ -194,20 +196,43 @@ void kmain()
         for(int i = 0; i < fb_info.width * fb_info.height; i++)
             ((uint16_t*)framebuffer)[i] = 0x0700;
     }
-    tty_reshow();
 
-    tty_prints("Initialising HAL\n");
+    
+    // May want to reserve for later testing
+    /*char tbuff[64];
+    int len = 0;
+    len = sprintf(tbuff, "%#p", early_klog_buffer);
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%#llx", early_klog_buffer);
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%#llX", early_klog_buffer);
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%s", "hoopla");
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%s %s", "hoopla", "doopla");
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%c", 'e');
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%llu", early_klog_buffer);
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%lld", early_klog_buffer);
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "%08llx", 100);
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
+    len = sprintf(tbuff, "TESTING %17p", early_klog_buffer);
+    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);*/
+
+    klog_early_logln(INFO, "Initialising HAL");
     hal_init();
     
     // Resume init in other thread
-    tty_prints("Starting up threads for init\n");
+    klog_early_logln(INFO, "Starting up threads for init");
     tasks_init("init", (void*)core_fini);
     thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread");
 
     // sched_init depends on init_process
-    tty_prints("Initialising Scheduler\n");
+    klog_early_logln(INFO, "Initialising Scheduler");
     sched_init();
-    tty_reshow();
 
     hal_enable_interrupts();
     while(1)
@@ -220,17 +245,17 @@ void kmain()
 
 void core_fini()
 {
-    tty_prints("Initialising PS/2 controller\n");
+    klog_init();
+
+    uint16_t core_subsystem = klog_add_subsystem("CORE");
+
     ps2_init();
     kbd_init();
-    tty_prints("Setting up system calls\n");
+    klog_logln(core_subsystem, INFO, "Setting up system calls");
     syscall_init();
 
     ata_init();
     pci_init();
-
-    fb_clear();
-    tty_reshow_full();
 
     uint8_t eject_command[] = {0x1B /* START STOP UNIT */, 0x00, 0x00, 0x00, /* LoEJ */ 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     uint8_t read_command[]  = {0xA8 /* READ(12) */, 0x00, /* LBA */ 0x00, 0x00, 0x00, 0x01, /* Sector Count */ 0x00, 0x00, 0x00, 0x01, /**/ 0x00, 0x00};
@@ -238,11 +263,11 @@ void core_fini()
     int err_code = 0;
 
     err_code = atapi_send_command(2, read_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    printf("OHH (%d)\n", err_code);
+    klog_logln(core_subsystem, INFO, "Command: ATAPI READ(12) (%d)", err_code);
     err_code = atapi_send_command(2, eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    printf("OHH (%d)\n", err_code);
+    klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ) (%d)", err_code);
     err_code = pata_do_transfer(0, 1, transfer_buffer, 1, TRANSFER_READ, false, false);
-    printf("OHH (%d)\n");
+    klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)");
 
     /*for(int i = 0; i < 256; i++)
     {
@@ -307,7 +332,29 @@ void core_fini()
     }
 #endif
 
-    tty_prints("Finished Initialisation\n");
+    klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
+
+    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+
+    while(entry->level != EOL)
+    {
+        if(entry->level > DEBUG || entry->subsystem_id == 4 || entry->subsystem_id == 2)
+        {
+            uint64_t timestamp_secs = entry->timestamp / 1000000000;
+            uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
+
+            printf("[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            for(uint16_t i = 0; i < entry->length; i++)
+                tty_printchar(entry->data[i]);
+        }
+        entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
+
+        if(tty_background_dirty())
+        {
+            tty_reshow();
+            tty_make_clean();
+        }
+    }
 
     taskswitch_disable();
     process_t *p1 = process_create();

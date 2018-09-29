@@ -26,11 +26,14 @@
 #include <common/io/ps2.h>
 #include <common/io/keycodes.h>
 #include <common/sched/sched.h>
+#include <common/util/kfuncs.h>
 
 #define MOD_SCROLL_LOCK 0x01
 #define MOD_NUM_LOCK 0x02
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
+
+extern uint16_t kbd_subsytem_id();
 
 static uint8_t keycode_buffer[4096];
 static uint16_t read_head = 0;
@@ -176,7 +179,7 @@ void ps2kbd_init(int device)
     decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2");
 
     if(!send_command(0xF4, 0x00))
-        puts("[PSKB] Scanning enable failed");
+        klog_logln(kbd_subsytem_id(), INFO, "MF2 Scanning enable failed");
 
     ps2_handle_device(kbd_device, ps2_keyboard_isr);
     send_command(0xF0, 0x02);

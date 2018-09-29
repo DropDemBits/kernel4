@@ -19,6 +19,7 @@
  */
 
 #include <stdarg.h>
+#include <common/util/klog.h>
 
 #ifndef __KFUNCS_H__
 #define __KFUNCS_H__

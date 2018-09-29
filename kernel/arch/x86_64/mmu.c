@@ -80,7 +80,7 @@ static paging_context_t* current_context;
 static paging_context_t* temp_context;
 static paging_context_t initial_context;
 
-static uint64_t const temp_remap_offset =                     0x0000008000000000;
+static uint64_t const temp_remap_offset =                    0x0000008000000000;
 static page_entry_t* const pml4e_lookup = (page_entry_t*)    0xFFFFFFFFFFFFF000;
 static page_entry_t* const pdpe_lookup  = (page_entry_t*)    0xFFFFFFFFFFE00000;
 static page_entry_t* const pde_lookup   = (page_entry_t*)    0xFFFFFFFFC0000000;

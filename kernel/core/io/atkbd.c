@@ -26,11 +26,14 @@
 #include <common/io/ps2.h>
 #include <common/io/keycodes.h>
 #include <common/sched/sched.h>
+#include <common/util/kfuncs.h>
 
 #define MOD_SCROLL_LOCK 0x01
 #define MOD_NUM_LOCK 0x02
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
+
+extern uint16_t kbd_subsytem_id();
 
 static uint8_t keycode_buffer[4096];
 static uint16_t read_head = 0;
@@ -106,8 +109,6 @@ static void keycode_decoder()
     {
         keep_consume:
         data = keycode_pop();
-
-        printf("[%x] ", data);
 
         if(data == 0x00)
         {
@@ -186,7 +187,7 @@ void atkbd_init(int device)
 
     ps2_device_write(kbd_device, true, 0xF4);
     if(ps2_device_read(kbd_device, true) != 0xFA)
-        puts("[ATKB] Scanning enable failed");
+        klog_logln(kbd_subsytem_id(), INFO, "AT Scanning enable failed");
     ps2_handle_device(kbd_device, at_keyboard_isr);
     send_command(0xF0, 0x01);
     send_command(0xF3, 0x20);

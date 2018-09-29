@@ -23,6 +23,7 @@
 #include <common/hal.h>
 #include <common/sched/sched.h>
 #include <common/io/ps2.h>
+#include <common/util/kfuncs.h>
 
 #define STATUS_READREADY 0x01
 #define STATUS_WRITEREADY 0x02
@@ -72,6 +73,7 @@ static const char* type2name[] = {
     "5-button Mouse"
 };
 struct ps2_device devices[2];
+static uint16_t ps2_subsys = 0;
 
 static void send_controller_command(uint8_t command)
 {
@@ -138,7 +140,7 @@ static void controller_init()
     send_controller_command(0x20);
     if(wait_read_data() != cfg_byte)
     {
-        puts("[PS/2] Unable to change config byte");
+        klog_logln(ps2_subsys, INFO, "Unable to change config byte");
         modify_cfg = false;
         goto device_init;
     }
@@ -147,7 +149,7 @@ static void controller_init()
     send_controller_command(0xAA);
     if(wait_read_data() == 0xFC)
     {
-        puts("[PS/2] Self test failed");
+        klog_logln(ps2_subsys, INFO, "Self test failed");
         return;
     }
 
@@ -158,7 +160,7 @@ static void controller_init()
     if(retval != 0x00)
     {
         usable_bitmask &= ~0b01;
-        printf("[PS/2] Unable to use device on port 1 (code %#x)\n", retval);
+        klog_logln(ps2_subsys, INFO, "Unable to use device on port 1 (code %#x)\n", retval);
     }
 
     if(usable_bitmask & 0b10)
@@ -168,13 +170,13 @@ static void controller_init()
         if(retval != 0x00)
         {
             usable_bitmask &= ~0b10;
-            printf("[PS/2] Unable to use device on port 2 (code %#x)\n", retval);
+            klog_logln(ps2_subsys, INFO, "Unable to use device on port 2 (code %#x)\n", retval);
         }
     }
 
     if(usable_bitmask == 0)
     {
-        puts("[PS/2] No usable devices");
+        klog_logln(ps2_subsys, INFO, "No usable devices");
         return;
     }
 
@@ -187,7 +189,7 @@ static void controller_init()
 
         if(devices[0].present)
         {
-            puts("[PS/2] Detected PS/2 device on port 1");
+            klog_logln(ps2_subsys, DEBUG, "Detected PS/2 device on port 1");
         }
     }
 
@@ -199,7 +201,7 @@ static void controller_init()
 
         if(devices[1].present)
         {
-            puts("[PS/2] Detected PS/2 device on port 2");
+            klog_logln(ps2_subsys, DEBUG, "Detected PS/2 device on port 2");
         }
     }
 
@@ -228,7 +230,7 @@ static void detect_device(int device)
     }
 
     uint16_t first_byte = 0xFF, second_byte = 0xFF;
-    printf("[PS/2] Identifying device on port %d\n", device + 1);
+    klog_logln(ps2_subsys, DEBUG, "Identifying device on port %d", device + 1);
     while(ps2_read_status() & 0x1) ps2_read_data();
     send_dev_command(device, 0xF2);
     first_byte = wait_read_data_timeout();
@@ -242,7 +244,7 @@ static void detect_device(int device)
     else if(first_byte == 0xAB && second_byte == 0x41) devices[device].type = TYPE_MF2_KBD_TRANS;
     else if(first_byte == 0xAB && second_byte == 0xC1) devices[device].type = TYPE_MF2_KBD_TRANS;
     else if(first_byte == 0xAB && second_byte == 0x83) devices[device].type = TYPE_MF2_KBD;
-    else printf("Identified unknown device on port %d: %#x %#x\n", device+1, first_byte, second_byte);
+    else klog_logln(ps2_subsys, DEBUG, "Identified unknown device on port %d: %#x %#x", device+1, first_byte, second_byte);
 
     // The following combination isn't possible
     if((devices[device].type == TYPE_MF2_KBD_TRANS || devices[device].type == TYPE_AT_KBD) &&
@@ -258,6 +260,8 @@ static void detect_device(int device)
 
 void ps2_init()
 {
+    ps2_subsys = klog_add_subsystem("PS/2");
+    klog_logln(ps2_subsys, INFO, "Initialising PS/2 controller");
     controller_init();
     detect_device(0);
     detect_device(1);
@@ -269,16 +273,16 @@ void ps2_init()
 
         if(devices[active_device].type == TYPE_MF2_KBD)
         {
-            printf("[PS/2] Initialising MF2 keyboard\n");
+            klog_logln(ps2_subsys, DEBUG, "Initialising MF2 keyboard");
             ps2kbd_init(active_device);
         } else if(devices[active_device].type == TYPE_MF2_KBD_TRANS ||
                 devices[active_device].type == TYPE_AT_KBD)
         {
-            printf("[PS/2] Initialising AT/Translated MF2 keyboard\n");
+            klog_logln(ps2_subsys, DEBUG, "Initialising AT/Translated MF2 keyboard");
             atkbd_init(active_device);
         }
         else
-            printf("[PS/2] Device on port %d not initialized (%s)\n",
+            klog_logln(ps2_subsys, DEBUG, "Device on port %d not initialized (%s)",
                 active_device+1,
                 type2name[devices[active_device].type]);
     }
