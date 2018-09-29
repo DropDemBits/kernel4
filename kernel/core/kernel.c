@@ -207,8 +207,6 @@ void kmain()
     // sched_init depends on init_process
     tty_prints("Initialising Scheduler\n");
     sched_init();
-
-    sched_print_queues();
     tty_reshow();
 
     hal_enable_interrupts();
