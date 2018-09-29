@@ -72,7 +72,7 @@ static void wait_write(uint8_t device)
 
 void uart_init()
 {
-    // 0x0003 = 0x38400 baud
+    // 0x0003 = 38400 baud
     if(init_com_device(COM4, 0x03)) default_device = COM4;
     if(init_com_device(COM3, 0x03)) default_device = COM3;
     if(init_com_device(COM2, 0x03)) default_device = COM2;

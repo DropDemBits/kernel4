@@ -55,7 +55,6 @@ void idle_loop()
     }
 }
 
-
 extern void enter_usermode(void* thread, unsigned long entry_addr);
 extern void usermode_code();
 
@@ -168,34 +167,6 @@ void kmain()
     klog_early_logln(INFO, "Initialising Framebuffer");
     fb_init();
     multiboot_reclaim();
-    tty_init();
-
-    unsigned long framebuffer = (unsigned long)get_fb_address();
-
-    // Map framebuffer
-    for(unsigned long off = 0;
-        off <= (fb_info.width * fb_info.height * fb_info.bytes_pp);
-        off += 0x1000)
-    {
-        mmu_map_direct(framebuffer + off, fb_info.base_addr + off);
-    }
-
-    if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
-    {
-        tty_add_output(FB_CONSOLE, (unsigned long)get_fb_address());
-
-        // Clear screen
-        // fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0x000000);
-        fb_clear();
-    }
-    else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
-    {
-        tty_add_output(VGA_CONSOLE, (size_t)framebuffer);
-
-        // Clear screen
-        for(int i = 0; i < fb_info.width * fb_info.height; i++)
-            ((uint16_t*)framebuffer)[i] = 0x0700;
-    }
     
     // May want to reserve for later testing
     /*char tbuff[64];
@@ -242,6 +213,38 @@ void kmain()
     }
 }
 
+void main_tty_init()
+{
+    tty_init();
+
+    unsigned long framebuffer = (unsigned long)get_fb_address();
+
+    // Map framebuffer
+    for(unsigned long off = 0;
+        off <= (fb_info.width * fb_info.height * fb_info.bytes_pp);
+        off += 0x1000)
+    {
+        mmu_map_direct(framebuffer + off, fb_info.base_addr + off);
+    }
+
+    if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
+    {
+        tty_add_output(FB_CONSOLE, (unsigned long)get_fb_address());
+
+        // Clear screen
+        // fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0x000000);
+        fb_clear();
+    }
+    else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
+    {
+        tty_add_output(VGA_CONSOLE, (size_t)framebuffer);
+
+        // Clear screen
+        for(int i = 0; i < fb_info.width * fb_info.height; i++)
+            ((uint16_t*)framebuffer)[i] = 0x0700;
+    }
+}
+
 void core_fini()
 {
     klog_init();
@@ -278,30 +281,30 @@ void core_fini()
     }*/
 
     // TODO: Wrap into a separate test file
-#ifdef ENABLE_TESTS
+#ifndef ENABLE_TESTS
     uint8_t* alloc_test = kmalloc(16);
-    printf("Alloc test: %#p\n", (uintptr_t)alloc_test);
+    klog_logln(core_subsystem, INFO, "Alloc test: %#p", (uintptr_t)alloc_test);
     kfree(alloc_test);
 
     // Part 1: allocation
     uint32_t* laddr = (uint32_t*)0xF0000000;
     unsigned long addr = mm_alloc(1);
-    printf("PAlloc test: Addr0 (%#p)\n", (uintptr_t)addr);
+    klog_logln(core_subsystem, INFO, "PAlloc test: Addr0 (%#p)", (uintptr_t)addr);
 
     // Part 2: Mapping
     mmu_map_direct(laddr, addr);
     *laddr = 0xbeefb00f;
-    printf("At Addr1 direct map (%#p): %#lx\n", laddr, *laddr);
+    klog_logln(core_subsystem, INFO, "At Addr1 direct map (%#p): %#lx", laddr, *laddr);
 
     // Part 3: Remapping
     mmu_unmap(laddr);
     mmu_map(laddr);
-    printf("At Addr1 indirect map (%#p): %#lx\n", laddr, *laddr);
+    klog_logln(core_subsystem, INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
     if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 
     if(initrd_start != 0xDEADBEEF)
     {
-        puts("VFS-TEST");
+        klog_logln(core_subsystem, INFO, "VFS-TEST");
         vfs_mount(tarfs_init((void*)initrd_start, initrd_size), "/");
 
         uint8_t *buffer = kmalloc(257);
@@ -313,17 +316,17 @@ void core_fini()
         while((dirent = vfs_readdir(root, i++)) != KNULL)
         {
             vfs_inode_t* node = vfs_finddir(root, dirent->name);
-            printf("%s ", dirent->name);
+            klog_logln(core_subsystem, INFO, "%s ", dirent->name);
             switch (node->type & 0x7) {
                 case VFS_TYPE_DIRECTORY:
-                    puts("(Directory)");
+                    klog_logln(core_subsystem, INFO, "(Directory)");
                     break;
                 default:
                 {
                     ssize_t len = vfs_read(node, 0, 256, buffer);
                     if(len < 0) continue;
                     buffer[len] = '\0';
-                    printf("(Read Len %d):\n%s\n", len, buffer);
+                    klog_logln(core_subsystem, INFO, "(Read Len %d):\n%s", len, buffer);
                 }
             }
         }
@@ -333,26 +336,31 @@ void core_fini()
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
 
+    main_tty_init();
+
     struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+
+    char buffer[128];
 
     while(entry->level != EOL)
     {
-        if(entry->level > DEBUG || entry->subsystem_id == 4 || entry->subsystem_id == 2)
+        if(entry->level > DEBUG)
         {
             uint64_t timestamp_secs = entry->timestamp / 1000000000;
             uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
 
-            printf("[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            uart_writestr(buffer, strlen(buffer));
+
             for(uint16_t i = 0; i < entry->length; i++)
-                tty_printchar(entry->data[i]);
+            {
+                uart_writec(entry->data[i]);
+            
+                if(entry->data[i] == '\n')
+                    uart_writec('\r');
+            }
         }
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
-
-        if(tty_background_dirty())
-        {
-            tty_reshow();
-            tty_make_clean();
-        }
     }
 
     taskswitch_disable();
