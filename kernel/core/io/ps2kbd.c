@@ -18,6 +18,7 @@
  * 
  */
 
+#include <string.h>
 #include <stdio.h>
 #include <ctype.h>
 
@@ -180,6 +181,9 @@ void ps2kbd_init(int device)
 
     if(!send_command(0xF4, 0x00))
         klog_logln(kbd_subsytem_id(), INFO, "MF2 Scanning enable failed");
+
+    klog_logln(kbd_subsytem_id(), DEBUG, "MF2: Clearing buffer");
+    memset(keycode_buffer, 0x00, 4096);
 
     ps2_handle_device(kbd_device, ps2_keyboard_isr);
     send_command(0xF0, 0x02);

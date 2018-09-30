@@ -63,6 +63,9 @@ void kbd_init()
     kbd_subsys = klog_add_subsystem("KBD");
     klog_logln(kbd_subsys, INFO, "Initialising keyboard driver");
     charmap = default_charmap;
+
+    memset(input_buffer, 0x00, 4096);
+    memset(key_states, 0x00, 255);
     is_inited = true;
 }
 

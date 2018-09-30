@@ -18,6 +18,7 @@
  * 
  */
 
+#include <string.h>
 #include <ctype.h>
 #include <stdio.h>
 
@@ -187,7 +188,11 @@ void atkbd_init(int device)
 
     ps2_device_write(kbd_device, true, 0xF4);
     if(ps2_device_read(kbd_device, true) != 0xFA)
-        klog_logln(kbd_subsytem_id(), INFO, "AT Scanning enable failed");
+        klog_logln(kbd_subsytem_id(), INFO, "AT: Scanning enable failed");
+
+    klog_logln(kbd_subsytem_id(), DEBUG, "AT: Clearing buffer");
+    memset(keycode_buffer, 0x00, 4096);
+
     ps2_handle_device(kbd_device, at_keyboard_isr);
     send_command(0xF0, 0x01);
     send_command(0xF3, 0x20);

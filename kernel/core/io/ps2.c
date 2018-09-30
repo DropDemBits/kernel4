@@ -245,6 +245,7 @@ static void detect_device(int device)
     else if(first_byte == 0xAB && second_byte == 0xC1) devices[device].type = TYPE_MF2_KBD_TRANS;
     else if(first_byte == 0xAB && second_byte == 0x83) devices[device].type = TYPE_MF2_KBD;
     else klog_logln(ps2_subsys, DEBUG, "Identified unknown device on port %d: %#x %#x", device+1, first_byte, second_byte);
+    klog_logln(ps2_subsys, DEBUG, "SigBytes(%d): %#x %#x", device+1, first_byte, second_byte);
 
     // The following combination isn't possible
     if((devices[device].type == TYPE_MF2_KBD_TRANS || devices[device].type == TYPE_AT_KBD) &&

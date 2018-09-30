@@ -39,4 +39,4 @@ pxeboot: build-libk build-kernel initrd/initrd/initrd.tar
 	mkdir -p pxedest
 	@$(foreach TARGET,$(TARGETS),cp kernel/bin/$(TARGET)/k4-$(TARGET).kern pxedest/ &&) echo Done
 	cp initrd/initrd/initrd.tar pxedest/
-	gksu cp pxedest/* /var/lib/tftpboot/
+	sudo cp pxedest/* /var/lib/tftpboot/

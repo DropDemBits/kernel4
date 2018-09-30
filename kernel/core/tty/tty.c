@@ -172,7 +172,9 @@ bool tty_scroll(tty_dev_t* tty, int direction)
     }
 
     tty->refresh_back = true;
-    tty->is_dirty = true;
+
+    if(direction != 0)
+        tty->is_dirty = true;
     return true;
 }
 

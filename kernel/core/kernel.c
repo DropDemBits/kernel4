@@ -209,7 +209,7 @@ void kmain()
     }
 }
 
-void main_tty_init()
+void main_fb_init()
 {
     unsigned long framebuffer = (unsigned long)get_fb_address();
 
@@ -236,14 +236,45 @@ void main_tty_init()
     }
 }
 
+tty_dev_t* tty = NULL;
+void reshow_buf()
+{
+    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+    char buffer[128];
+
+    while(entry->level != EOL)
+    {
+        if(entry->level >= DEBUG)
+        {
+            uint64_t timestamp_secs = entry->timestamp / 1000000000;
+            uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
+
+            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            tty_puts(tty, buffer);
+
+            for(uint16_t i = 0; i < entry->length; i++)
+                tty_putchar(tty, entry->data[i]);
+        }
+        entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
+    }
+
+    tty_reshow_fb(tty, get_fb_address(), 0, 0);
+    tty_make_clean(tty);
+}
+
 void core_fini()
 {
+    main_fb_init();
     klog_init();
 
     uint16_t core_subsystem = klog_add_subsystem("CORE");
 
-    ps2_init();
+    tty = kmalloc(sizeof(tty_dev_t));
+    tty_init(tty, 80, 25, kmalloc(80*25*2), 80*20*2, NULL);
+
     kbd_init();
+    ps2_init();
+    reshow_buf();
     klog_logln(core_subsystem, INFO, "Setting up system calls");
     syscall_init();
 
@@ -316,11 +347,9 @@ void core_fini()
     }
 #endif
 
-    main_tty_init();
-
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
 
-    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+    /*struct klog_entry* entry = (struct klog_entry*)get_klog_base();
 
     char buffer[128];
 
@@ -343,7 +372,7 @@ void core_fini()
             }
         }
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
-    }
+    }*/
 
     taskswitch_disable();
     process_t *p1 = process_create();
