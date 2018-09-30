@@ -43,9 +43,9 @@ bool klog_is_init();
 
 // Early-init versions of the methods below
 // All of these will use the subsytem id 0 for "EARLY"
-void klog_early_log(enum klog_level level, char* format, ...);
-void klog_early_logln(enum klog_level level, char* format, ...);
-void klog_early_logc(enum klog_level level, char c);
+void klog_early_log(enum klog_level level, const char* format, ...);
+void klog_early_logln(enum klog_level level, const char* format, ...);
+void klog_early_logc(enum klog_level level, const char c);
 
 /**
  * @brief  Adds a subsystem to the logger for naming
@@ -56,10 +56,10 @@ void klog_early_logc(enum klog_level level, char c);
 uint16_t klog_add_subsystem(char* name);
 char* klog_get_name(uint16_t id);
 
-void klog_log(uint16_t subsys_id, enum klog_level level, char* format, ...);
-void klog_logv(uint16_t subsys_id, enum klog_level level, char* format, va_list args);
-void klog_logln(uint16_t subsys_id, enum klog_level level, char* format, ...);
-void klog_loglnv(uint16_t subsys_id, enum klog_level level, char* format, va_list args);
-void klog_logc(uint16_t subsys_id, enum klog_level level, char c);
+void klog_log(uint16_t subsys_id, enum klog_level level, const char* format, ...);
+void klog_logv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args);
+void klog_logln(uint16_t subsys_id, enum klog_level level, const char* format, ...);
+void klog_loglnv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args);
+void klog_logc(uint16_t subsys_id, enum klog_level level, const char c);
 
 #endif

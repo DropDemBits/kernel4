@@ -41,6 +41,8 @@ extern uint32_t pci_read_raw(uint16_t bus, uint8_t device, uint8_t function, uin
 extern void pci_write_raw(uint16_t bus, uint8_t device, uint8_t function, uint16_t reg, uint8_t len, uint32_t data);
 extern uint32_t pci_get_ecam_addr(uint16_t bus_base, uint16_t bus, uint8_t device, uint8_t function);
 
+struct pci_dev;
+
 typedef int pci_handle_ret_t;
 typedef pci_handle_ret_t(*pci_device_found_t)(struct pci_dev* dev);
 

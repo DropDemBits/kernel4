@@ -121,12 +121,12 @@ static void controller_init()
     bool modify_cfg = true;
 
     // Disable devices
-    while(ps2_read_status() & 0x1) ps2_read_data();
+    while(ps2_read_status() & 0x1) busy_wait();
     send_controller_command(0xAD); // Device 1
     send_controller_command(0xA7); // Device 2
 
     // Clear output buffer
-    while(ps2_read_status() & 0x1) ps2_read_data();
+    while(ps2_read_status() & 0x1) busy_wait();
 
     // Set configuration byte
     send_controller_command(0x20);
@@ -147,11 +147,13 @@ static void controller_init()
 
     // Perform self test
     send_controller_command(0xAA);
-    if(wait_read_data() == 0xFC)
+    uint8_t ret_byte = wait_read_data();
+    if(ret_byte == 0xFC)
     {
-        klog_logln(ps2_subsys, INFO, "Self test failed");
+        klog_logln(ps2_subsys, INFO, "Self test failed (code %#x)", ret_byte);
         return;
     }
+    klog_logln(ps2_subsys, INFO, "Self test success (code %#x)", ret_byte);
 
     // Test ports
     device_init:
@@ -180,29 +182,42 @@ static void controller_init()
         return;
     }
 
-    // Enable & reset devices
     if(usable_bitmask & 0b01)
     {
+        // Reset device on port 1
         ps2_device_write(0, true, 0xFF);
-        if(ps2_device_read(0, true) == 0xFC) usable_bitmask &= ~0b01;
-        else devices[0].present = 1;
+        uint8_t reset_result = ps2_device_read(0, true);
+
+        if(reset_result == 0xFC)
+            usable_bitmask &= ~0b01;
+        else if(reset_result == 0x00)
+            devices[0].present = 1;
+        else
+            devices[0].present = 0;
 
         if(devices[0].present)
-        {
-            klog_logln(ps2_subsys, DEBUG, "Detected PS/2 device on port 1");
-        }
+            klog_logln(ps2_subsys, DEBUG, "Detected PS/2 device on port 1 (code %#x)", reset_result);
+        else
+            klog_logln(ps2_subsys, DEBUG, "No device on port 1 (code %#x)", reset_result);
     }
 
     if(usable_bitmask & 0b10)
     {
+        // Reset device on port 2
         ps2_device_write(1, true, 0xFF);
-        if(ps2_device_read(1, true) == 0xFC) usable_bitmask &= ~0b10;
-        else devices[1].present = 1;
+        uint8_t reset_result = ps2_device_read(1, true);
+
+        if(reset_result == 0xFC)
+            usable_bitmask &= ~0b10;
+        else if(reset_result == 0x00)
+            devices[1].present = 1;
+        else
+            devices[1].present = 0;
 
         if(devices[1].present)
-        {
-            klog_logln(ps2_subsys, DEBUG, "Detected PS/2 device on port 2");
-        }
+            klog_logln(ps2_subsys, DEBUG, "Detected PS/2 device on port 2 (code %#x)", reset_result);
+        else
+            klog_logln(ps2_subsys, DEBUG, "No device on port 2 (code %#x)", reset_result);
     }
 
     if(!modify_cfg) return;

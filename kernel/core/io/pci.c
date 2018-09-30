@@ -11,7 +11,7 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
 {
     uint16_t vendor_id =    pci_read_raw(bus, device, function, PCI_VENDOR, 2);
     uint16_t device_id =    pci_read_raw(bus, device, function, PCI_DEVICE, 2);
-    uint8_t header_type =   pci_read_raw(bus, device, function, PCI_HEADER, 1);
+    // uint8_t header_type =   pci_read_raw(bus, device, function, PCI_HEADER, 1);
 
     uint8_t class_code =    pci_read_raw(bus, device, function, PCI_CLASS_CODE, 1);
     uint8_t subclass_code = pci_read_raw(bus, device, function, PCI_SUBCLASS_CODE, 1);

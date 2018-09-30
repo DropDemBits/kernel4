@@ -95,6 +95,7 @@ static void at_keyboard_isr()
                 command_successful = true;
                 break;
             default:
+                goto insert_data;
                 break;
         }
     }

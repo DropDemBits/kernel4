@@ -144,7 +144,7 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
         return true;
 
     current_id = id;
-    current_device = device_list[id];
+    current_device = (struct pata_dev*)device_list[id];
     uint16_t command_base = current_device->command_base;
     uint16_t alt_base = current_device->control_base;
 
@@ -163,7 +163,7 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
 static bool ata_wait()
 {
     // TODO: Block current thread & awake on interrupt
-    uint64_t timeout = timer_read_counter(0) + (1000000000 * 5); // Delay of 5ms
+    uint64_t timeout = timer_read_counter(0) + (5000000000); // Delay of 5ms
     while(!irq_fired)
     {
         busy_wait();
@@ -191,7 +191,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     uint8_t last_status = 0;
 
     int loop_counter = 10;
-    while(inb(control_base + ATA_ALT_STATUS) & (STATUS_DRDY) != STATUS_DRDY && loop_counter > 0)
+    while((inb(control_base + ATA_ALT_STATUS) & (STATUS_DRDY)) != STATUS_DRDY && loop_counter > 0)
     {
         busy_wait();
         loop_counter--;
@@ -278,7 +278,7 @@ int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint3
         return 0;
     if(get_device(id) == KNULL)
         return EABSENT;
-    if(get_device(id)->device_type & TYPE_ATA != TYPE_ATA)
+    if((get_device(id)->device_type & TYPE_ATA) != TYPE_ATA)
         return EINVAL_ARG;
     if(!get_device(id)->has_lba48 && (lba > 0x10000000 || sector_count > 0x100 || is_48bit))
         return EINVAL_ARG;
@@ -305,6 +305,12 @@ int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint3
     else if( is_dma &&  is_48bit && transfer_dir == TRANSFER_WRITE) command = WRITE_DMA_EXT;
     
     error_code = ata_send_command(id, command, 0, lba, sector_count, transfer_dir, is_48bit);
+
+    if(error_code != 0)
+    {
+        ata_end_command(id);
+        return error_code;
+    }
 
     uint64_t buffer_index = 0;
     uint64_t word_count = (sector_count * current_device->dev.sector_size) >> 1;
@@ -372,7 +378,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
         return 0;
     if(get_device(id) == KNULL)
         return EABSENT;
-    if(get_device(id)->device_type & TYPE_ATAPI != TYPE_ATAPI)
+    if((get_device(id)->device_type & TYPE_ATAPI) != TYPE_ATAPI)
         return EINVAL_ARG;
     if(!get_device(id)->has_lba48 && is_16b)
         return EINVAL_ARG;
@@ -552,7 +558,7 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     controller->is_secondary = secondary;
     controller->device_info = KNULL;
 
-    ata_add_device(controller);
+    ata_add_device((struct ata_dev*)controller);
 
     int err = ata_send_command(controller->dev.id, IDENTIFY, 0x0000, 0, 0, TRANSFER_READ, false);
     if(err == EABSENT)
@@ -566,8 +572,6 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
 
     uint8_t id_low = inb(command_base + ATA_LBAMID);
     uint8_t id_hi = inb(command_base + ATA_LBAHI);
-    uint8_t id_sig = inb(command_base + ATA_LBALO);
-    uint8_t last_status;
 
          if(id_low == 0x14 && id_hi == 0xEB) init_atapi_device();
     else if(id_low == 0x3C && id_hi == 0xC3) klog_logln(ata_subsys, DEBUG, "Setting up SATA device");
@@ -684,9 +688,9 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
         klog_logln(ata_subsys, INFO, "Setting up primary IDE channel");
         // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0001) == 0)
-            ic_irq_handle(14, LEGACY, pata_irq_handler);
+            ic_irq_handle(14, LEGACY, (irq_function_t)pata_irq_handler);
         else
-            pci_handle_irq(dev, 0, pata_irq_handler);
+            pci_handle_irq(dev, 0, (irq_function_t)pata_irq_handler);
         
         init_ide_controller(command0_base, control0_base, (operating_mode & 0b0001) ? dev->irq_pin : 14, false);
         init_ide_controller(command0_base, control0_base, (operating_mode & 0b0001) ? dev->irq_pin : 14, true);
@@ -697,9 +701,9 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
         klog_logln(ata_subsys, INFO, "Setting up secondary IDE channel");
         // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0100) == 0)
-            ic_irq_handle(15, LEGACY, pata_irq_handler);
+            ic_irq_handle(15, LEGACY, (irq_function_t)pata_irq_handler);
         else
-            pci_handle_irq(dev, 0, pata_irq_handler);
+            pci_handle_irq(dev, 0, (irq_function_t)pata_irq_handler);
 
         init_ide_controller(command1_base, control1_base, (operating_mode & 0b0100) ? dev->irq_pin : 15, false);
         init_ide_controller(command1_base, control1_base, (operating_mode & 0b0100) ? dev->irq_pin : 15, true);

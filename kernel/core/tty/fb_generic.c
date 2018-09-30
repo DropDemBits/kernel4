@@ -43,6 +43,9 @@ void fb_puts(void* vram, uint16_t x, uint16_t y, const char* str)
 
 void fb_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colour)
 {
+    if(x > fb_info.width || (x + 8) > fb_info.width || y > fb_info.height || (y + 16) > fb_info.width)
+        return;
+    
     uint8_t *font_base = &font_bits[(size_t)(c)];
 
     for(uint8_t h = 0; h < 16; h++)
@@ -59,6 +62,9 @@ void fb_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colou
 }
 void fb_fill_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colour, uint32_t bg_colour)
 {
+    if(x > fb_info.width || (x + 8) > fb_info.width || y > fb_info.height || (y + 16) > fb_info.width)
+        return;
+
     uint8_t *font_base = &font_bits[(size_t)(c)];
 
     for(uint8_t h = 0; h < 16; h++)

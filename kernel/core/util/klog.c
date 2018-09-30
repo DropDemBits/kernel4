@@ -75,12 +75,15 @@ void klog_init()
 
     // TODO: Copy early buffer into new expandable buffer
     log_buffer = (char*)get_klog_base();
-    mmu_map_direct((uintptr_t)log_buffer, mm_alloc(1));
-    mmu_map_direct((uintptr_t)log_buffer + 4096, mm_alloc(1));
-    memcpy(log_buffer, early_klog_buffer, early_index);
-
     log_index = early_index;
     allocated_limit = 8192;
+    mmu_map_direct((uintptr_t)log_buffer, mm_alloc(1));
+    mmu_map_direct((uintptr_t)log_buffer + 4096, mm_alloc(1));
+
+    // Clear buffer of old data
+    memset(log_buffer, 0, allocated_limit);
+
+    memcpy(log_buffer, early_klog_buffer, early_index);
     is_init = true;
     klog_logln(EARLY_SUBSYSTEM, INFO, "Main Logger Initialzed");
 }
@@ -107,7 +110,7 @@ uint16_t klog_add_subsystem(char* name)
     return id;
 }
 
-void klog_early_log(enum klog_level level, char* format, ...)
+void klog_early_log(enum klog_level level, const char* format, ...)
 {
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
@@ -124,7 +127,7 @@ void klog_early_log(enum klog_level level, char* format, ...)
     early_index += sizeof(struct klog_entry) + entry->length;
 }
 
-void klog_early_logln(enum klog_level level, char* format, ...)
+void klog_early_logln(enum klog_level level, const char* format, ...)
 {
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
@@ -144,7 +147,7 @@ void klog_early_logln(enum klog_level level, char* format, ...)
     early_index += sizeof(struct klog_entry) + entry->length;
 }
 
-void klog_early_logc(enum klog_level level, char c)
+void klog_early_logc(enum klog_level level, const char c)
 {
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
@@ -164,11 +167,12 @@ static void check_alloc()
     if(allocated_limit - log_index < 4096)
     {
         mmu_map_direct((uintptr_t)log_buffer + allocated_limit, mm_alloc(1));
+        memset(log_buffer + allocated_limit, 0, 4096);
         allocated_limit += 4096;
     }
 }
 
-void klog_log(uint16_t subsys_id, enum klog_level level, char* format, ...)
+void klog_log(uint16_t subsys_id, enum klog_level level, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -176,7 +180,7 @@ void klog_log(uint16_t subsys_id, enum klog_level level, char* format, ...)
     va_end(args);
 }
 
-void klog_logln(uint16_t subsys_id, enum klog_level level, char* format, ...)
+void klog_logln(uint16_t subsys_id, enum klog_level level, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -184,7 +188,7 @@ void klog_logln(uint16_t subsys_id, enum klog_level level, char* format, ...)
     va_end(args);
 }
 
-void klog_logv(uint16_t subsys_id, enum klog_level level, char* format, va_list args)
+void klog_logv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args)
 {
     struct klog_entry* entry = (struct klog_entry*)(log_buffer + log_index);
     entry->level = level;
@@ -200,7 +204,7 @@ void klog_logv(uint16_t subsys_id, enum klog_level level, char* format, va_list 
     check_alloc();
 }
 
-void klog_loglnv(uint16_t subsys_id, enum klog_level level, char* format, va_list args)
+void klog_loglnv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args)
 {
     struct klog_entry* entry = (struct klog_entry*)(log_buffer + log_index);
     entry->level = level;
@@ -217,7 +221,7 @@ void klog_loglnv(uint16_t subsys_id, enum klog_level level, char* format, va_lis
     check_alloc();
 }
 
-void klog_logc(uint16_t subsys_id, enum klog_level level, char c)
+void klog_logc(uint16_t subsys_id, enum klog_level level, const char c)
 {
     klog_log(subsys_id, level, "%c", c);
 }

@@ -47,8 +47,8 @@ static struct heap_info heap_context = {
 #endif
 };
 
-// ID 0 is reserved
-static uint64_t timer_id_bitmap = 0;
+// ID 0 is reserved (1 = free, 0 = set)
+static uint64_t timer_id_bitmap = ~1;
 // Default timer (index to array below)
 static unsigned int default_timer = 0x0;
 static struct timer_dev* timers[MAX_TIMERS];
@@ -58,7 +58,7 @@ static unsigned int next_timer_id()
 {
     for(unsigned int i = 0; i < 64; i++)
     {
-        if(timer_id_bitmap & (1ULL << i) == 0)
+        if((timer_id_bitmap & (1ULL << i)) == 0)
             continue;
         
         timer_id_bitmap &= ~(1ULL << i);
@@ -125,13 +125,19 @@ unsigned long timer_add(struct timer_dev* device, enum timer_type type)
 
 void timer_set_default(unsigned long id)
 {
+    if(id == 0)
+    {
+        // ID 0 is reserved for default timer
+        return;
+    }
+
     default_timer = id - 1;
 }
 
 void timer_add_handler(unsigned long id, timer_handler_t handler_function)
 {
     // Timer id is an index to the array, not the actual id itself
-    unsigned int timer_id = id - 1;
+    unsigned long timer_id = id - 1;
     if(id > MAX_TIMERS)
         return;
     else if(id == 0)
@@ -193,11 +199,11 @@ uint64_t timer_read_counter(unsigned long id)
 {
     unsigned int timer_id = id - 1;
     if(id > MAX_TIMERS)
-        return;
+        return 0;
     else if(id == 0)
         timer_id = default_timer;
     if(timers[timer_id] == KNULL)
-        return;
+        return 0;
     
     return timers[timer_id]->counter;
 }
@@ -241,7 +247,7 @@ void ic_eoi(uint8_t irq)
 
 struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_t handler)
 {
-    isr_add_handler(irq + 32, handler);
+    isr_add_handler(irq + 32, (isr_t)handler);
     return KNULL;
 }
 
@@ -318,7 +324,7 @@ void dump_registers(struct intr_stack *stack)
     KLOG_FATAL("Error code: %x", stack->err_code);
     thread_t* at = sched_active_thread();
     KLOG_FATAL("Current Thread: %#p", at);
-    if(at != KNULL)
+    if(at != KNULL && at != NULL)
     {
         KLOG_FATAL("\tID: %d (%s)", at->tid, at->name);
         KLOG_FATAL("\tPriority: %d", at->priority);

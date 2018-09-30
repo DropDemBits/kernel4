@@ -21,21 +21,26 @@
 #include <stdio.h>
 #include <common/hal.h>
 #include <common/tty/tty.h>
+#include <common/tty/fb.h>
 #include <common/util/kfuncs.h>
 
 extern void __attribute__((noreturn)) halt();
 extern char early_klog_buffer[];
 
+tty_dev_t temp_tty = {};
+static char tbuf[80*25*2];
+
 static void reshow_log()
 {
     struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+
+    char buffer[128];
+    tty_init(&temp_tty, 80, 25, tbuf, 80*25*2, NULL);
 
     if(!klog_is_init())
     {
         entry = (struct klog_entry*)early_klog_buffer;
     }
-
-    char buffer[128];
 
     while(entry->level != EOL)
     {
@@ -44,16 +49,23 @@ static void reshow_log()
 
         sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
         uart_writestr(buffer, strlen(buffer));
+        tty_puts(&temp_tty, buffer);
 
         for(uint16_t i = 0; i < entry->length; i++)
         {
             uart_writec(entry->data[i]);
+            tty_putchar(&temp_tty, entry->data[i]);
             
             if(entry->data[i] == '\n')
                 uart_writec('\r');
         }
         
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
+    }
+
+    if(mmu_is_usable(get_fb_address()))
+    {
+        tty_reshow_fb(&temp_tty, get_fb_address(), 0, 0);
     }
 }
 

@@ -44,19 +44,97 @@
 
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
+extern unsigned long long tswp_counter;
+extern struct thread_queue run_queue;
+extern void enter_usermode(void* thread, unsigned long entry_addr);
+extern void usermode_code();
 
 void core_fini();
 
 void idle_loop()
 {
+    const int x_off = 0;
+    const int y_off = 25 << 4;
+    const int buffer_size = 80*5*2;
+
+    uint16_t* buffer = kmalloc(buffer_size);
+    tty_dev_t* tty = kmalloc(sizeof(tty_dev_t));
+    uint64_t last_swap_count = 0;
+    uint64_t swap_timer = timer_read_counter(0) + 1000000000;
+    bool clean_back = false;
+    int thread_count = 0;
+
+    tty_init(tty, 80, 5, buffer, buffer_size, NULL);
+    tty_set_colours(tty, 0xC, 0x0);
+
     while(1)
     {
+        char buf[256];
+        int current_thread_count = 0;
+
+        tty_set_cursor(tty, 0, 0, false);
+
+        // Clear background
+        if(clean_back)
+            fb_fillrect(get_fb_address(), x_off, y_off, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
+        clean_back = false;
+
+        // Divider
+        for(int i = 0; i < tty->width; i++)
+            tty_putchar(tty, '-');
+
+        // Uptime
+        uint64_t now = timer_read_counter(0) / 1000000;
+        sprintf(buf, "Uptime: %lld.%03lld\n", now / 1000, now % 1000);
+        tty_puts(tty, buf);
+
+        // Swap counter
+        sprintf(buf, "Thread swaps/s: %lld\n", last_swap_count);
+        tty_puts(tty, buf);
+
+        // Active thread
+        sprintf(buf, "[%s] ", sched_active_thread()->name);
+        tty_puts(tty, buf);
+
+        // Thread queue proper
+        thread_t* node = run_queue.queue_head;
+        while(node != KNULL)
+        {
+            if(current_thread_count > 8)
+            {
+                tty_puts(tty, "...");
+                break;
+            }
+
+            sprintf(buf, "%s ", node->name);
+            tty_puts(tty, buf);
+            node = node->next;
+            current_thread_count++;
+        }
+        tty_putchar(tty, '\n');
+
+        if(current_thread_count != thread_count)
+        {
+            thread_count = current_thread_count;
+            clean_back = true;
+        }
+
+        if(swap_timer < timer_read_counter(0))
+        {
+            swap_timer = timer_read_counter(0) + 1000000000;
+            if(last_swap_count != tswp_counter)
+                clean_back = true;
+            last_swap_count = tswp_counter;
+            tswp_counter = 0;
+        }
+
+        // Force reshow all
+        tty->refresh_back = true;
+        tty_reshow_fb(tty, get_fb_address(), x_off, y_off);
+        tty_make_clean(tty);
         intr_wait();
     }
 }
-
-extern void enter_usermode(void* thread, unsigned long entry_addr);
-extern void usermode_code();
 
 void usermode_entry()
 {
@@ -69,13 +147,11 @@ void usermode_entry()
     while(1);
 }
 
-extern unsigned long long tswp_counter;
-extern struct thread_queue run_queue;
 void info_display()
 {
-    const x_off = 0;
-    const y_off = 25 << 4;
-    const buffer_size = 80*5*2;
+    const int x_off = 0;
+    const int y_off = 25 << 4;
+    const int buffer_size = 80*5*2;
 
     uint16_t* buffer = kmalloc(buffer_size);
     tty_dev_t* tty = kmalloc(sizeof(tty_dev_t));
@@ -94,17 +170,22 @@ void info_display()
 
         tty_set_cursor(tty, 0, 0, false);
 
+        // Clear background
+        if(clean_back)
+            fb_fillrect(get_fb_address(), x_off, y_off, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
+        clean_back = false;
+
         // Divider
         for(int i = 0; i < tty->width; i++)
             tty_putchar(tty, '-');
 
-        // Swap counter
-        sprintf(buf, "Thread swaps/s: %lld\n", last_swap_count);
-        tty_puts(tty, buf);
-
         // Uptime
         uint64_t now = timer_read_counter(0) / 1000000;
         sprintf(buf, "Uptime: %lld.%03lld\n", now / 1000, now % 1000);
+        tty_puts(tty, buf);
+
+        // Swap counter
+        sprintf(buf, "Thread swaps/s: %lld\n", last_swap_count);
         tty_puts(tty, buf);
 
         // Active thread
@@ -115,6 +196,12 @@ void info_display()
         thread_t* node = run_queue.queue_head;
         while(node != KNULL)
         {
+            if(current_thread_count > 8)
+            {
+                tty_puts(tty, "...");
+                break;
+            }
+
             sprintf(buf, "%s ", node->name);
             tty_puts(tty, buf);
             node = node->next;
@@ -130,16 +217,12 @@ void info_display()
 
         if(swap_timer < timer_read_counter(0))
         {
-            last_swap_count = tswp_counter;
             swap_timer = timer_read_counter(0) + 1000000000;
+            if(last_swap_count != tswp_counter)
+                clean_back = true;
+            last_swap_count = tswp_counter;
             tswp_counter = 0;
-            clean_back = true;
         }
-
-        // Clear background
-        if(clean_back)
-            fb_fillrect(get_fb_address(), x_off, y_off, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
-        clean_back = false;
 
         // Force reshow all
         tty->refresh_back = true;
@@ -163,30 +246,7 @@ void kmain()
     klog_early_logln(INFO, "Initialising Framebuffer");
     fb_init();
     multiboot_reclaim();
-    
-    // May want to reserve for later testing
-    /*char tbuff[64];
-    int len = 0;
-    len = sprintf(tbuff, "%#p", early_klog_buffer);
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%#llx", early_klog_buffer);
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%#llX", early_klog_buffer);
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%s", "hoopla");
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%s %s", "hoopla", "doopla");
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%c", 'e');
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%llu", early_klog_buffer);
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%lld", early_klog_buffer);
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "%08llx", 100);
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);
-    len = sprintf(tbuff, "TESTING %17p", early_klog_buffer);
-    printf("spn (%d - %d) %s\n", len, strlen(tbuff), tbuff);*/
+    main_fb_init();
 
     klog_early_logln(INFO, "Initialising HAL");
     hal_init();
@@ -264,17 +324,15 @@ void reshow_buf()
 
 void core_fini()
 {
-    main_fb_init();
     klog_init();
 
     uint16_t core_subsystem = klog_add_subsystem("CORE");
 
     tty = kmalloc(sizeof(tty_dev_t));
-    tty_init(tty, 80, 25, kmalloc(80*25*2), 80*20*2, NULL);
+    tty_init(tty, 80, 25, kmalloc(80*25*2), 80*25*2, NULL);
 
     kbd_init();
     ps2_init();
-    reshow_buf();
     klog_logln(core_subsystem, INFO, "Setting up system calls");
     syscall_init();
 
@@ -348,31 +406,6 @@ void core_fini()
 #endif
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
-
-    /*struct klog_entry* entry = (struct klog_entry*)get_klog_base();
-
-    char buffer[128];
-
-    while(entry->level != EOL)
-    {
-        if(entry->level > DEBUG)
-        {
-            uint64_t timestamp_secs = entry->timestamp / 1000000000;
-            uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
-
-            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
-            uart_writestr(buffer, strlen(buffer));
-
-            for(uint16_t i = 0; i < entry->length; i++)
-            {
-                uart_writec(entry->data[i]);
-            
-                if(entry->data[i] == '\n')
-                    uart_writec('\r');
-            }
-        }
-        entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
-    }*/
 
     taskswitch_disable();
     process_t *p1 = process_create();

@@ -12,6 +12,8 @@ semaphore_t* semaphore_create(long max_count)
         semaphore->waiting_threads.queue_head = KNULL;
         semaphore->waiting_threads.queue_tail = KNULL;
     }
+
+    return semaphore;
 }
 
 void semaphore_destroy(semaphore_t* semaphore)
@@ -36,7 +38,7 @@ void semaphore_acquire(semaphore_t* semapore)
     else
     {
         // Have to wait now
-        sched_active_thread()->next;
+        // sched_active_thread()->next;
 
         // Enqueue onto wait queue
         sched_queue_thread_to(sched_active_thread(), &(semapore->waiting_threads));

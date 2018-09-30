@@ -54,19 +54,19 @@ static int sched_semaphore = 0;
 static int taskswitch_semaphore = 0;
 static bool taskswitch_postponed = false;
 // Set if we are in the idle state (used for postponing postponed task switches)
-static bool is_idle = false;
+// static bool is_idle = false;
 static bool preempt_enabled = false;
 
-static struct thread_queue thread_queues[PRIORITY_COUNT];
-static struct thread_queue sleep_queue;
-static struct thread_queue blocked_queue;
-static struct sleep_node* sleepers = KNULL;
-static struct sleep_node* done_sleepers = KNULL;
-static bool cleanup_needed = false;
-static bool clean_sleepers = false;
-static bool idle_entry = false;
+// static struct thread_queue thread_queues[PRIORITY_COUNT];
+// static struct thread_queue sleep_queue;
+// static struct thread_queue blocked_queue;
+// static struct sleep_node* sleepers = KNULL;
+// static struct sleep_node* done_sleepers = KNULL;
+// static bool cleanup_needed = false;
+// static bool clean_sleepers = false;
+// static bool idle_entry = false;
 
-static unsigned int get_timeslice(enum thread_priority priority)
+/*static unsigned int get_timeslice(enum thread_priority priority)
 {
     switch(priority)
     {
@@ -79,7 +79,7 @@ static unsigned int get_timeslice(enum thread_priority priority)
         case PRIORITY_IDLE: return 1;
         default: return 0;
     }
-}
+}*/
 
 static void sched_timer(struct timer_dev* dev)
 {
@@ -331,11 +331,14 @@ static void switch_to_thread(thread_t* next_thread)
  */
 void sched_switch_thread()
 {
+    uart_writec('s');
     if(taskswitch_semaphore != 0)
     {
         taskswitch_postponed = true;
         return;
     }
+    uart_writec('q');
+    uart_writec('\n');
 
     sched_track_swaps();
     if(run_queue.queue_head != KNULL)

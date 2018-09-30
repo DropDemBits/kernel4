@@ -182,7 +182,7 @@ int pic_free_irq(uint8_t irq)
 
 int pic_handle_irq(uint8_t irq, irq_function_t handler)
 {
-    irq_add_handler(irq, handler);
+    irq_add_handler(irq, (isr_t)handler);
     return 0;
 }
 

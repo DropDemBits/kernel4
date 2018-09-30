@@ -36,7 +36,7 @@
 #define PIT2_DATA 0x42
 #define PIT_MCR   0x43
 
-#define PIT_FREQ (1193181)
+#define PIT_FREQ ((uint32_t)1193181)
 
 struct pit_timer_dev
 {
@@ -55,7 +55,7 @@ static void pit_handler()
     timer_broadcast_update(timer->raw_dev.id);
 }
 
-void pit_init_counter(uint16_t id, uint16_t frequency, uint8_t mode)
+void pit_init_counter(uint16_t id, uint32_t frequency, uint8_t mode)
 {
     uint16_t reload = (uint16_t)(PIT_FREQ/frequency);
     uint16_t data_port;
@@ -100,7 +100,7 @@ void pit_reset_counter(uint16_t id)
     outb(PIT_MCR, timer_devs[id].timer_mode);
 }
 
-void pit_set_counter(uint16_t id, uint16_t frequency)
+void pit_set_counter(uint16_t id, uint32_t frequency)
 {
     if(id > 1) id = 0;
     uint16_t data_port = PIT0_DATA | (id << 1);
@@ -113,7 +113,7 @@ void pit_set_counter(uint16_t id, uint16_t frequency)
 void pit_init()
 {
     pit_init_counter(0, 1000, PIT_MODE_PERIODIC);
-    timer_add(&(timer_devs[0]), PERIODIC);
+    timer_add((struct timer_dev*) &(timer_devs[0]), PERIODIC);
     timer_set_default(timer_devs[0].raw_dev.id);
     isr_add_handler(IRQ_BASE, pit_handler);
 }
