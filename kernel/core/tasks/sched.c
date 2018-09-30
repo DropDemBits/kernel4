@@ -115,7 +115,6 @@ static void sched_timer(struct timer_dev* dev)
     if(current_timeslice != 0)
     {
         // There is a time quanta (as we can't achieve a 1 ns timer resolution)
-
         if(current_timeslice <= dev->resolution)
             sched_switch_thread();
         else
@@ -394,7 +393,6 @@ void sched_print_queues()
     {
         printf("%s -> ", node->name);
         node = node->next;
-        // tty_reshow();
     }
     
     if(run_queue.queue_tail != KNULL)

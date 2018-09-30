@@ -73,83 +73,79 @@ extern unsigned long long tswp_counter;
 extern struct thread_queue run_queue;
 void info_display()
 {
-    const char* switches = "Swaps/s: ";
-    int last_len = 0;
+    const x_off = 0;
+    const y_off = 25 << 4;
+    const buffer_size = 80*5*2;
+
+    uint16_t* buffer = kmalloc(buffer_size);
+    tty_dev_t* tty = kmalloc(sizeof(tty_dev_t));
+    uint64_t last_swap_count = 0;
+    uint64_t swap_timer = timer_read_counter(0) + 1000000000;
+    bool clean_back = false;
+    int thread_count = 0;
+
+    tty_init(tty, 80, 5, buffer, buffer_size, NULL);
+    tty_set_colours(tty, 0xF, 0x0);
 
     while(1)
     {
         char buf[256];
+        int current_thread_count = 0;
 
-        // Swaps / s
-        fb_puts(get_fb_address(), 0, 26 << 4, switches);
-        ulltoa(tswp_counter, buf, 10);
-        for(int i = 0; i < strlen(buf); i++)
-        {
-            fb_fill_putchar(get_fb_address(), (strlen(switches) + i) << 3, 26 << 4, buf[i], 0xFFFFFFFF, 0x0);
-        }
+        tty_set_cursor(tty, 0, 0, false);
 
-        int posX = 0;
-        int posY = 27 << 4;
+        // Divider
+        for(int i = 0; i < tty->width; i++)
+            tty_putchar(tty, '-');
+
+        // Swap counter
+        sprintf(buf, "Thread swaps/s: %lld\n", last_swap_count);
+        tty_puts(tty, buf);
+
+        // Uptime
+        uint64_t now = timer_read_counter(0) / 1000000;
+        sprintf(buf, "Uptime: %lld.%03lld\n", now / 1000, now % 1000);
+        tty_puts(tty, buf);
 
         // Active thread
-        fb_fill_putchar(get_fb_address(), posX, posY, '[', 0xFFFFFFFF, 0);
-        posX += 8;
-        for(int i = 0; i < strlen(sched_active_thread()->name); i++)
-        {
-            fb_fill_putchar(get_fb_address(), posX, posY, sched_active_thread()->name[i], ~0, 0);
-            posX += 8;
-            if(posX > fb_info.width)
-            {
-                posY += 16;
-                posX = 0;
-            }
-        }
-        fb_fill_putchar(get_fb_address(), posX, posY, ']', 0xFFFFFFFF, 0);
-        posX += 8;
-        fb_fill_putchar(get_fb_address(), posX, posY, ' ', 0xFFFFFFFF, 0);
-        posX += 8;
+        sprintf(buf, "[%s] ", sched_active_thread()->name);
+        tty_puts(tty, buf);
 
-        // Print queue proper
+        // Thread queue proper
         thread_t* node = run_queue.queue_head;
         while(node != KNULL)
         {
-            for(int i = 0; i < strlen(node->name); i++)
-            {
-                fb_fill_putchar(get_fb_address(), posX, posY, node->name[i], ~0, 0);
-                posX += 8;
-                if(posX > fb_info.width)
-                {
-                    posY += 16;
-                    posX = 0;
-                }
-            }
-            fb_fill_putchar(get_fb_address(), posX, posY, ' ', 0xFFFFFFFF, 0);
-            posX += 8;
-            if(posX > fb_info.width)
-            {
-                posY += 16;
-                posX = 0;
-            }
+            sprintf(buf, "%s ", node->name);
+            tty_puts(tty, buf);
             node = node->next;
-            if(posY > 28 << 4)
-            {
-            }
+            current_thread_count++;
         }
+        tty_putchar(tty, '\n');
 
-        // Clear old pixels
-        if(posX < last_len)
-            fb_fillrect(get_fb_address(), posX, posY, last_len - posX, 16, 0);
-        last_len = posX;
-
-        tswp_counter = 0;
-
-        ulltoa(timer_read_counter(0) / 1000000, buf, 10);
-
-        for(int i = 0; i < strlen(buf); i++)
+        if(current_thread_count != thread_count)
         {
-            fb_fill_putchar(get_fb_address(), i << 3, 28 << 4, buf[i], ~0, 0);
+            thread_count = current_thread_count;
+            clean_back = true;
         }
-        sched_sleep_ms(1000);
+
+        if(swap_timer < timer_read_counter(0))
+        {
+            last_swap_count = tswp_counter;
+            swap_timer = timer_read_counter(0) + 1000000000;
+            tswp_counter = 0;
+            clean_back = true;
+        }
+
+        // Clear background
+        if(clean_back)
+            fb_fillrect(get_fb_address(), x_off, y_off, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
+        clean_back = false;
+
+        // Force reshow all
+        tty->refresh_back = true;
+        tty_reshow_fb(tty, get_fb_address(), x_off, y_off);
+        tty_make_clean(tty);
+        sched_sleep_ms(10);
     }
 }
 
@@ -215,13 +211,13 @@ void kmain()
 
 void main_tty_init()
 {
-    tty_init();
-
     unsigned long framebuffer = (unsigned long)get_fb_address();
 
-    // Map framebuffer
+    // Map framebuffer (and any extra bits of it)
+    unsigned long fb_size = (fb_info.width * fb_info.height * fb_info.bytes_pp + 0xFFF) & ~0xFFF;
+
     for(unsigned long off = 0;
-        off <= (fb_info.width * fb_info.height * fb_info.bytes_pp);
+        off <= fb_size;
         off += 0x1000)
     {
         mmu_map_direct(framebuffer + off, fb_info.base_addr + off);
@@ -229,16 +225,11 @@ void main_tty_init()
 
     if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
     {
-        tty_add_output(FB_CONSOLE, (unsigned long)get_fb_address());
-
         // Clear screen
-        // fb_fillrect(framebuffer, 0, 0, fb_info.width, fb_info.height, 0x000000);
         fb_clear();
     }
     else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
     {
-        tty_add_output(VGA_CONSOLE, (size_t)framebuffer);
-
         // Clear screen
         for(int i = 0; i < fb_info.width * fb_info.height; i++)
             ((uint16_t*)framebuffer)[i] = 0x0700;
@@ -271,17 +262,8 @@ void core_fini()
     err_code = pata_do_transfer(0, 1, transfer_buffer, 1, TRANSFER_READ, false, false);
     klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)");
 
-    /*for(int i = 0; i < 256; i++)
-    {
-        printf("%x ", transfer_buffer[i]);
-        if((i & 0x1F) == 0x1F)
-            putchar('\n');
-        if((i & 0x3F) == 0x3F)
-            tty_reshow();
-    }*/
-
     // TODO: Wrap into a separate test file
-#ifndef ENABLE_TESTS
+#ifdef ENABLE_TESTS
     uint8_t* alloc_test = kmalloc(16);
     klog_logln(core_subsystem, INFO, "Alloc test: %#p", (uintptr_t)alloc_test);
     kfree(alloc_test);
@@ -334,9 +316,9 @@ void core_fini()
     }
 #endif
 
-    klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
-
     main_tty_init();
+
+    klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
 
     struct klog_entry* entry = (struct klog_entry*)get_klog_base();
 

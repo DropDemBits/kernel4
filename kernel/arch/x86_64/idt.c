@@ -146,11 +146,6 @@ void isr_common(struct intr_stack *frame)
 {
     if(function_table[frame->int_num] == KNULL && frame->int_num < 32)
     {
-        if(tty_background_dirty())
-        {
-            fb_clear();
-        }
-
         // Do Generic Fault
         kpanic_intr(frame, fault_names[frame->int_num]);
     } else

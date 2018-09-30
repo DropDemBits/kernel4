@@ -32,6 +32,9 @@
 #include <common/tty/fb.h>
 #include <common/sched/sched.h>
 
+#include <common/hal.h>
+#include <common/util/kfuncs.h>
+
 /*
  * KSHELL: Basic command line interface
  *
@@ -51,6 +54,7 @@ static bool input_done = false;
 static bool should_run = true;
 static uint8_t shell_text_clr = 0x7;
 static uint8_t shell_bg_clr = 0x0;
+static tty_dev_t* tty;
 static thread_t *test_wakeup = KNULL;
 static thread_t *refresh_thread = KNULL;
 
@@ -59,7 +63,7 @@ void wakeup_task()
     while(1)
     {
         sched_block_thread(STATE_SUSPENDED);
-        puts("I'M AWAKE NOW\n");
+        tty_puts(tty, "\nI'M AWAKE NOW\n");
     }
 }
 
@@ -67,22 +71,43 @@ void refresh_task()
 {
     while(1)
     {
-        if(tty_background_dirty())
-        {
-            if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
-            {
-                // fb_clear();
-                fb_fillrect(get_fb_address(), 0, 0, fb_info.width, 25 << 4, 0);
-            } else
-            {
-                for(int i = 0; i < fb_info.width * fb_info.height; i++)
-                    ((uint16_t*)get_fb_address())[i] = 0x0700;
-            }
-        }
-        tty_reshow();
-        tty_make_clean();
+        if(tty->refresh_back)
+            fb_fillrect(get_fb_address(), 0, 0, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
+
+        tty_reshow_fb(tty, get_fb_address(), 0, 0);
+        tty_make_clean(tty);
         sched_block_thread(STATE_SUSPENDED);
     }
+}
+
+static void print_log(uint16_t log_level)
+{
+    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+
+    char buffer[128];
+
+    while(entry->level != EOL)
+    {
+        if(entry->level >= log_level)
+        {
+            uint64_t timestamp_secs = entry->timestamp / 1000000000;
+            uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
+
+            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            tty_puts(tty, buffer);
+
+            for(uint16_t i = 0; i < entry->length; i++)
+            {
+                tty_putchar(tty, entry->data[i]);
+            }
+        }
+        entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
+    }
+}
+
+static void request_refresh()
+{
+    sched_unblock_thread(refresh_thread);
 }
 
 static void shell_readline()
@@ -96,12 +121,30 @@ static void shell_readline()
         char kcode = kbd_read();
         char kchr = kbd_tochar(kcode);
 
+        if(kcode == KEY_UP_ARROW)
+        {
+            tty_scroll(tty, -1);
+        }
+        else if(kcode == KEY_DOWN_ARROW)
+        {
+            if(tty->display_base < tty->draw_base)
+                tty_scroll(tty, 1);
+        }
+        else if(kchr == '\t')
+        {
+            // Don't show a tab
+            continue;
+        }
+
         if(kcode && kchr)
         {
             // Don't put the charachter on screen if it is a backspace and it
             // is at the beginning of the index buffer
             if((kchr != '\b' && index < INPUT_SIZE) || kchr == '\n' || (kchr == '\b' && index > 0))
+            {
+                tty_scroll(tty, 0);
                 putchar(kchr);
+            }
 
             if(kchr == '\n')
             {
@@ -120,7 +163,7 @@ static void shell_readline()
             }
         }
 
-        sched_unblock_thread(refresh_thread);
+        request_refresh();
     }
 }
 
@@ -133,6 +176,9 @@ static bool shell_parse()
 {
     if(!index) return true; // Nothing to parse
 
+    // Skip argument delimiters
+    input_buffer += strspn(input_buffer, ARG_DELIM);
+
     char* saveptr;
     char* command = strtok_r(input_buffer, ARG_DELIM, &saveptr);
     if(command == NULL) return true; // Nothing to parse
@@ -143,7 +189,7 @@ static bool shell_parse()
         return true;
     } else if(is_command("clear", command) || is_command("cls", command))
     {
-        tty_clear();
+        tty_clear(tty, true);
         return true;
     } else if(is_command("helloworld", command) || is_command("hw", command))
     {
@@ -154,12 +200,12 @@ static bool shell_parse()
         {
             if(string[i] != '\n')
             {
-                tty_set_colour(clrindex, ~(clrindex));
+                tty_set_colours(tty, clrindex, ~(clrindex));
                 clrindex++;
                 clrindex &= 0xF;
             } else
             {
-                tty_set_colour(shell_text_clr, shell_bg_clr);
+                tty_set_colours(tty, shell_text_clr, shell_bg_clr);
             }
             putchar(string[i]);
         }
@@ -167,7 +213,7 @@ static bool shell_parse()
         return true;
     } else if(is_command("help", command) || is_command("?", command))
     {
-        puts("Kshell version 0.4\n");
+        puts("Kshell version 0.5\n");
         puts("Available commands (slashes = aliases, square brackets = arguments):");
         puts("\thelp/?:          \tShows this information");
         puts("\thelloworld/hw:   \tShows an example string");
@@ -177,6 +223,8 @@ static bool shell_parse()
         puts("\tfonttest:        \tShows all charachters supported by the current font");
         puts("\twakeup:          \tWake up a test thread to show a string");
         puts("\tsleep [time]:    \tSleeps the shell for [time] milliseconds");
+        puts("\tklog [level]:    \tShows the kernel log from the specified log level");
+        puts("\t                 \tand above");
         return true;
     } else if(is_command("exit", command))
     {
@@ -216,6 +264,35 @@ static bool shell_parse()
         printf("Sleeping for %ld milliseconds\n", sleep_for);
         sched_sleep_ms(sleep_for);
         return true;
+    } else if(is_command("klog", command))
+    {
+        char* level_names[] = {"debug", "info", "warn", "error", "fatal"};
+        char* log_level_str = strtok_r(NULL, ARG_DELIM, &saveptr);
+        long int log_level = 0;
+        
+        if(log_level_str != NULL) 
+        {
+            for(int i = 0; i < FATAL; i++)
+            {
+                if(strnicmp(level_names[i], log_level_str, strlen(level_names[i])) == 0)
+                {
+                    log_level = i + 1;
+                    break;
+                }
+            }
+
+            if(log_level == 0)
+            {
+                printf("Unknown log level: %s", log_level_str);
+                return true;
+            }
+        }
+
+        if(log_level == 0)
+            log_level = DEBUG;
+
+        print_log(log_level);
+        return true;
     }
 
     return false;
@@ -223,6 +300,13 @@ static bool shell_parse()
 
 void kshell_main()
 {
+    tty = kmalloc(sizeof(tty_dev_t));
+    uint16_t* buffer = kmalloc(80*25*2*4);
+    memset(buffer, 0, 80*25*2*4);
+
+    tty_init(tty, 80, 25, buffer, 80*25*2*4, NULL);
+    tty_select_active(tty);
+
     refresh_thread = thread_create(
         sched_active_process(),
         (uint64_t*)refresh_task,
@@ -235,10 +319,9 @@ void kshell_main()
         PRIORITY_NORMAL,
         "test_wakeup");
 
-    tty_set_colour(0xF, 0x0);
+    tty_set_colours(tty, 0xF, 0x0);
     printf("Welcome to K4!\n");
-    tty_set_colour(0x7, 0x0);
-    tty_reshow();
+    tty_set_colours(tty, 0x7, 0x0);
 
     input_buffer = kmalloc(INPUT_SIZE+1);
     memset(input_buffer, 0x00, INPUT_SIZE+1);
@@ -248,16 +331,25 @@ void kshell_main()
         shell_readline();
         if(!shell_parse())
         {
-            tty_set_colour(0xC, 0x0);
+            tty_set_colours(tty, 0xC, 0x0);
             printf("%s: command not found\n", input_buffer);
             puts("Try 'help' or '?' for a list of available commands");
-            tty_set_colour(shell_text_clr, shell_bg_clr);
+            tty_set_colours(tty, shell_text_clr, shell_bg_clr);
         }
 
-        sched_unblock_thread(refresh_thread);
+        request_refresh();
     }
 
     puts("kshell is exiting, nothing left to do");
-    // sched_set_thread_state(refresh_thread, STATE_EXITED);
+
+    // Cleanup stuff
+    tty_reshow_fb(tty, get_fb_address(), 0, 0);
+    tty_make_clean(tty);
+
+    // Free remaining objects
+    kfree(tty->buffer_base);
+    kfree(tty);
+
+    // Goodbye
     sched_terminate();
 }

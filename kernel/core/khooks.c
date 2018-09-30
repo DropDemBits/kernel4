@@ -29,7 +29,7 @@ void kabort()
 
 void kputchar(int ic)
 {
-    tty_printchar(ic);
+    tty_putchar(tty_get_active(), ic);
 }
 
 void kexit(int status)

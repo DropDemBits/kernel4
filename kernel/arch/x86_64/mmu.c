@@ -171,21 +171,6 @@ void pf_handler(struct intr_stack *frame)
     struct PageError *page_error = (struct PageError*)&frame->err_code;
     uint64_t address = frame->cr2;
 
-    if(frame->cr2 >= 0xFFFFE00000000000 && frame->cr2 < 0xFFFFF00000000000)
-    {
-        // Our visual output devices are bork'd, so fall back onto serial.
-        tty_add_output(FB_CONSOLE, (size_t)KNULL);
-        tty_add_output(VGA_CONSOLE, (size_t)KNULL);
-        tty_reshow_full();
-    } else
-    {
-        // Redo tty thing
-        if(tty_background_dirty())
-        {
-            fb_clear();
-        }
-    }
-
     if(address < 0x400000)
     {
         if(page_error->was_instruction_fetch)

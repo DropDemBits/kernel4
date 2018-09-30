@@ -140,13 +140,6 @@ void pf_handler(struct intr_stack *frame)
     struct PageError *page_error = (struct PageError*)frame->err_code;
     uint32_t address = frame->cr2;
 
-    if(frame->cr2 >= 0xE0000000 && frame->cr2 < 0xF0000000)
-    {
-        // Our visual output devices are bork'd, so fall back onto serial.
-        tty_add_output(FB_CONSOLE, (size_t)KNULL);
-        tty_add_output(VGA_CONSOLE, (size_t)KNULL);
-    }
-
     kpanic_intr(frame, "Page fault at %#p (error code %x)", address, page_error);
     // This shouldn't return
 }
