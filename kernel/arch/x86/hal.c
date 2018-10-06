@@ -160,13 +160,19 @@ void timer_add_handler(unsigned long id, timer_handler_t handler_function)
     }
 
     // We'll have to go through the entire loop to append the node
-    struct timer_handler_node* current_node;
+    struct timer_handler_node* current_node = KNULL;
     struct timer_handler_node* next_node = timers[timer_id]->list_head;
 
     while(next_node != KNULL)
     {
         current_node = next_node;
         next_node = next_node->next;
+    }
+
+    if(current_node == KNULL)
+    {
+        kfree(node);
+        return;
     }
 
     current_node->next = node;
@@ -276,12 +282,12 @@ void intr_wait()
     asm("hlt");
 }
 
-void hal_enable_interrupts()
+void hal_enable_interrupts_raw()
 {
     asm volatile("sti");
 }
 
-void hal_disable_interrupts()
+void hal_disable_interrupts_raw()
 {
     asm volatile("cli");
 }
@@ -292,15 +298,18 @@ void busy_wait()
 }
 
 #if defined(__x86_64__)
-void hal_save_interrupts()
+void hal_enable_interrupts(uint64_t flags)
 {
-    asm volatile("pushfq\n\tpopq %%rax":"=a"(native_flags));
-    hal_disable_interrupts();
+    asm volatile("push %%rax\n\tpopfq"::"a"(flags));
+    // asm volatile("sti");
 }
 
-void hal_restore_interrupts()
+uint64_t hal_disable_interrupts()
 {
-    asm volatile("push %%rax\n\tpopfq"::"a"(native_flags));
+    uint64_t flags = 0;
+    asm volatile("pushfq\n\tpopq %%rax":"=a"(flags));
+    asm volatile("cli");
+    return flags;
 }
 
 uint64_t get_klog_base()
@@ -315,35 +324,41 @@ uint64_t get_driver_mmio_base()
 
 void dump_registers(struct intr_stack *stack)
 {
-    KLOG_FATAL("***BEGIN REGISTER DUMP***", "");
-    KLOG_FATAL("RAX RBX RCX RDX", "");
+    KLOG_FATAL("%s", "***BEGIN REGISTER DUMP***");
+    KLOG_FATAL("%s", "RAX RBX RCX RDX");
     KLOG_FATAL("%#p %#p %#p %#p", stack->rax, stack->rbx, stack->rcx, stack->rdx);
-    KLOG_FATAL("RSI RDI RSP RBP", "");
+    KLOG_FATAL("%s", "RSI RDI RSP RBP");
     KLOG_FATAL("%#p %#p %#p %#p", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
     KLOG_FATAL("RIP: %#p", stack->rip);
     KLOG_FATAL("Error code: %x", stack->err_code);
+    // asm("xchg %bx, %bx");
     thread_t* at = sched_active_thread();
     KLOG_FATAL("Current Thread: %#p", at);
-    if(at != KNULL && at != NULL)
+    if(((uintptr_t)at & ~0xFFF) != KNULL && ((uintptr_t)at & ~0xFFF) != NULL)
     {
+        // asm("xchg %bx, %bx");
         KLOG_FATAL("\tID: %d (%s)", at->tid, at->name);
+        // asm("xchg %bx, %bx");
         KLOG_FATAL("\tPriority: %d", at->priority);
         KLOG_FATAL("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
     } else
     {
-        KLOG_FATAL("\t(Pre-scheduler)", "");
+        KLOG_FATAL("%s", "\t(Pre-scheduler)");
     }
 }
 #elif defined(__i386__)
-void hal_save_interrupts()
+void hal_enable_interrupts(uint64_t flags)
 {
-    asm volatile("pushf\n\tpopl %%eax":"=a"(native_flags));
-    hal_disable_interrupts();
+    asm volatile("push %%eax\n\tpopf"::"a"((uint32_t)flags));
+    // asm volatile("sti");
 }
 
-void hal_restore_interrupts()
+uint64_t hal_disable_interrupts()
 {
-    asm volatile("push %%eax\n\tpopf"::"a"(native_flags));
+    uint32_t flags = 0;
+    asm volatile("pushf\n\tpopl %%eax":"=a"(flags));
+    asm volatile("cli");
+    return (uint64_t)flags;
 }
 
 uint64_t get_klog_base()
@@ -358,7 +373,7 @@ uint64_t get_driver_mmio_base()
 
 void dump_registers(struct intr_stack *stack)
 {
-    KLOG_FATAL("***BEGIN REGISTER DUMP***", "");
+    KLOG_FATAL("%s", "***BEGIN REGISTER DUMP***");
     KLOG_FATAL("EAX: %#p, EBX: %#p, ECX: %#p, EDX: %#p", stack->eax, stack->ebx, stack->ecx, stack->edx);
     KLOG_FATAL("ESI: %#p, EDI: %#p, ESP: %#p, EBP: %#p", stack->esi, stack->edi, stack->esp, stack->ebp);
     KLOG_FATAL("EIP: %#p", stack->eip);
@@ -373,7 +388,7 @@ void dump_registers(struct intr_stack *stack)
         KLOG_FATAL("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
     } else
     {
-        KLOG_FATAL("\t(Pre-scheduler)", "");
+        KLOG_FATAL("%s", "\t(Pre-scheduler)");
     }
 }
 #endif

@@ -27,6 +27,7 @@
 static size_t heap_base = 0;
 static size_t heap_limit = 0;
 static size_t free_base = 0;
+static uint64_t flags = 0;
 
 static size_t alloc_memblocks(size_t length)
 {
@@ -80,7 +81,7 @@ int liballoc_lock()
 {
     // TODO: Disable preemption
     //preempt_disable();
-    hal_save_interrupts();
+    flags = hal_disable_interrupts();
     return 0;
 }
 
@@ -94,7 +95,7 @@ int liballoc_unlock()
 {
     // TODO: Enable preemption
     //preempt_enable();
-    hal_restore_interrupts();
+    hal_enable_interrupts(flags);
     return 0;
 }
 

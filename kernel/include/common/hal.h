@@ -107,10 +107,10 @@ struct irq_handler
 };
 
 void hal_init();
-void hal_enable_interrupts();
-void hal_disable_interrupts();
-void hal_save_interrupts();
-void hal_restore_interrupts();
+void hal_enable_interrupts(uint64_t flags);
+uint64_t hal_disable_interrupts();
+void hal_enable_interrupts_raw();
+void hal_disable_interrupts_raw();
 void busy_wait();
 void intr_wait();
 
