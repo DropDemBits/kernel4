@@ -70,6 +70,8 @@ void klog_init()
 {
     // By this point, we should have a heap ready and be in the multitasking state
     memset(id_bitmap, 0, NUM_IDS / sizeof(uint32_t));
+    memset(subsystem_names, 0, sizeof(subsystem_names));
+
     id_bitmap[0] = 0x1;
     subsystem_names[0] = "EARLY";
 
@@ -95,7 +97,7 @@ bool klog_is_init()
 
 char* klog_get_name(uint16_t id)
 {
-    if(id > NUM_IDS)
+    if(id > NUM_IDS || subsystem_names[id] == NULL)
         return subsystem_names[0];
     return subsystem_names[id];
 }
@@ -164,7 +166,7 @@ void klog_early_logc(enum klog_level level, const char c)
 // TODO: All of the methods below will fail if interrupted or re-entered. Add appropriate locks and atomic operations
 static void check_alloc()
 {
-    if(allocated_limit - log_index < 4096)
+    if((allocated_limit - log_index) <= 4096)
     {
         mmu_map_direct((uintptr_t)log_buffer + allocated_limit, mm_alloc(1));
         memset(log_buffer + allocated_limit, 0, 4096);
