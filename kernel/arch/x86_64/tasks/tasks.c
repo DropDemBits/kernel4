@@ -27,17 +27,17 @@
 extern void __initialize_thread();
 
 /****SUPER TEMPORARY ADDRESS ALLOCATION****/
-#ifndef __K4_VISUAL_STACK__
-static uint64_t alloc_base = 0x00007FFFFFFFF000;
-#else
-static uint64_t alloc_base = 0xFFFFE00000080000;
-#endif
+// #ifndef __K4_VISUAL_STACK__
+static uint64_t alloc_base = 0xFFFF900000000000;
+// #else
+// static uint64_t alloc_base = 0xFFFFE00000080000;
+// #endif
 
 uint64_t alloc_address()
 {
-    alloc_base -= 0x4000; // 16KiB store
-    uint64_t retval = alloc_base;
     alloc_base -= 0x1000; // 4KiB guard page
+    uint64_t retval = alloc_base;
+    alloc_base -= THREAD_STACK_SIZE;
     return retval;
 }
 
@@ -46,9 +46,22 @@ uint64_t alloc_address()
  */
 void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack)
 {
-    //thread->register_state.rsp = alloc_address();
-    thread->kernel_sp = (unsigned long)kernel_stack;
-    thread->kernel_stacktop = (unsigned long)kernel_stack;
+    if(kernel_stack != NULL)
+    {
+        thread->kernel_sp = (unsigned long)kernel_stack;
+        thread->kernel_stacktop = (unsigned long)kernel_stack;
+    }
+    else
+    {
+        // Allocate a new stack
+        uint64_t stack = alloc_address();
+        thread->kernel_sp = stack;
+        thread->kernel_stacktop = stack;
+
+        // Map stack pages
+        for(int i = 0; i < (THREAD_STACK_SIZE >> 12); i++)
+            mmu_map_direct(thread->kernel_stacktop - (i << 12), mm_alloc(1));
+    }
 
     volatile uint64_t * thread_stack = (uint64_t*)thread->kernel_sp;
     
@@ -69,5 +82,5 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
 
 void cleanup_register_state(thread_t *thread)
 {
-    kfree((void*)(thread->kernel_stacktop - THREAD_STACK_SIZE));
+    
 }
