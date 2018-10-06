@@ -138,11 +138,12 @@ void tty_putchar(tty_dev_t* tty, const char c)
 // However, this should not be worrisome if the tty is used for short-term use (on the order of days to years)
 bool tty_scroll(tty_dev_t* tty, int direction)
 {
+    bool has_changed = false;
+
     // Don't scroll if we hit the scrollback limit
     if (tty->scrollback_limit == (tty->display_base % tty->buffer_size) &&
         direction < 0)
-        return false;
-
+        return has_changed;
 
     if(tty->draw_base == tty->display_base && direction > 0)
     {
@@ -152,6 +153,9 @@ bool tty_scroll(tty_dev_t* tty, int direction)
 
     if(direction == 0)
     {
+        // Reshow back if we have just moved
+        has_changed = tty->display_base != tty->draw_base;
+        
         // Move display base to draw base
         tty->display_base = tty->draw_base;
     }
@@ -159,6 +163,7 @@ bool tty_scroll(tty_dev_t* tty, int direction)
     {
         // Apply normal scroll
         tty->display_base += (tty->width * direction);
+        has_changed = true;
     }
 
     if((tty->draw_base + tty->width * tty->height) % tty->buffer_size == tty->scrollback_limit)
@@ -171,11 +176,13 @@ bool tty_scroll(tty_dev_t* tty, int direction)
         tty->scrollback_limit %= tty->buffer_size;
     }
 
-    tty->refresh_back = true;
+    if(has_changed || direction != 0)
+    {
+        tty->refresh_back = true;
+        tty->just_scrolled = true;
+    }
 
-    if(direction != 0)
-        tty->is_dirty = true;
-    return true;
+    return has_changed;
 }
 
 void tty_set_cursor(tty_dev_t* tty, int x, int y, bool relative)
@@ -240,7 +247,7 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
     else
         i = tty->last_idx;
 
-    for(; i < tty->current_idx || (i < tty->width * tty->height && tty->is_dirty); i++)
+    for(; i < tty->current_idx || (i < tty->width * tty->height && tty->just_scrolled); i++)
     {
         int index = (i + tty->display_base) % tty->buffer_size;
 
@@ -357,6 +364,7 @@ bool tty_is_dirty(tty_dev_t* tty)
 
 void tty_make_clean(tty_dev_t* tty)
 {
+    tty->just_scrolled = false;
     tty->is_dirty = false;
     tty->refresh_back = false;
     tty->last_idx = tty->current_idx;

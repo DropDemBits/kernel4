@@ -49,7 +49,8 @@ typedef struct {
     tty_colour_t default_colour;
 
     // Refresh-related
-    bool is_dirty;          // Set when the TTY needs to be redraw
+    bool is_dirty;          // Set when the TTY needs to be redrawn
+    bool just_scrolled;     // Set when the TTY was just scrolled
     bool refresh_back;      // Set when the TTY needs its background cleared and redrawn
 } tty_dev_t;
 
