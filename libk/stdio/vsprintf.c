@@ -118,8 +118,21 @@ int vsprintf(char *dest, const char *format, va_list params)
         {
             format++;
             const char* s = va_arg(params, const char*);
-            print(dest, s, strlen(s), &index);
-            amount += strlen(s);
+
+            size_t buf_len = strlen(s);
+
+            if(buf_len < min_chars)
+            {
+                // Put padding chars on until we match the limit
+                int i = 0;
+                for(; min_chars > buf_len; i++, min_chars--)
+                    dest[i + index] = padding_char;
+                index += i;
+                amount += i;
+            }
+
+            print(dest, s, buf_len, &index);
+            amount += buf_len;
         }
         else if(*format == 'd' || *format == 'i')
         {
@@ -293,6 +306,7 @@ int vsprintf(char *dest, const char *format, va_list params)
             goto bad_parsing;
         }
 
+        padding_char = ' ';
         min_chars = 0;
         length = 0;
         written += amount;
