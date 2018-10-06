@@ -82,7 +82,7 @@ void refresh_task()
 
 static void print_log(uint16_t log_level)
 {
-    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
+    struct klog_entry* entry = (struct klog_entry*)(uintptr_t)get_klog_base();
 
     char buffer[256];
 
@@ -196,7 +196,7 @@ static bool shell_parse()
         const char* string = "Hello, World! I am a test statement...\n";
         int clrindex = 0;
 
-        for(int i = 0; i < strlen(string); i++)
+        for(size_t i = 0; i < strlen(string); i++)
         {
             if(string[i] != '\n')
             {

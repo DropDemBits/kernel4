@@ -278,7 +278,7 @@ int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint3
         return 0;
     if(get_device(id) == KNULL)
         return EABSENT;
-    if((get_device(id)->device_type & TYPE_ATA) != TYPE_ATA)
+    if((get_device(id)->device_type & TYPE_ATAPI) == TYPE_ATAPI)
         return EINVAL_ARG;
     if(!get_device(id)->has_lba48 && (lba > 0x10000000 || sector_count > 0x100 || is_48bit))
         return EINVAL_ARG;

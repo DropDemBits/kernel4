@@ -19,7 +19,10 @@
  */
 
 #include <stdio.h>
+#include <string.h>
+
 #include <common/hal.h>
+#include <common/io/uart.h>
 #include <common/tty/tty.h>
 #include <common/tty/fb.h>
 #include <common/util/kfuncs.h>
@@ -36,7 +39,6 @@ static void reshow_log()
     tty_dev_t* tty = &temp_tty;
     char buffer[128];
 
-    asm("xchg %bx, %bx");
     if(!klog_is_init())
     {
         entry = (struct klog_entry*)early_klog_buffer;
@@ -70,7 +72,7 @@ static void reshow_log()
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 
-    if(tty != KNULL && mmu_is_usable(get_fb_address()))
+    if(tty != KNULL && mmu_is_usable((uintptr_t)get_fb_address()))
     {
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
     }

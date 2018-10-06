@@ -331,14 +331,12 @@ void dump_registers(struct intr_stack *stack)
     KLOG_FATAL("%#p %#p %#p %#p", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
     KLOG_FATAL("RIP: %#p", stack->rip);
     KLOG_FATAL("Error code: %x", stack->err_code);
-    // asm("xchg %bx, %bx");
+
     thread_t* at = sched_active_thread();
     KLOG_FATAL("Current Thread: %#p", at);
     if(((uintptr_t)at & ~0xFFF) != KNULL && ((uintptr_t)at & ~0xFFF) != NULL)
     {
-        // asm("xchg %bx, %bx");
         KLOG_FATAL("\tID: %d (%s)", at->tid, at->name);
-        // asm("xchg %bx, %bx");
         KLOG_FATAL("\tPriority: %d", at->priority);
         KLOG_FATAL("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
     } else

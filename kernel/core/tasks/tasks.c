@@ -118,7 +118,7 @@ void thread_destroy(thread_t *thread)
 
     if(thread->parent != KNULL)
     {
-        for(int i = 0; i < thread->parent->child_count; i++)
+        for(uint64_t i = 0; i < thread->parent->child_count; i++)
         {
             if(shiftback)
             {

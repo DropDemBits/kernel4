@@ -65,9 +65,6 @@ void idle_loop()
 
     while(1)
     {
-        char buf[256];
-        int current_thread_count = 0;
-
         tty_set_cursor(tty, 0, 0, false);
 
         // Divider
@@ -241,7 +238,7 @@ void main_fb_init()
     else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
     {
         // Clear screen
-        for(int i = 0; i < fb_info.width * fb_info.height; i++)
+        for(uint32_t i = 0; i < fb_info.width * fb_info.height; i++)
             ((uint16_t*)framebuffer)[i] = 0x0700;
     }
 }
@@ -293,11 +290,11 @@ void core_fini()
     uint16_t* transfer_buffer = kmalloc(4096);
     int err_code = 0;
 
-    err_code = atapi_send_command(2, read_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
+    err_code = atapi_send_command(2, (uint16_t*)read_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
     klog_logln(core_subsystem, INFO, "Command: ATAPI READ(12) (%d)", err_code);
-    // err_code = atapi_send_command(2, eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
+    // err_code = atapi_send_command(2, (uint16_t*)eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
     // klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ) (%d)", err_code);
-    err_code = pata_do_transfer(0, 1, transfer_buffer, 1, TRANSFER_READ, false, false);
+    err_code = pata_do_transfer(0, 1, (uint16_t*)transfer_buffer, 1, TRANSFER_READ, false, false);
     klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)");
 
     // TODO: Wrap into a separate test file

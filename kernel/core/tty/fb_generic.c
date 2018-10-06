@@ -31,7 +31,7 @@ void fb_init()
     // quantization table.
 }
 
-void fb_puts(void* vram, uint16_t x, uint16_t y, const char* str)
+void fb_puts(void* vram, uint32_t x, uint32_t y, const char* str)
 {
     while(*str)
     {
@@ -41,7 +41,7 @@ void fb_puts(void* vram, uint16_t x, uint16_t y, const char* str)
     }
 }
 
-void fb_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colour)
+void fb_putchar(void* vram, uint32_t x, uint32_t y, const char c, uint32_t colour)
 {
     if(x > fb_info.width || (x + 8) > fb_info.width || y > fb_info.height || (y + 16) > fb_info.width)
         return;
@@ -60,7 +60,7 @@ void fb_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colou
         font_base += 256;
     }
 }
-void fb_fill_putchar(void* vram, uint16_t x, uint16_t y, const char c, uint32_t colour, uint32_t bg_colour)
+void fb_fill_putchar(void* vram, uint32_t x, uint32_t y, const char c, uint32_t colour, uint32_t bg_colour)
 {
     if(x > fb_info.width || (x + 8) > fb_info.width || y > fb_info.height || (y + 16) > fb_info.width)
         return;
@@ -110,7 +110,7 @@ void fb_plotpixel(void* vram, uint32_t x, uint32_t y, uint32_t colour)
     }
 }
 
-void fb_fillrect(void* vram, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint32_t colour)
+void fb_fillrect(void* vram, uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t colour)
 {
     uint8_t* screen = vram;
     uint16_t i, j;

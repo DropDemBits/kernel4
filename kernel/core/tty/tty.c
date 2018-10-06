@@ -70,7 +70,7 @@ void tty_init(tty_dev_t* tty, uint16_t width, uint16_t height, void* buffer, siz
 void tty_puts(tty_dev_t* tty, const char* str)
 {
     // Print string to tty
-    for(int i = 0; i < strlen(str); i++)
+    for(size_t i = 0; i < strlen(str); i++)
         tty_putchar(tty, str[i]);
 }
 
@@ -238,8 +238,7 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
 {
     mutex_acquire(tty->mutex);
 
-    int printed_chars = 0;
-    int i = 0;
+    uint32_t i = 0;
 
     // Draw from the beginning if it was a full redraw
     if(tty->refresh_back)
@@ -269,7 +268,6 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
                     tty->buffer_base[index].actual_char,
                     tty->current_palette[tty->buffer_base[index].colour.fg_colour],
                     tty->current_palette[tty->buffer_base[index].colour.bg_colour]);
-        printed_chars++;
     }
 
     for(i = tty->current_idx; i < tty->last_idx; i++)
@@ -280,7 +278,6 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
                     EMPTY_CHAR,
                     tty->current_palette[tty->buffer_base[i].colour.fg_colour],
                     tty->current_palette[tty->buffer_base[i].colour.bg_colour]);
-        printed_chars++;
     }
 
     mutex_release(tty->mutex);
@@ -291,7 +288,7 @@ void tty_reshow_vga(tty_dev_t* tty, void* vga_base, uint16_t x, uint16_t y)
     // EGA Textmode console
     uint16_t* console_base = vga_base;
 
-    int i = 0;
+    uint32_t i = 0;
 
     if(tty->is_dirty)
         i = 0;
@@ -348,7 +345,7 @@ void tty_reshow_serial(tty_dev_t* tty)
     if(!tty->refresh_back)
         return;
 
-    for(int i = tty->current_idx; i < tty->last_idx; i++)
+    for(uint32_t i = tty->current_idx; i < tty->last_idx; i++)
     {
         uart_writec('\b');
         uart_writec('\0');
