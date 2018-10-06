@@ -56,6 +56,7 @@ static bool taskswitch_postponed = false;
 // Set if we are in the idle state (used for postponing postponed task switches)
 // static bool is_idle = false;
 static bool preempt_enabled = false;
+static uint64_t flags = 0;
 
 // static struct thread_queue thread_queues[PRIORITY_COUNT];
 // static struct thread_queue sleep_queue;
@@ -101,7 +102,6 @@ static void sched_timer(struct timer_dev* dev)
         {
             // Don't pull the entire sleep queue along with us
             current_node->next = KNULL;
-
             // Wakeup task
             sched_unblock_thread(current_node);
         } else
@@ -331,14 +331,11 @@ static void switch_to_thread(thread_t* next_thread)
  */
 void sched_switch_thread()
 {
-    uart_writec('s');
     if(taskswitch_semaphore != 0)
     {
         taskswitch_postponed = true;
         return;
     }
-    uart_writec('q');
-    uart_writec('\n');
 
     sched_track_swaps();
     if(run_queue.queue_head != KNULL)
@@ -418,6 +415,10 @@ void sched_block_thread(enum thread_state new_state)
 
 void sched_unblock_thread(thread_t* thread)
 {
+    // If the thread to be unblocked is already ready, then don't queue it again
+    if(thread->current_state == STATE_READY)
+        return;
+
     sched_lock();
     thread->current_state = STATE_READY;
 
@@ -468,9 +469,7 @@ void sched_setidle(thread_t* thread)
 
 void sched_lock()
 {
-    //hal_save_interrupts();
-
-    hal_disable_interrupts();
+    hal_disable_interrupts_raw();
     sched_semaphore++;
 }
 
@@ -478,8 +477,7 @@ void sched_unlock()
 {
     sched_semaphore--;
     if(sched_semaphore == 0)
-        hal_enable_interrupts();
-        //hal_restore_interrupts();
+        hal_enable_interrupts_raw();
 }
 
 void taskswitch_disable()

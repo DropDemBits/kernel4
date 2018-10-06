@@ -73,7 +73,7 @@ void refresh_task()
     {
         if(tty->refresh_back)
             fb_fillrect(get_fb_address(), 0, 0, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
-
+    
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
         tty_make_clean(tty);
         sched_block_thread(STATE_SUSPENDED);
@@ -84,7 +84,7 @@ static void print_log(uint16_t log_level)
 {
     struct klog_entry* entry = (struct klog_entry*)get_klog_base();
 
-    char buffer[128];
+    char buffer[256];
 
     while(entry->level != EOL)
     {
@@ -93,7 +93,7 @@ static void print_log(uint16_t log_level)
             uint64_t timestamp_secs = entry->timestamp / 1000000000;
             uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
 
-            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            sprintf(buffer, "[%3llu.%05llu] (%4s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
             tty_puts(tty, buffer);
 
             for(uint16_t i = 0; i < entry->length; i++)
