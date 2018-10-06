@@ -76,7 +76,7 @@ void idle_loop()
 
         // Clear background
         if(clean_back)
-            fb_fillrect(get_fb_address(), x_off, y_off, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
+            fb_fillrect(get_fb_address(), x_off, y_off + 32, tty->width << 3, (tty->height << 4) - 32, tty->current_palette[tty->default_colour.bg_colour]);
         clean_back = false;
 
         // Divider
@@ -122,7 +122,7 @@ void idle_loop()
         if(swap_timer < timer_read_counter(0))
         {
             swap_timer = timer_read_counter(0) + 1000000000;
-            if(last_swap_count != tswp_counter)
+            if(last_swap_count > tswp_counter)
                 clean_back = true;
             last_swap_count = tswp_counter;
             tswp_counter = 0;
@@ -132,6 +132,7 @@ void idle_loop()
         tty->refresh_back = true;
         tty_reshow_fb(tty, get_fb_address(), x_off, y_off);
         tty_make_clean(tty);
+        tty_clear(tty, true);
         intr_wait();
     }
 }
@@ -172,7 +173,7 @@ void info_display()
 
         // Clear background
         if(clean_back)
-            fb_fillrect(get_fb_address(), x_off, y_off, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
+            fb_fillrect(get_fb_address(), x_off, y_off + 32, tty->width << 3, (tty->height << 4) - 32, tty->current_palette[tty->default_colour.bg_colour]);
         clean_back = false;
 
         // Divider
@@ -218,7 +219,7 @@ void info_display()
         if(swap_timer < timer_read_counter(0))
         {
             swap_timer = timer_read_counter(0) + 1000000000;
-            if(last_swap_count != tswp_counter)
+            if(last_swap_count > tswp_counter)
                 clean_back = true;
             last_swap_count = tswp_counter;
             tswp_counter = 0;
@@ -228,11 +229,13 @@ void info_display()
         tty->refresh_back = true;
         tty_reshow_fb(tty, get_fb_address(), x_off, y_off);
         tty_make_clean(tty);
+        tty_clear(tty, true);
         sched_sleep_ms(10);
     }
 }
 
 extern process_t init_process;
+static tty_dev_t* tty = NULL;
 void kmain()
 {
     klog_early_init();
@@ -259,8 +262,9 @@ void kmain()
     // sched_init depends on init_process
     klog_early_logln(INFO, "Initialising Scheduler");
     sched_init();
+    klog_early_logln(DEBUG, "Entering threaded init");
 
-    hal_enable_interrupts();
+    hal_enable_interrupts_raw();
     while(1)
     {
         sched_lock();
@@ -296,7 +300,6 @@ void main_fb_init()
     }
 }
 
-tty_dev_t* tty = NULL;
 void reshow_buf()
 {
     struct klog_entry* entry = (struct klog_entry*)get_klog_base();
@@ -346,8 +349,8 @@ void core_fini()
 
     err_code = atapi_send_command(2, read_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
     klog_logln(core_subsystem, INFO, "Command: ATAPI READ(12) (%d)", err_code);
-    err_code = atapi_send_command(2, eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ) (%d)", err_code);
+    // err_code = atapi_send_command(2, eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
+    // klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ) (%d)", err_code);
     err_code = pata_do_transfer(0, 1, transfer_buffer, 1, TRANSFER_READ, false, false);
     klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)");
 
@@ -406,6 +409,7 @@ void core_fini()
 #endif
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
+    reshow_buf();
 
     taskswitch_disable();
     process_t *p1 = process_create();
