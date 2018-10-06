@@ -102,17 +102,17 @@ multiboot2_header_end:
 
 .section .bss
     .align 4096
+bootstack_bottom:
+    .skip 16384 # 16KiB
+bootstack_top:
+.global bootstack_top
+
 bootstrap_pd:
     .skip 4096
 bootstrap_pt0:
     .skip 4096
 bootstrap_pt1:
     .skip 4096
-
-bootstack_bottom:
-    .skip 16384 # 16KiB
-bootstack_top:
-.global bootstack_top
 
 .section .data
     .align 4096

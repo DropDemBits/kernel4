@@ -160,9 +160,9 @@ void parse_mb1()
 
         bool first_iter = true;
         while((size_t)mmap < mb1->mmap_addr + mb1->mmap_length) {
-            mb2_mmap_t* actual = (mb2_mmap_t*)((uintptr_t)mmap + 4);
+            mb2_mmap_t* actual = (mb2_mmap_t*)((uintptr_t)mmap + sizeof(mmap->size));
 
-            klog_early_logln(INFO, "base: 0x%016p, length: 0x%016p, type: %s", actual->addr, actual->len, region_names[actual->type-1]);
+            klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type(%lx): %s", actual->addr, actual->len, actual->type, region_names[(actual->type-1) % 5]);
 
             if(actual->type == 0)
                 goto next_entry;
@@ -171,11 +171,11 @@ void parse_mb1()
             if(first_iter)
             {
                 // Reserve multboot info
-                mm_add_region(    multiboot_base,
+                mm_add_region(  multiboot_base,
                                 multiboot_size,
                                 MULTIBOOT_MEMORY_RESERVED);
                                 // Reserve initrd
-                mm_add_region(    initrd_start,
+                mm_add_region(  initrd_start,
                                 initrd_size,
                                 MULTIBOOT_MEMORY_RESERVED);
                 first_iter = false;

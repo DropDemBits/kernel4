@@ -32,14 +32,19 @@ static char tbuf[80*25*2];
 
 static void reshow_log()
 {
-    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
-
+    struct klog_entry* entry = (struct klog_entry*)(uintptr_t)get_klog_base();
+    tty_dev_t* tty = &temp_tty;
     char buffer[128];
-    tty_init(&temp_tty, 80, 25, tbuf, 80*25*2, NULL);
 
+    asm("xchg %bx, %bx");
     if(!klog_is_init())
     {
         entry = (struct klog_entry*)early_klog_buffer;
+        tty = KNULL;
+    }
+    else
+    {
+        tty_init(tty, 80, 25, tbuf, 80*25*2, NULL);
     }
 
     while(entry->level != EOL)
@@ -49,12 +54,14 @@ static void reshow_log()
 
         sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
         uart_writestr(buffer, strlen(buffer));
-        tty_puts(&temp_tty, buffer);
+        if(tty != KNULL)
+            tty_puts(tty, buffer);
 
         for(uint16_t i = 0; i < entry->length; i++)
         {
             uart_writec(entry->data[i]);
-            tty_putchar(&temp_tty, entry->data[i]);
+            if(tty != KNULL)
+                tty_putchar(tty, entry->data[i]);
             
             if(entry->data[i] == '\n')
                 uart_writec('\r');
@@ -63,9 +70,9 @@ static void reshow_log()
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 
-    if(mmu_is_usable(get_fb_address()))
+    if(tty != KNULL && mmu_is_usable(get_fb_address()))
     {
-        tty_reshow_fb(&temp_tty, get_fb_address(), 0, 0);
+        tty_reshow_fb(tty, get_fb_address(), 0, 0);
     }
 }
 

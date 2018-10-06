@@ -69,11 +69,11 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
     *(--thread_stack) = thread->kernel_sp;
     *(--thread_stack) = 0x202;
     *(--thread_stack) = 0x008;
-    *(--thread_stack) = entry_point;
+    *(--thread_stack) = (uint32_t)entry_point;
 
     // Initialize Thread entry
-    *(--thread_stack) = __initialize_thread;
-    *(--thread_stack) = thread;
+    *(--thread_stack) = (uint32_t)__initialize_thread;
+    *(--thread_stack) = (uint32_t)thread;
     thread_stack -= 3;
 
     thread->kernel_sp = (uint32_t)thread_stack;

@@ -59,10 +59,6 @@ void idle_loop()
 
     uint16_t* buffer = kmalloc(buffer_size);
     tty_dev_t* tty = kmalloc(sizeof(tty_dev_t));
-    uint64_t last_swap_count = 0;
-    uint64_t swap_timer = timer_read_counter(0) + 1000000000;
-    bool clean_back = false;
-    int thread_count = 0;
 
     tty_init(tty, 80, 5, buffer, buffer_size, NULL);
     tty_set_colours(tty, 0xC, 0x0);
@@ -74,59 +70,9 @@ void idle_loop()
 
         tty_set_cursor(tty, 0, 0, false);
 
-        // Clear background
-        if(clean_back)
-            fb_fillrect(get_fb_address(), x_off, y_off + 32, tty->width << 3, (tty->height << 4) - 32, tty->current_palette[tty->default_colour.bg_colour]);
-        clean_back = false;
-
         // Divider
         for(int i = 0; i < tty->width; i++)
             tty_putchar(tty, '-');
-
-        // Uptime
-        uint64_t now = timer_read_counter(0) / 1000000;
-        sprintf(buf, "Uptime: %lld.%03lld\n", now / 1000, now % 1000);
-        tty_puts(tty, buf);
-
-        // Swap counter
-        sprintf(buf, "Thread swaps/s: %lld\n", last_swap_count);
-        tty_puts(tty, buf);
-
-        // Active thread
-        sprintf(buf, "[%s] ", sched_active_thread()->name);
-        tty_puts(tty, buf);
-
-        // Thread queue proper
-        thread_t* node = run_queue.queue_head;
-        while(node != KNULL)
-        {
-            if(current_thread_count > 8)
-            {
-                tty_puts(tty, "...");
-                break;
-            }
-
-            sprintf(buf, "%s ", node->name);
-            tty_puts(tty, buf);
-            node = node->next;
-            current_thread_count++;
-        }
-        tty_putchar(tty, '\n');
-
-        if(current_thread_count != thread_count)
-        {
-            thread_count = current_thread_count;
-            clean_back = true;
-        }
-
-        if(swap_timer < timer_read_counter(0))
-        {
-            swap_timer = timer_read_counter(0) + 1000000000;
-            if(last_swap_count > tswp_counter)
-                clean_back = true;
-            last_swap_count = tswp_counter;
-            tswp_counter = 0;
-        }
 
         // Force reshow all
         tty->refresh_back = true;

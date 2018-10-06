@@ -75,8 +75,7 @@ void klog_init()
     id_bitmap[0] = 0x1;
     subsystem_names[0] = "EARLY";
 
-    // TODO: Copy early buffer into new expandable buffer
-    log_buffer = (char*)get_klog_base();
+    log_buffer = (char*)(uintptr_t)get_klog_base();
     log_index = early_index;
     allocated_limit = 8192;
     mmu_map_direct((uintptr_t)log_buffer, mm_alloc(1));
@@ -114,6 +113,9 @@ uint16_t klog_add_subsystem(char* name)
 
 void klog_early_log(enum klog_level level, const char* format, ...)
 {
+    if(EARLY_BUFFER_LEN - early_index < EARLY_BUFFER_LEN / 16)
+        return;
+
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
     entry->flags = 0;
@@ -131,6 +133,9 @@ void klog_early_log(enum klog_level level, const char* format, ...)
 
 void klog_early_logln(enum klog_level level, const char* format, ...)
 {
+    if(EARLY_BUFFER_LEN - early_index < EARLY_BUFFER_LEN / 16)
+        return;
+    
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
     entry->flags = 0;
@@ -151,6 +156,9 @@ void klog_early_logln(enum klog_level level, const char* format, ...)
 
 void klog_early_logc(enum klog_level level, const char c)
 {
+    if(EARLY_BUFFER_LEN - early_index < EARLY_BUFFER_LEN / 16)
+        return;
+    
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
     entry->flags = 0;
