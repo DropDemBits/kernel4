@@ -151,6 +151,13 @@ bool tty_scroll(tty_dev_t* tty, int direction)
         tty->draw_base += (tty->width * direction);
     }
 
+    if(direction > 0)
+    {
+        // Clear last line
+        int row_base = tty->width * (tty->height) + tty->draw_base;
+        memset(tty->buffer_base + (row_base % tty->buffer_size), 0, tty->width << 1);
+    }
+
     if(direction == 0)
     {
         // Reshow back if we have just moved
@@ -168,10 +175,7 @@ bool tty_scroll(tty_dev_t* tty, int direction)
 
     if((tty->draw_base + tty->width * tty->height) % tty->buffer_size == tty->scrollback_limit)
     {
-        // If we hit the scrollback limit going down, clear last row and adjust scrollback limit
-        int row_base = tty->scrollback_limit;
-        memset(tty->buffer_base + row_base, 0, tty->width << 1);
-
+        // If we hit the scrollback limit going down, adjust scrollback limit
         tty->scrollback_limit += tty->width;
         tty->scrollback_limit %= tty->buffer_size;
     }
