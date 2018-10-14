@@ -19,6 +19,7 @@
  */
 
 #include <common/types.h>
+#include <arch/cpufuncs.h>
 
 #ifndef __HAL_H__
 #define __HAL_H__ 1
@@ -64,7 +65,7 @@ struct timer_dev
     struct timer_handler_node* list_head;
 };
 
-typedef void (*ic_enable_func)(void);
+typedef void (*ic_enable_func)(uint8_t irq_base);
 typedef void (*ic_disable_func)(void);
 
 typedef void (*ic_mask_func)(uint8_t irq);
@@ -107,12 +108,6 @@ struct irq_handler
 };
 
 void hal_init();
-void hal_enable_interrupts(uint64_t flags);
-uint64_t hal_disable_interrupts();
-void hal_enable_interrupts_raw();
-void hal_disable_interrupts_raw();
-void busy_wait();
-void intr_wait();
 
 unsigned long timer_add(struct timer_dev* device, enum timer_type type);
 void timer_set_default(unsigned long id);
@@ -158,9 +153,6 @@ struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_
  * @retval None
  */
 void ic_irq_free(struct irq_handler* handler);
-
-void irq_add_handler(uint16_t irq, isr_t handler);
-void dump_registers(struct intr_stack *stack);
 
 struct heap_info* get_heap_info();
 uint64_t get_klog_base();

@@ -20,7 +20,9 @@
 
 #include <common/hal.h>
 #include <arch/pic.h>
+#include <arch/idt.h>
 #include <arch/io.h>
+#include <stack_state.h>
 
 #define PIC1_CMD   0x20
 #define PIC1_DATA  0x21
@@ -54,17 +56,10 @@
 #define OCW3_SSMM 0x20 // Set Special Mask
 #define OCW3_ESMM 0x40 // Enable writes to Special Mask
 
-struct ic_dev pic_dev = {
-    .enable = pic_setup,
-    .disable = pic_disable,
-    .mask = pic_mask,
-    .unmask = pic_unmask,
-    .is_spurious = pic_check_spurious,
-    .eoi = pic_eoi,
-    // .alloc_irq = pic_alloc_irq,
-    // .free_irq = pic_free_irq,
-    // .handle_irq = pic_handle_irq,
-};
+static void irq_wrapper(struct stack_state* state, void* params)
+{
+    ((irq_function_t)params)(pic_get_dev());
+}
 
 uint16_t pic_read_irr()
 {
@@ -76,7 +71,7 @@ uint16_t pic_read_irr()
     return irr;
 }
 
-void pic_setup()
+void pic_setup(uint8_t irq_base)
 {
     // Save Masks
     uint8_t mask_a = inb(PIC1_DATA);
@@ -89,12 +84,12 @@ void pic_setup()
     io_wait();
 
     // (ICW2) Set vector bases
-    outb(PIC1_DATA, 0x20);
+    outb(PIC1_DATA, irq_base);
     io_wait();
-    outb(PIC2_DATA, 0x28);
+    outb(PIC2_DATA, irq_base + 8);
     io_wait();
 
-    // (ICW3) Cascade Setup
+    // (ICW3) Cascade Setup (On IRQ 2)
     outb(PIC1_DATA, 0b00000100);
     io_wait();
     outb(PIC2_DATA, 0x02);
@@ -182,9 +177,25 @@ int pic_free_irq(uint8_t irq)
 
 int pic_handle_irq(uint8_t irq, irq_function_t handler)
 {
-    irq_add_handler(irq, (isr_t)handler);
+    isr_add_handler(irq + IRQ_BASE, irq_wrapper, handler);
+
+    pic_unmask(irq);
+    if(irq >= 8)
+        pic_unmask(2);
     return 0;
 }
+
+struct ic_dev pic_dev = {
+    .enable = pic_setup,
+    .disable = pic_disable,
+    .mask = pic_mask,
+    .unmask = pic_unmask,
+    .is_spurious = pic_check_spurious,
+    .eoi = pic_eoi,
+    .alloc_irq = pic_alloc_irq,
+    .free_irq = pic_free_irq,
+    .handle_irq = pic_handle_irq,
+};
 
 struct ic_dev* pic_get_dev()
 {

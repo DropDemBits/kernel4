@@ -25,7 +25,7 @@
 #include <common/io/ps2.h>
 #include <common/util/kfuncs.h>
 
-#define STATUS_READREADY 0x01
+#define STATUS_DATA_READY 0x01
 #define STATUS_WRITEREADY 0x02
 /* Corresponds to 10ms */
 #define DEFAULT_TIMEOUT 10
@@ -95,14 +95,14 @@ static void wait_write_data(uint8_t data)
 
 static uint8_t wait_read_data()
 {
-    WAIT_TIMEOUT((ps2_read_status() & STATUS_READREADY) == 0, DEFAULT_TIMEOUT)
+    WAIT_TIMEOUT((ps2_read_status() & STATUS_DATA_READY) == 0, DEFAULT_TIMEOUT)
     return ps2_read_data();
 }
 
 static uint8_t wait_read_data_timeout()
 {
     bool timedout = false;
-    WAIT_TIMEOUT_CHECK((ps2_read_status() & STATUS_READREADY) == 0, DEFAULT_TIMEOUT, timedout)
+    WAIT_TIMEOUT_CHECK((ps2_read_status() & STATUS_DATA_READY) == 0, DEFAULT_TIMEOUT, timedout)
     if(timedout)
         return 0xFF;
     return ps2_read_data();
@@ -120,13 +120,23 @@ static void controller_init()
     uint8_t usable_bitmask = 0b01;
     bool modify_cfg = true;
 
+    // Nom on bytes
+    while(ps2_read_status() & STATUS_DATA_READY)
+    {
+        ps2_read_data();
+        busy_wait();
+    }
+
     // Disable devices
-    while(ps2_read_status() & 0x1) busy_wait();
     send_controller_command(0xAD); // Device 1
     send_controller_command(0xA7); // Device 2
 
     // Clear output buffer
-    while(ps2_read_status() & 0x1) busy_wait();
+    while(ps2_read_status() & STATUS_DATA_READY)
+    {
+        ps2_read_data();
+        busy_wait();
+    }
 
     // Set configuration byte
     send_controller_command(0x20);
@@ -234,9 +244,11 @@ static void controller_init()
 static void detect_device(int device)
 {
     // Disable Scanning
-    while(ps2_read_status() & 0x1) ps2_read_data();
+    while(ps2_read_status() & STATUS_DATA_READY)
+        ps2_read_data();
     send_dev_command(device, 0xF5);
-    while(ps2_read_status() & 0x1) ps2_read_data();
+    while(ps2_read_status() & STATUS_DATA_READY)
+        ps2_read_data();
 
     if(device >= 2 || device < 0 || !devices[device].present)
     {
@@ -246,7 +258,8 @@ static void detect_device(int device)
 
     uint16_t first_byte = 0xFF, second_byte = 0xFF;
     klog_logln(ps2_subsys, DEBUG, "Identifying device on port %d", device + 1);
-    while(ps2_read_status() & 0x1) ps2_read_data();
+    while(ps2_read_status() & STATUS_DATA_READY)
+        ps2_read_data();
     send_dev_command(device, 0xF2);
     first_byte = wait_read_data_timeout();
     second_byte = wait_read_data_timeout();
@@ -307,7 +320,7 @@ void ps2_init()
 void ps2_handle_device(int device, isr_t handler)
 {
     if(device >= 2 || device < 0 || !devices[device].present) return;
-    irq_add_handler(ps2_device_irqs()[device], handler);
+    ic_irq_handle(ps2_device_irqs()[device], LEGACY, handler);
 }
 
 uint8_t ps2_device_read(int device, bool wait_for)

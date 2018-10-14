@@ -47,7 +47,7 @@ struct pit_timer_dev
 struct pit_timer_dev timer_devs[2];
 bool handling_timer = false;
 
-static void pit_handler()
+static irq_ret_t pit_handler(struct ic_dev* dev)
 {
     // We EOI here as sched_timer may switch to another task that is the only one and never returns.
     ic_eoi(0);
@@ -62,6 +62,8 @@ static void pit_handler()
     timer->raw_dev.counter += timer->raw_dev.resolution;
     timer_broadcast_update(timer->raw_dev.id);
     handling_timer = false;
+
+    return IRQ_HANDLED;
 }
 
 void pit_init_counter(uint16_t id, uint32_t frequency, uint8_t mode)
@@ -124,5 +126,5 @@ void pit_init()
     pit_init_counter(0, 1000, PIT_MODE_PERIODIC);
     timer_add((struct timer_dev*) &(timer_devs[0]), PERIODIC);
     timer_set_default(timer_devs[0].raw_dev.id);
-    isr_add_handler(IRQ_BASE, pit_handler);
+    ic_irq_handle(0, LEGACY, pit_handler);
 }

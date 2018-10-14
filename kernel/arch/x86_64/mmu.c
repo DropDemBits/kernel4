@@ -192,7 +192,7 @@ void mmu_init()
     uint64_t* ptr = (uint64_t*)0xFFFFFFFFFFFFF000;
     *ptr = 0;
 
-    isr_add_handler(14, (isr_t)pf_handler);
+    isr_add_handler(14, (isr_t)pf_handler, NULL);
     
     // Setup initial paging context
     uint64_t cr3;

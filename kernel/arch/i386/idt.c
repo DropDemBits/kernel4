@@ -121,12 +121,12 @@ const char* fault_names[] = {
     "SVM Security Exception",       // Intel Reserved
     "Reserved Fault",
 };
-isr_t function_table[256];
+struct isr_handler function_table[256];
 
-static void create_descriptor(    uint8_t index,
-                                uint32_t base,
-                                uint16_t selector,
-                                uint8_t type)
+static void create_descriptor(uint8_t index,
+                              uint32_t base,
+                              uint16_t selector,
+                              uint8_t type)
 {
     (&idt_table)[index].offset_low =  (base >> 0) & 0xFFFF;
     (&idt_table)[index].offset_high = (base >> 16) & 0xFFFF;
@@ -138,19 +138,9 @@ static void create_descriptor(    uint8_t index,
     (&idt_table)[index].present = 1;
 }
 
-void isr_common(struct intr_stack *frame)
+static void default_exception(struct intr_stack *frame)
 {
-    if(function_table[frame->int_num] == KNULL && frame->int_num < 32)
-    {
-        // Do Generic Fault
-        kpanic_intr(frame, fault_names[frame->int_num]);
-    } else
-    {
-        isr_t function = function_table[frame->int_num];
-        
-        if(function != KNULL)
-            function(frame);
-    }
+    kpanic_intr(frame, fault_names[frame->int_num]);
 }
 
 void irq_common(struct intr_stack *frame)
@@ -158,16 +148,42 @@ void irq_common(struct intr_stack *frame)
     ic_eoi(frame->int_num - 32);
 }
 
-void isr_add_handler(uint8_t index, isr_t function)
+void isr_common(struct intr_stack *frame)
 {
-    function_table[index] = function;
+    if(function_table[frame->int_num].function != KNULL)
+    {
+        isr_t function = function_table[frame->int_num].function;
+        function(frame, function_table[frame->int_num].parameters);
+    }
+}
+
+void isr_add_handler(uint8_t index, isr_t function, void* parameters)
+{
+    function_table[index].function = function;
+    function_table[index].parameters = parameters;
 }
 
 void setup_idt()
 {
-    for(int i = 0; i < 256; i++)
+    // Generic exceptions
+    for(int i = 0; i < 32; i++)
     {
-        function_table[i] = KNULL;
+        function_table[i].function = default_exception;
+        function_table[i].parameters = NULL;
+    }
+
+    // IRQs
+    for(int i = 32; i < 16; i++)
+    {
+        function_table[i].function = irq_common;
+        function_table[i].parameters = NULL;
+    }
+
+    // The rest of the handlers
+    for(int i = 48; i < 256; i++)
+    {
+        function_table[i].function = KNULL;
+        function_table[i].parameters = NULL;
     }
 
     create_descriptor( 0, (uint32_t) isr0_entry, 0x08, IDT_TYPE_INTERRUPT);
@@ -216,7 +232,4 @@ void setup_idt()
     create_descriptor(47, (uint32_t)irq15_entry, 0x08, IDT_TYPE_TRAP);
 
     create_descriptor(0x80, (uint32_t)syscall_entry, 0x0B, IDT_TYPE_INTERRUPT);
-
-    for(int i = 0; i < 16; i++)
-        isr_add_handler(i+32, (isr_t)irq_common);
 }

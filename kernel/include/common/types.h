@@ -25,15 +25,6 @@
 #define __TYPES_COMMON__
 
 #include <common/mm/liballoc.h>
-
-#ifdef __i386__
 #include <types.h>
-#endif
-
-#ifdef __x86_64__
-#include <types.h>
-#endif
-
-typedef void(*isr_t)(void*);
 
 #endif

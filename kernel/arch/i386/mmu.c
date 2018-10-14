@@ -161,7 +161,7 @@ void mmu_init()
         invlpg(i << PDT_SHIFT);
     }
 
-    isr_add_handler(14, (isr_t)pf_handler);
+    isr_add_handler(14, (isr_t)pf_handler, NULL);
 }
 
 int mmu_map_direct(unsigned long address, unsigned long mapping)

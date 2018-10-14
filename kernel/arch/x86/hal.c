@@ -84,27 +84,21 @@ void hal_init()
         //outb(PIC1_DATA, 0xFF);
         //outb(PIC2_DATA, 0xFF);
     }
-    pic_setup();
-
-    for(int i = 0; i < 16; i++)
-        irq_add_handler(i, (isr_t)irq_common);
+    pic_get_dev()->enable(0x20);
 
     if(!use_apic)
     {
         for(int i = 0; i < 16; i++) pic_eoi(i);
+
+        // Mask all IRQs
+        for(int i = 0; i < 16; i++)
+            pic_mask(i);
     }
 
     for(int i = 0; i < MAX_TIMERS; i++)
         timers[i] = KNULL;
     
     pit_init();
-
-    pic_unmask(0);
-    pic_mask(8);
-
-    // Unmask IDE IRQs
-    pic_unmask(14);
-    pic_unmask(15);
 }
 
 unsigned long timer_add(struct timer_dev* device, enum timer_type type)
@@ -214,46 +208,29 @@ uint64_t timer_read_counter(unsigned long id)
     return timers[timer_id]->counter;
 }
 
-/*
-void timer_config_counter(uint16_t id, uint16_t frequency, uint8_t mode)
-{
-    pit_init_counter(id, frequency, mode);
-}
-
-void timer_reset_counter(uint16_t id)
-{
-    pit_reset_counter(id);
-}
-
-void timer_set_counter(uint16_t id, uint16_t frequency)
-{
-    pit_set_counter(id, frequency);
-}
-*/
-
 void ic_mask(uint16_t irq)
 {
-    pic_mask(irq);
+    hal_get_ic()->mask(irq);
 }
 
 void ic_unmask(uint16_t irq)
 {
-    pic_unmask(irq);
+    hal_get_ic()->unmask(irq);
 }
 
 bool ic_check_spurious(uint16_t irq)
 {
-    return pic_check_spurious(irq);
+    return hal_get_ic()->is_spurious(irq);
 }
 
 void ic_eoi(uint8_t irq)
 {
-    pic_eoi(irq);
+    hal_get_ic()->eoi(irq);
 }
 
 struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_t handler)
 {
-    isr_add_handler(irq + 32, (isr_t)handler);
+    hal_get_ic()->handle_irq(irq, handler);
     return KNULL;
 }
 
@@ -267,51 +244,12 @@ struct ic_dev* hal_get_ic()
     return pic_get_dev();
 }
 
-void irq_add_handler(uint16_t irq, isr_t handler)
-{
-    isr_add_handler(irq + 32, handler);
-}
-
 struct heap_info* get_heap_info()
 {
     return &heap_context;
 }
 
-void intr_wait()
-{
-    asm("hlt");
-}
-
-void hal_enable_interrupts_raw()
-{
-    asm volatile("sti");
-}
-
-void hal_disable_interrupts_raw()
-{
-    asm volatile("cli");
-}
-
-void busy_wait()
-{
-    asm volatile("pause");
-}
-
 #if defined(__x86_64__)
-void hal_enable_interrupts(uint64_t flags)
-{
-    asm volatile("push %%rax\n\tpopfq"::"a"(flags));
-    // asm volatile("sti");
-}
-
-uint64_t hal_disable_interrupts()
-{
-    uint64_t flags = 0;
-    asm volatile("pushfq\n\tpopq %%rax":"=a"(flags));
-    asm volatile("cli");
-    return flags;
-}
-
 uint64_t get_klog_base()
 {
     return 0xFFFF8C0000000000;
@@ -345,20 +283,6 @@ void dump_registers(struct intr_stack *stack)
     }
 }
 #elif defined(__i386__)
-void hal_enable_interrupts(uint64_t flags)
-{
-    asm volatile("push %%eax\n\tpopf"::"a"((uint32_t)flags));
-    // asm volatile("sti");
-}
-
-uint64_t hal_disable_interrupts()
-{
-    uint32_t flags = 0;
-    asm volatile("pushf\n\tpopl %%eax":"=a"(flags));
-    asm volatile("cli");
-    return (uint64_t)flags;
-}
-
 uint64_t get_klog_base()
 {
     return 0x8C000000;
