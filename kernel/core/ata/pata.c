@@ -191,11 +191,14 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     uint8_t last_status = 0;
 
     int loop_counter = 10;
-    while((inb(control_base + ATA_ALT_STATUS) & (STATUS_DRDY)) != STATUS_DRDY && loop_counter > 0)
+    // Wait until the drive is ready & not busy
+    while((inb(control_base + ATA_ALT_STATUS) & (STATUS_DRDY | STATUS_BSY)) == STATUS_BSY && loop_counter > 0)
     {
         busy_wait();
         loop_counter--;
     }
+
+    klog_logln(ata_subsys, DEBUG, "ata_dev%d status: %x", id, last_status);
 
     if(loop_counter <= 0)
         return EABSENT;
@@ -563,6 +566,7 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     int err = ata_send_command(controller->dev.id, IDENTIFY, 0x0000, 0, 0, TRANSFER_READ, false);
     if(err == EABSENT)
     {
+        klog_logln(ata_subsys, DEBUG, "ata_dev%d is absent, disabling", controller->dev.id);
         controller->dev.is_active = false;
         controller->dev.processing_command = false;
         current_id = ATA_INVALID_ID;

@@ -297,10 +297,10 @@ void core_fini()
 
     err_code = atapi_send_command(2, (uint16_t*)read_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
     klog_logln(core_subsystem, INFO, "Command: ATAPI READ(12) (%d)", err_code);
-    // err_code = atapi_send_command(2, (uint16_t*)eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    // klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ) (%d)", err_code);
+    err_code = atapi_send_command(2, (uint16_t*)eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
+    klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ) (%d)", err_code);
     err_code = pata_do_transfer(0, 1, (uint16_t*)transfer_buffer, 1, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)");
+    klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)", err_code);
 
     // TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS
