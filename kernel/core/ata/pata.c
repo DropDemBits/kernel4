@@ -163,10 +163,12 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
 static bool ata_wait()
 {
     // TODO: Block current thread & awake on interrupt
-    uint64_t timeout = timer_read_counter(0) + (5000000000); // Delay of 5ms
-    while(!irq_fired)
+    uint64_t timeout = timer_read_counter(0) + (5000000); // Delay of 5ms
+
+    while(!irq_fired && (inb(current_device->control_base + ATA_ALT_STATUS) & STATUS_DRQ) == 0)
     {
         busy_wait();
+        sched_sleep_ms(1);
         if(timeout <= timer_read_counter(0))
             return true;
     }
@@ -198,8 +200,6 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
         loop_counter--;
     }
 
-    klog_logln(ata_subsys, DEBUG, "ata_dev%d status: %x", id, last_status);
-
     if(loop_counter <= 0)
         return EABSENT;
 
@@ -227,16 +227,20 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
 
     // Time delay
     sched_sleep_ms(1);
-    
+
     if(inb(control_base + ATA_ALT_STATUS) == 0)
         return EABSENT;
 
+    klog_logln(ata_subsys, DEBUG, "ata_dev%d status: %x (%d)", id, last_status, loop_counter);
+
+    last_status = inb(control_base + ATA_ALT_STATUS);
+
     // Command completed successfully
-    if((inb(control_base + ATA_ALT_STATUS) & (STATUS_BSY | STATUS_DRQ)) == 0)
+    if((last_status & (STATUS_BSY | STATUS_DRQ)) == 0)
         return 0;
     
     // Command completed with an error
-    if((inb(control_base + ATA_ALT_STATUS) & STATUS_ERR) == 1)
+    if((last_status & STATUS_ERR) == STATUS_ERR)
         return 1;
 
     // NOTE: Writes don't initially raise interrupts, so we can't wait for them and have to use a busy loop

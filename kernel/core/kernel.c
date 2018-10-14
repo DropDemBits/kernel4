@@ -212,6 +212,10 @@ void kmain()
     sched_init();
     klog_early_logln(DEBUG, "Entering threaded init");
 
+    klog_init();
+    tty = kmalloc(sizeof(tty_dev_t));
+    tty_init(tty, 80, 25, kmalloc(80*25*2), 80*25*2, NULL);
+
     hal_enable_interrupts_raw();
     while(1)
     {
@@ -275,12 +279,7 @@ void reshow_buf()
 
 void core_fini()
 {
-    klog_init();
-
     uint16_t core_subsystem = klog_add_subsystem("CORE");
-
-    tty = kmalloc(sizeof(tty_dev_t));
-    tty_init(tty, 80, 25, kmalloc(80*25*2), 80*25*2, NULL);
 
     kbd_init();
     ps2_init();

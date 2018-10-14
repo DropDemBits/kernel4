@@ -61,14 +61,19 @@ static void irq_wrapper(struct stack_state* state, void* params)
     ((irq_function_t)params)(pic_get_dev());
 }
 
-uint16_t pic_read_irr()
+uint32_t pic_read_irr()
 {
     uint16_t irr = 0;
     outb(PIC1_CMD, OCW3_WREN | OCW3_RREG);
     irr |= inb(PIC1_CMD);
     outb(PIC2_CMD, OCW3_WREN | OCW3_RREG);
     irr |= inb(PIC2_CMD) << 8;
-    return irr;
+    return (uint32_t)irr;
+}
+
+uint32_t pic_read_imr()
+{
+    return (uint32_t)(inb(PIC1_DATA) | (inb(PIC2_DATA) << 8));
 }
 
 void pic_setup(uint8_t irq_base)
@@ -146,7 +151,7 @@ void pic_unmask(uint8_t irq)
 bool pic_check_spurious(uint8_t irq)
 {
     if(irq != 7 && irq != 15) return false;
-    uint16_t irr = pic_read_irr();
+    uint32_t irr = pic_read_irr();
 
     if(irq == 7  && ~(irr & 0x08))
     {
@@ -195,6 +200,8 @@ struct ic_dev pic_dev = {
     .alloc_irq = pic_alloc_irq,
     .free_irq = pic_free_irq,
     .handle_irq = pic_handle_irq,
+    .get_mask = pic_read_imr,
+    .get_serviced = pic_read_irr,
 };
 
 struct ic_dev* pic_get_dev()

@@ -77,6 +77,9 @@ typedef int (*ic_alloc_func)(uint8_t irq);
 typedef int (*ic_free_func)(uint8_t irq);
 typedef int (*ic_handle_func)(uint8_t irq, irq_function_t handler);
 
+typedef uint32_t (*ic_get_mask_func)(void);
+typedef uint32_t (*ic_get_serviced_func)(void);
+
 struct ic_dev
 {
     // Default ic functions
@@ -89,6 +92,8 @@ struct ic_dev
     ic_alloc_func alloc_irq;
     ic_free_func free_irq;
     ic_handle_func handle_irq;
+    ic_get_mask_func get_mask;
+    ic_get_serviced_func get_serviced;
 };
 
 enum irq_type
