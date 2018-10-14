@@ -428,7 +428,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
 
     byte_count = inb(command_base + ATA_LBAHI) << 8 | inb(command_base + ATA_LBAMID);
     word_count = byte_count >> 1;
-    klog_logln(ata_subsys, DEBUG, "(ata_dev%lld) Begining Packet PIO Data Transfer (%d bytes)", id, byte_count);
+    klog_logln(ata_subsys, DEBUG, "(ata_dev%d) Begining Packet PIO Data Transfer (%d bytes)", id, byte_count);
 
     if(transfer_dir == 1)
     {
