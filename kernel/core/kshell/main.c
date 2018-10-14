@@ -311,13 +311,15 @@ void kshell_main()
         sched_active_process(),
         (uint64_t*)refresh_task,
         PRIORITY_HIGHER,
-        "refresh_thread");
+        "refresh_thread",
+        NULL);
 
     test_wakeup = thread_create(
         sched_active_process(),
         (uint64_t*)wakeup_task,
         PRIORITY_NORMAL,
-        "test_wakeup");
+        "test_wakeup",
+        NULL);
 
     tty_set_colours(tty, 0xF, 0x0);
     printf("Welcome to K4!\n");

@@ -177,7 +177,7 @@ void ps2kbd_init(int device)
 {
     // PS2 Side
     kbd_device = device;
-    decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2");
+    decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2", NULL);
 
     if(!send_command(0xF4, 0x00))
         klog_logln(kbd_subsytem_id(), INFO, "MF2 Scanning enable failed");

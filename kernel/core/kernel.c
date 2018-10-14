@@ -177,6 +177,11 @@ void info_display()
     }
 }
 
+void hallo_entry(char* string)
+{
+    klog_logln(0, INFO, string);
+}
+
 extern process_t init_process;
 static tty_dev_t* tty = NULL;
 void kmain()
@@ -200,7 +205,7 @@ void kmain()
     // Resume init in other thread
     klog_early_logln(INFO, "Starting up threads for init");
     tasks_init("init", (void*)core_fini);
-    thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread");
+    thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread", NULL);
 
     // sched_init depends on init_process
     klog_early_logln(INFO, "Initialising Scheduler");
@@ -356,9 +361,10 @@ void core_fini()
 
     taskswitch_disable();
     process_t *p1 = process_create();
-    thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell");
-    thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread");
-    thread_create(process_create(), (uint64_t*)usermode_entry, PRIORITY_NORMAL, "usermode");
+    thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell", NULL);
+    thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread", NULL);
+    thread_create(process_create(), (void*)usermode_entry, PRIORITY_NORMAL, "usermode", NULL);
+    thread_create(process_create(), (void*)hallo_entry, PRIORITY_NORMAL, "hallogoodbye", "test_string");
     taskswitch_enable();
 
     // Now we are done, exit thread.

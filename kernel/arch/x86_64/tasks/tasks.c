@@ -22,6 +22,7 @@
 
 #include <common/hal.h>
 #include <common/mm/mm.h>
+#include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
 
 extern void __initialize_thread();
@@ -44,7 +45,7 @@ uint64_t alloc_address()
 /**
  * Initializes the architecture-specfic side of a thread
  */
-void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack)
+void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack, void* params)
 {
     if(kernel_stack != NULL)
     {
@@ -65,6 +66,11 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
 
     volatile uint64_t * thread_stack = (uint64_t*)thread->kernel_sp;
     
+    // Entry point structure
+    *(--thread_stack) = (uint64_t)sched_terminate; // Return to sched_terminate()
+
+    thread->kernel_sp = (uint64_t)thread_stack;
+
     // IRET structure
     *(--thread_stack) = 0x010;
     *(--thread_stack) = thread->kernel_sp;
@@ -75,7 +81,10 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
     // Initialize Thread entry
     *(--thread_stack) = (uint64_t)__initialize_thread;
     *(--thread_stack) = (uint64_t)thread;
-    thread_stack -= 5; // Remaining preserved registers
+
+    // Parameters passed to entry point
+    *(--thread_stack) = params; // RBX
+    thread_stack -= 4; // Remaining preserved registers
 
     thread->kernel_sp = (uint64_t)thread_stack;
 }

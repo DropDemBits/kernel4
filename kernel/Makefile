@@ -10,7 +10,7 @@ SYSROOT ?=
 PREFIX ?=/usr/local
 # Note: add -D__NO_OPTIMIZE__ when using -O0
 # -D__K4_VISUAL_STACK__: Visualize thread stacks
-CFLAGS := -c -ffreestanding -nostdlib -Wall -Iinclude \
+CFLAGS := -c -ffreestanding -nostdlib -Wall -Wextra -Iinclude \
  -I$(SYSROOT)$(PREFIX)/include \
  -Og -g \
 # -D__K4_VISUAL_STACK__

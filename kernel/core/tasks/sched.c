@@ -197,7 +197,7 @@ static thread_t* sched_next_thread()
 void sched_init()
 {
     if(run_queue.queue_head != KNULL)
-        cleanup_thread = thread_create(run_queue.queue_head->parent, cleanup_task, PRIORITY_LOW, "cleanup_task");
+        cleanup_thread = thread_create(run_queue.queue_head->parent, cleanup_task, PRIORITY_LOW, "cleanup_task", NULL);
 
     timer_add_handler(0, sched_timer);
 }

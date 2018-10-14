@@ -94,11 +94,14 @@ __initialize_thread:
     xor %r10, %r10
     xor %r9, %r9
     xor %r8, %r8
-    xor %rdi, %rdi
     xor %rsi, %rsi
     xor %rax, %rax
     xor %rdx, %rdx
     xor %rcx, %rcx
+
+    # Move parmeters into first register
+    movq %rbx, %rdi
+    xor %rbx, %rbx
 
     iretq
 

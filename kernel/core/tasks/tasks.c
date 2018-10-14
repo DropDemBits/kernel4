@@ -25,7 +25,7 @@
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
 
-extern void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack);
+extern void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack, void* params);
 extern void cleanup_register_state(thread_t *thread);
 extern unsigned long bootstack_top;
 
@@ -51,7 +51,7 @@ void tasks_init(char* init_name, void* init_entry)
     init_thread.next = KNULL;
     init_thread.tid = 1;
     init_thread.priority = PRIORITY_NORMAL;
-    init_register_state(&init_thread, init_entry, &bootstack_top);
+    init_register_state(&init_thread, init_entry, &bootstack_top, NULL);
     process_add_child(&init_process, &init_thread);
     sched_queue_thread(&init_thread);
 }
@@ -87,7 +87,7 @@ void process_add_child(process_t *parent, thread_t *child)
     }
 }
 
-thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priority priority, const char* name)
+thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priority priority, const char* name, void* params)
 {
     thread_t *thread = kmalloc(sizeof(thread_t));
     memset(thread, 0, sizeof(thread_t));
@@ -99,7 +99,7 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
     thread->priority = priority;
     thread->name = name;
     // TODO: Use a dedicated aligned stack allocator (ie. buddy)
-    init_register_state(thread, entry_point, NULL);
+    init_register_state(thread, entry_point, NULL, params);
 
     process_add_child(parent, thread);
 

@@ -92,7 +92,13 @@ __initialize_thread:
     xor %esi, %esi
     xor %edi, %edi
     xor %ebp, %ebp
+
     iret
+
+.global bounce_entry
+bounce_entry:
+    addl $8, %esp
+    ret
 
 /**
  * Enters Ring 3.
