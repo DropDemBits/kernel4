@@ -148,7 +148,11 @@ void isr_common(struct intr_stack *frame)
     if(function_table[frame->int_num].function != KNULL)
     {
         isr_t function = function_table[frame->int_num].function;
-        function(frame, function_table[frame->int_num].parameters);
+        // Bit of a workaround to merge the parameters and stack frame
+        if(frame->int_num < 32)
+            function(frame, frame->int_num);
+        else
+            function(function_table[frame->int_num].parameters, frame->int_num);
     }
 }
 

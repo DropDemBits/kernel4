@@ -12,6 +12,6 @@ typedef uint64_t uintptr_t;
 typedef int64_t ssize_t;
 typedef uint32_t ino_t;
 
-typedef void(*isr_t)(struct intr_stack* frame, void* parameters);
+typedef void(*isr_t)(void* parameters, uint8_t intr);
 
 #endif /* __TYPES_H__ */

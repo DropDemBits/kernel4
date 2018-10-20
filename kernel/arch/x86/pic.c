@@ -60,9 +60,9 @@
 
 static struct irq_handler* handler_list[NR_PIC_IRQS];
 
-static void irq_wrapper(struct intr_stack* state, void* params)
+static void irq_wrapper(void* params, uint8_t int_num)
 {
-    uint8_t irq = (uint8_t)(state->int_num) - 32;
+    uint8_t irq = int_num - 32;
     pic_mask(irq);
     pic_eoi(irq);
 
@@ -129,7 +129,7 @@ void pic_setup(uint8_t irq_base)
 
     // Clear all interrupt handlers
     for(int i = 0; i < NR_PIC_IRQS; i++)
-        handler_list[i] == NULL;
+        handler_list[i] = NULL;
 }
 
 void pic_disable()
@@ -235,7 +235,7 @@ struct irq_handler* pic_handle_irq(uint8_t irq, irq_function_t handler)
     irq_handler->handler_type = LEGACY;
     irq_handler->trigger_type = EDGE;
 
-    isr_add_handler(irq + IRQ_BASE, irq_wrapper, handler);
+    isr_add_handler(irq + IRQ_BASE, irq_wrapper, NULL);
 
     if(handler_list[irq] == NULL)
     {
