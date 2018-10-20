@@ -14,14 +14,14 @@ build-libk:
 	@$(foreach TARGET,$(TARGETS),make -C libk TARGET_ARCH=$(TARGET) SYSROOT=../sysroot all install &&) echo Done building libk
 
 build-kernel: build-libk
-	@$(foreach TARGET,$(TARGETS),scripts/build_arch.sh $(TARGET) && ) echo Done building kernel
+	@$(foreach TARGET,$(TARGETS),scripts/build_arch_cmake.sh $(TARGET) && ) echo Done building kernel
 
 clean-libk:
 	@$(foreach TARGET,$(TARGETS),make -C libk TARGET_ARCH=$(TARGET) clean &&) echo Done cleaning libk
 
 clean-kernel:
-	#@$(foreach TARGET,$(TARGETS),cmake -E chdir build/$(TARGET) make clean &&) echo Done cleaning kernel
-	@$(foreach TARGET,$(TARGETS),make -C kernel TARGET_ARCH=$(TARGET) clean &&) echo Done cleaning kernel
+	@$(foreach TARGET,$(TARGETS),cmake -E chdir build/$(TARGET) make clean &&) echo Done cleaning kernel
+	@#$(foreach TARGET,$(TARGETS),make -C kernel TARGET_ARCH=$(TARGET) clean &&) echo Done cleaning kernel
 
 clean: clean-libk clean-kernel
 	@$(foreach TARGET,$(TARGETS),rm -f k4-$(TARGET).iso;)

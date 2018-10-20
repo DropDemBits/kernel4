@@ -7,6 +7,5 @@
         "typeinfo": "c",
         "*.tcc": "c",
         "system_error": "c"
-    },
-    "cmake.configureOnOpen": false,
+    }
 }

@@ -90,14 +90,14 @@ void pci_put_dev(struct pci_dev* dev);
 void pci_handle_dev(struct pci_dev_handler *handle);
 
 // pci_*_raw wrappers
-inline uint32_t pci_read(struct pci_dev* dev, uint16_t reg, uint8_t len)
+static inline uint32_t pci_read(struct pci_dev* dev, uint16_t reg, uint8_t len)
 {
     if(dev == KNULL || dev == NULL)
         return 0xFFFFFFFF;
     return pci_read_raw(dev->bus, dev->device, dev->function, reg, len);
 }
 
-inline void pci_write(struct pci_dev* dev, uint16_t reg, uint8_t len, uint32_t data)
+static inline void pci_write(struct pci_dev* dev, uint16_t reg, uint8_t len, uint32_t data)
 {
     if(dev == KNULL || dev == NULL)
         return;

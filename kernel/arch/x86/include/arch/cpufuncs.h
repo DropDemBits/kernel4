@@ -10,12 +10,12 @@ typedef uint32_t cpu_flags_t;
 
 // Memory barriers (SMP-only)
 #ifdef _ENABLE_SMP_
-inline void membar_read()
+static inline void membar_read()
 {
 
 }
 
-inline void membar_write()
+static inline void membar_write()
 {
     
 }
@@ -28,51 +28,51 @@ inline void membar_write()
 // Caching functions
 
 // Misc
-inline void intr_wait()
+static inline void intr_wait()
 {
     asm("hlt");
 }
 
-inline void hal_enable_interrupts_raw()
+static inline void hal_enable_interrupts_raw()
 {
     asm volatile("sti");
 }
 
-inline void hal_disable_interrupts_raw()
+static inline void hal_disable_interrupts_raw()
 {
     asm volatile("cli");
 }
 
-inline void busy_wait()
+static inline void busy_wait()
 {
     asm volatile("pause");
 }
 
 // Atomic Memory Transactions
-inline uint32_t lock_cmpxchg(uint32_t* data, uint32_t expected, uint32_t set)
+static inline uint32_t lock_cmpxchg(uint32_t* data, uint32_t expected, uint32_t set)
 {
     uint32_t current_value = 0;
     asm volatile("lock cmpxchg %0, (%1)":"=a"(current_value):"r"(set),"m"(data),"a"(expected):"eax","cc","memory");
     return current_value;
 }
 
-inline void lock_xchg(uint32_t* data, uint32_t set)
+static inline void lock_xchg(uint32_t* data, uint32_t set)
 {
     asm volatile("lock xchg %%eax, (%1)"::"a"(set),"r"(data));
 }
 
-inline uint32_t lock_read(uint32_t* data)
+static inline uint32_t lock_read(uint32_t* data)
 {
     return *data;
 }
 
 #if defined(__x86_64__)
-inline void hal_enable_interrupts(uint64_t flags)
+static inline void hal_enable_interrupts(uint64_t flags)
 {
     asm volatile("push %%rax\n\tpopfq"::"a"(flags));
 }
 
-inline cpu_flags_t hal_disable_interrupts()
+static inline cpu_flags_t hal_disable_interrupts()
 {
     cpu_flags_t flags = 0;
     asm volatile("pushfq\n\tpopq %%rax":"=a"(flags));
@@ -80,12 +80,12 @@ inline cpu_flags_t hal_disable_interrupts()
     return flags;
 }
 #else
-inline void hal_enable_interrupts(uint64_t flags)
+static inline void hal_enable_interrupts(uint64_t flags)
 {
     asm volatile("push %%eax\n\tpopf"::"a"((uint32_t)flags));
 }
 
-inline cpu_flags_t hal_disable_interrupts()
+static inline cpu_flags_t hal_disable_interrupts()
 {
     cpu_flags_t flags = 0;
     asm volatile("pushf\n\tpopl %%eax":"=a"(flags));
