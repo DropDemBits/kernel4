@@ -170,7 +170,10 @@ static bool ata_wait()
         busy_wait();
         sched_sleep_ms(1);
         if(timeout <= timer_read_counter(0))
+        {
+            klog_logln(ata_subsys, DEBUG, "ata_dev%d timeout %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
             return true;
+        }
     }
 
     return false;
@@ -243,7 +246,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     if((last_status & STATUS_ERR) == STATUS_ERR)
         return 1;
 
-    // NOTE: Writes don't initially raise interrupts, so we can't wait for them and have to use a busy loop
+    // NOTE: Writes don't raise interrupts upon data ready, so we can't wait for them and have to use a busy loop
     if(transfer_dir == TRANSFER_WRITE)
         goto write_wait;
 
