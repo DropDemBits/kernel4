@@ -216,7 +216,6 @@ void kmain()
     tty = kmalloc(sizeof(tty_dev_t));
     tty_init(tty, 80, 25, kmalloc(80*25*2), 80*25*2, NULL);
 
-    hal_enable_interrupts_raw();
     while(1)
     {
         sched_lock();

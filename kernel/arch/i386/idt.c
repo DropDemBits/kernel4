@@ -143,11 +143,6 @@ static void default_exception(struct intr_stack *frame)
     kpanic_intr(frame, fault_names[frame->int_num]);
 }
 
-void irq_common(struct intr_stack *frame)
-{
-    ic_eoi(frame->int_num - 32);
-}
-
 void isr_common(struct intr_stack *frame)
 {
     if(function_table[frame->int_num].function != KNULL)
@@ -172,15 +167,8 @@ void setup_idt()
         function_table[i].parameters = NULL;
     }
 
-    // IRQs
-    for(int i = 32; i < 16; i++)
-    {
-        function_table[i].function = irq_common;
-        function_table[i].parameters = NULL;
-    }
-
     // The rest of the handlers
-    for(int i = 48; i < 256; i++)
+    for(int i = 32; i < 256; i++)
     {
         function_table[i].function = KNULL;
         function_table[i].parameters = NULL;

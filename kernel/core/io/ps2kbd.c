@@ -102,7 +102,6 @@ static void ps2_keyboard_isr()
         }
     }
     
-    ic_eoi(ps2_device_irqs()[kbd_device]);
     taskswitch_enable();
 }
 

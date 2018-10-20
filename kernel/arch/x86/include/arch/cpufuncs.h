@@ -1,6 +1,13 @@
 #ifndef __CPUFUNCS_H__
 #define __CPUFUNCS_H__ 1
 
+// Typedefs
+#if defined(__x86_64__)
+typedef uint64_t cpu_flags_t;
+#else
+typedef uint32_t cpu_flags_t;
+#endif
+
 // Memory barriers (SMP-only)
 #ifdef _ENABLE_SMP_
 inline void membar_read()
@@ -65,9 +72,9 @@ inline void hal_enable_interrupts(uint64_t flags)
     asm volatile("push %%rax\n\tpopfq"::"a"(flags));
 }
 
-inline uint64_t hal_disable_interrupts()
+inline cpu_flags_t hal_disable_interrupts()
 {
-    uint64_t flags = 0;
+    cpu_flags_t flags = 0;
     asm volatile("pushfq\n\tpopq %%rax":"=a"(flags));
     asm volatile("cli");
     return flags;
@@ -78,12 +85,12 @@ inline void hal_enable_interrupts(uint64_t flags)
     asm volatile("push %%eax\n\tpopf"::"a"((uint32_t)flags));
 }
 
-inline uint64_t hal_disable_interrupts()
+inline cpu_flags_t hal_disable_interrupts()
 {
-    uint32_t flags = 0;
+    cpu_flags_t flags = 0;
     asm volatile("pushf\n\tpopl %%eax":"=a"(flags));
     asm volatile("cli");
-    return (uint64_t)flags;
+    return flags;
 }
 #endif
 

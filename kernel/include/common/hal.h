@@ -73,12 +73,8 @@ typedef void (*ic_unmask_func)(uint8_t irq);
 typedef bool (*ic_spurious_func)(uint8_t irq);
 typedef void (*ic_eoi_func)(uint8_t irq);
 
-typedef int (*ic_alloc_func)(uint8_t irq);
-typedef int (*ic_free_func)(uint8_t irq);
+typedef void (*ic_free_func)(struct irq_handler* handler);
 typedef int (*ic_handle_func)(uint8_t irq, irq_function_t handler);
-
-typedef uint32_t (*ic_get_mask_func)(void);
-typedef uint32_t (*ic_get_serviced_func)(void);
 
 struct ic_dev
 {
@@ -89,11 +85,8 @@ struct ic_dev
     ic_unmask_func unmask;
     ic_spurious_func is_spurious;
     ic_eoi_func eoi;
-    ic_alloc_func alloc_irq;
     ic_free_func free_irq;
     ic_handle_func handle_irq;
-    ic_get_mask_func get_mask;
-    ic_get_serviced_func get_serviced;
 };
 
 enum irq_type
@@ -104,12 +97,20 @@ enum irq_type
     MSIX
 };
 
+enum irq_trigger
+{
+    EDGE,
+    LEVEL,
+};
+
 struct irq_handler
 {
     struct irq_handler* next;
+    struct ic_dev* ic;
     irq_function_t function;
-    enum irq_type type;
-    uint8_t irq;
+    enum irq_type handler_type;
+    enum irq_trigger trigger_type;
+    uint8_t interrupt;
 };
 
 void hal_init();
@@ -132,14 +133,6 @@ struct ic_dev* hal_get_ic();
 void ic_mask(uint16_t irq);
 void ic_unmask(uint16_t irq);
 bool ic_check_spurious(uint16_t irq);
-
-/**
- * @brief  Sends an end of interrupt
- * @note   This should only be called from inside an irq_handler
- * @param  irq: The irq to handle
- * @retval None
- */
-void ic_eoi(uint8_t irq);
 
 /**
  * @brief  Handles an IRQ.

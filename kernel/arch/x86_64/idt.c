@@ -148,11 +148,6 @@ static void default_exception(struct intr_stack *frame)
     kpanic_intr(frame, fault_names[frame->int_num]);
 }
 
-void irq_common(struct intr_stack *frame)
-{
-    ic_eoi(frame->int_num - 32);
-}
-
 void isr_common(struct intr_stack *frame)
 {
     if(function_table[frame->int_num].function != KNULL)

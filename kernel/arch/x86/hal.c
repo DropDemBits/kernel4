@@ -35,8 +35,6 @@
     if(klog_is_init()) {klog_logln(0, FATAL, msg, __VA_ARGS__);} \
     else {klog_early_logln(FATAL, msg, __VA_ARGS__);}
 
-extern void irq_common(struct intr_stack *frame);
-
 static bool use_apic = false;
 static size_t native_flags = 0;
 static struct heap_info heap_context = {
@@ -221,11 +219,6 @@ void ic_unmask(uint16_t irq)
 bool ic_check_spurious(uint16_t irq)
 {
     return hal_get_ic()->is_spurious(irq);
-}
-
-void ic_eoi(uint8_t irq)
-{
-    hal_get_ic()->eoi(irq);
 }
 
 struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_t handler)

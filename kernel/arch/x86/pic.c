@@ -56,9 +56,25 @@
 #define OCW3_SSMM 0x20 // Set Special Mask
 #define OCW3_ESMM 0x40 // Enable writes to Special Mask
 
-static void irq_wrapper(struct stack_state* state, void* params)
+#define NR_PIC_IRQS 16
+
+static struct irq_handler* handler_list[NR_PIC_IRQS];
+
+static void irq_wrapper(struct intr_stack* state, void* params)
 {
-    ((irq_function_t)params)(pic_get_dev());
+    uint8_t irq = (uint8_t)(state->int_num) - 32;
+    pic_mask(irq);
+    pic_eoi(irq);
+
+    struct irq_handler* node = handler_list[irq];
+    while(node != NULL)
+    {
+        if(node->function(pic_get_dev()) == IRQ_HANDLED)
+            break;
+        node = node->next;
+    }
+
+    pic_unmask(irq);
 }
 
 uint32_t pic_read_irr()
@@ -110,6 +126,10 @@ void pic_setup(uint8_t irq_base)
     // Restore Masks
     outb(PIC1_DATA, mask_a);
     outb(PIC2_DATA, mask_b);
+
+    // Clear all interrupt handlers
+    for(int i = 0; i < NR_PIC_IRQS; i++)
+        handler_list[i] == NULL;
 }
 
 void pic_disable()
@@ -170,24 +190,75 @@ void pic_eoi(uint8_t irq)
     outb(PIC1_CMD, OCW2_EOI);
 }
 
-int pic_alloc_irq(uint8_t irq)
+void pic_free_irq(struct irq_handler* handler)
 {
-    return 0;
+    // As we are modifying the interrupt list, encapsulate inside of a disable-enable interrupt pair
+    cpu_flags_t flags = hal_disable_interrupts();
+
+    if(handler_list[handler->interrupt] == handler)
+    {
+        // Remove from head of list
+        handler_list[handler->interrupt] = NULL;
+    }
+    else
+    {
+        // Remove from inside handler list (iterate through as we have no backlinks)
+        struct irq_handler* prev = handler_list[handler->interrupt];
+
+        while(prev->next != NULL && prev->next != handler)
+            prev = prev->next;
+        
+        // Remove node
+        prev->next = handler->next;
+    }
+
+    // Release it
+    kfree(handler);
+
+    hal_enable_interrupts(flags);
 }
 
-int pic_free_irq(uint8_t irq)
+struct irq_handler* pic_handle_irq(uint8_t irq, irq_function_t handler)
 {
-    return 0;
-}
+    // Return null on out of range
+    if(irq >= NR_PIC_IRQS)
+        return NULL;
+    
+    struct irq_handler* irq_handler = kmalloc(sizeof(struct irq_handler));
+    if(irq_handler == NULL)
+        return NULL;
 
-int pic_handle_irq(uint8_t irq, irq_function_t handler)
-{
+    irq_handler->next = NULL;
+    irq_handler->interrupt = irq;
+    irq_handler->function = handler;
+    irq_handler->ic = pic_get_dev();
+    irq_handler->handler_type = LEGACY;
+    irq_handler->trigger_type = EDGE;
+
     isr_add_handler(irq + IRQ_BASE, irq_wrapper, handler);
 
+    if(handler_list[irq] == NULL)
+    {
+        // Beginning of a new list, set the head
+        handler_list[irq] = irq_handler;
+    }
+    else
+    {
+        // Append to end of list
+        struct irq_handler* tail = handler_list[irq];
+
+        while(tail->next != NULL)
+            tail = tail->next;
+
+        tail->next = irq_handler;
+    }
+
+    // Unmask IRQ line (and unmask slave if need be)
     pic_unmask(irq);
     if(irq >= 8)
         pic_unmask(2);
-    return 0;
+    
+    return irq_handler;
 }
 
 struct ic_dev pic_dev = {
@@ -197,11 +268,8 @@ struct ic_dev pic_dev = {
     .unmask = pic_unmask,
     .is_spurious = pic_check_spurious,
     .eoi = pic_eoi,
-    .alloc_irq = pic_alloc_irq,
     .free_irq = pic_free_irq,
     .handle_irq = pic_handle_irq,
-    .get_mask = pic_read_imr,
-    .get_serviced = pic_read_irr,
 };
 
 struct ic_dev* pic_get_dev()

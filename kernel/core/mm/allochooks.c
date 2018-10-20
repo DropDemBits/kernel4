@@ -79,7 +79,7 @@ void heap_init()
  */
 int liballoc_lock()
 {
-    // TODO: Disable preemption
+    // TODO: Do something with spinlocks when doing SMP
     //preempt_disable();
     flags = hal_disable_interrupts();
     return 0;
@@ -93,7 +93,7 @@ int liballoc_lock()
  */
 int liballoc_unlock()
 {
-    // TODO: Enable preemption
+    // TODO: Do something with spinlocks when doing SMP
     //preempt_enable();
     hal_enable_interrupts(flags);
     return 0;

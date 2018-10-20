@@ -153,6 +153,7 @@ struct pci_dev* pci_get_dev(uint8_t bus, uint8_t device, uint8_t function)
     dev->irq_pin = irq_pin;
     dev->irq_handler = NULL;
     dev->msi_handlers = NULL;
+    dev->msix_handlers = NULL;
 
     return dev;
 }
@@ -176,6 +177,7 @@ int pci_alloc_irq(struct pci_dev* dev, uint8_t num_irqs, uint32_t flags)
         irqs_alloc++;
     }
 
+    dev->num_irqs = irqs_alloc;
     return irqs_alloc;
 }
 
@@ -184,17 +186,17 @@ void pci_handle_irq(struct pci_dev* dev, uint8_t irq_handle, irq_function_t hand
     if(dev == KNULL)
         return;
 
-    if(irq_handle == 0 && dev->irq_handler != NULL) // LEGACY IRQ_HANDLE
+    if(irq_handle == IRQ_HANDLE_LEGACY && dev->irq_handler != NULL)
         dev->irq_handler = ic_irq_handle(dev->irq_pin, LEGACY, handler);
 }
 
 void pci_unhandle_irq(struct pci_dev* dev, uint8_t irq_handle)
 {
-    if(irq_handle == 0)
+    if(irq_handle == IRQ_HANDLE_LEGACY)
         ic_irq_free(dev->irq_handler);
 }
 
 void pci_free_irq(struct pci_dev* dev)
 {
-    pci_unhandle_irq(dev, 0);
+    pci_unhandle_irq(dev, IRQ_HANDLE_LEGACY);
 }

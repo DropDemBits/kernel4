@@ -49,19 +49,9 @@ bool handling_timer = false;
 
 static irq_ret_t pit_handler(struct ic_dev* dev)
 {
-    // We EOI here as sched_timer may switch to another task that is the only one and never returns.
-    ic_eoi(0);
-
-    // Temporary(?) workaround for re-entrant timer interrupts
-    // Return if we are currently handling a timer interrupt
-    if(handling_timer)
-        return;
-    
-    handling_timer = true;
     struct pit_timer_dev* timer = &(timer_devs[0]);
     timer->raw_dev.counter += timer->raw_dev.resolution;
     timer_broadcast_update(timer->raw_dev.id);
-    handling_timer = false;
 
     return IRQ_HANDLED;
 }

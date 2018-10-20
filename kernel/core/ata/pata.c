@@ -100,13 +100,11 @@ static void pata_irq_handler()
         inb(current_device->command_base + ATA_STATUS);
         // TODO: Unblock thread currently using ata subsystem
         irq_fired = true;
-        ic_eoi(current_device->dev.interrupt);
     }
     else
     {
         klog_logln(ata_subsys, WARN, "IRQ fired outside of command");
         // The PICs only need an eoi, not a specific IRQ eoi
-        ic_eoi(15);
     }
 }
 

@@ -35,6 +35,13 @@
 #define IRQ_MSIX            0x00000008
 #define IRQ_ALL             (IRQ_LEGACY | IRQ_INTX | IRQ_MSI | IRQ_MSIX)
 
+// Constant IRQ handles
+#define IRQ_HANDLE_LEGACY   0
+#define IRQ_HANDLE_INTA     1
+#define IRQ_HANDLE_INTB     2
+#define IRQ_HANDLE_INTC     3
+#define IRQ_HANDLE_INTD     4
+
 // PCI Config Space Access (Including ECAM)
 // If the offset is outside of the accessable space, the read functions return 0xFF / 0xFFFF / 0xFFFFFFFF respectively
 extern uint32_t pci_read_raw(uint16_t bus, uint8_t device, uint8_t function, uint16_t reg, uint8_t len);
@@ -71,7 +78,10 @@ struct pci_dev
 
     uint8_t num_irqs;
     struct irq_handler* irq_handler;
+    uint8_t num_msi_intrs;
     struct irq_handler** msi_handlers;
+    uint8_t num_msix_intrs;
+    struct irq_handler** msix_handlers;
 };
 
 void pci_init();
@@ -95,9 +105,47 @@ inline void pci_write(struct pci_dev* dev, uint16_t reg, uint8_t len, uint32_t d
     pci_write_raw(dev->bus, dev->device, dev->function, reg, len, data);
 }
 
+/**
+ * @brief  Allocates the specified number of interrupt handlers.
+ *         num_irqs represents the total number of interrupts to allocate.
+ *         For example: to allocate 1 INTX interrupt and 4 MSIX interrupt handlers, the following code applies:
+ *             int alloc = pci_alloc_irq(dev, 5, IRQ_INTX | IRQ_MSIX);
+ *         The allocated number of interrupts can be less than the requested number of interrupts for a few reasons:
+ *             - The device does not support the specified types
+ *             - The device does not have the requested number of interrupts
+ * @note   x86 Specific: INTX is prefered over LEGACY when the IOAPIC is active, and vise-versa when the PIC is active
+ * @param  dev: The PCI device to allocate IRQs.
+ * @param  num_irqs: The requested number of interrupts allocated.
+ * @param  flags: The type of interrupts to allocate (LEGACY, INTX, MSI, MSIX). Can be combined to form a bitmask.
+ * @retval The actual number of interrupts allocated.
+ */
 int pci_alloc_irq(struct pci_dev* dev, uint8_t num_irqs, uint32_t flags);
+
+/**
+ * @brief  Handles the specified irq with the actual handle
+ * @note   IRQ numbers won't necessarily correlate with actual IRQ lines.
+ * @param  dev: The PCI device associated with the handler
+ * @param  irq_handle: The IRQ to handle (LEGACY: 0, INTX: 1, 2, 3, 4, MSI(X): 5+)
+ * @param  handler: The handle associated with the IRQ
+ * @retval None
+ */
 void pci_handle_irq(struct pci_dev* dev, uint8_t irq_handle, irq_function_t handler);
+
+/**
+ * @brief  Unhandles the specified interrupt
+ * @note   
+ * @param  dev: The PCI device associated with the handler
+ * @param  irq_handle: The interrupt to stop handling
+ * @retval None
+ */
 void pci_unhandle_irq(struct pci_dev* dev, uint8_t irq_handle);
+
+/**
+ * @brief  Frees all of the allocated IRQs
+ * @note   pci_unhandle_irq will automatically be called for each handled IRQ
+ * @param  dev: The PCI device to free the handlers from
+ * @retval None
+ */
 void pci_free_irq(struct pci_dev* dev);
 
 #endif /* __PCI_H__ */
