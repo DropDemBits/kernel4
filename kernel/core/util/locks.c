@@ -1,5 +1,6 @@
 #include <common/sched/sched.h>
 #include <common/util/locks.h>
+#include <arch/cpufuncs.h>
 
 semaphore_t* semaphore_create(long max_count)
 {
@@ -27,13 +28,13 @@ void semaphore_destroy(semaphore_t* semaphore)
     taskswitch_enable();
 }
 
-void semaphore_acquire(semaphore_t* semapore)
+void semaphore_acquire(semaphore_t* semaphore)
 {
     taskswitch_disable();
-    if(semapore->count < semapore->max_count)
+    if(semaphore->count < semaphore->max_count)
     {
         // Can acquire it now
-        semapore->count++;
+        semaphore->count++;
     }
     else
     {
@@ -41,7 +42,7 @@ void semaphore_acquire(semaphore_t* semapore)
         // sched_active_thread()->next;
 
         // Enqueue onto wait queue
-        sched_queue_thread_to(sched_active_thread(), &(semapore->waiting_threads));
+        sched_queue_thread_to(sched_active_thread(), &(semaphore->waiting_threads));
 
         // Use the general-purpose suspended state
         sched_block_thread(STATE_SUSPENDED);
@@ -49,21 +50,21 @@ void semaphore_acquire(semaphore_t* semapore)
     taskswitch_enable();
 }
 
-void semaphore_release(semaphore_t* semapore)
+void semaphore_release(semaphore_t* semaphore)
 {
     taskswitch_disable();
-    if(semapore->waiting_threads.queue_head != KNULL)
+    if(semaphore->waiting_threads.queue_head != KNULL)
     {
         // There is a waiting thread
         // We don't need to decrement the count, as it will be immediately re-acquired
-        thread_t* thread = semapore->waiting_threads.queue_head;
-        sched_queue_remove(thread, &(semapore->waiting_threads));
+        thread_t* thread = semaphore->waiting_threads.queue_head;
+        sched_queue_remove(thread, &(semaphore->waiting_threads));
         sched_unblock_thread(thread);
     }
     else
     {
         // No-one else is waiting for the lock, so decrement
-        semapore->count--;
+        semaphore->count--;
     }
     taskswitch_enable();
 }
@@ -98,3 +99,34 @@ bool mutex_can_acquire(mutex_t* mutex)
     // Simplifies to the inverted count
     return !mutex->count;
 }
+
+#ifdef _ENABLE_SMP_
+spinlock_t* spinlock_create()
+{
+    spinlock_t* lock = kmalloc(sizeof(lock));
+    lock->value = 0;
+    return lock;
+}
+
+void spinlock_destroy(spinlock_t* spinlock)
+{
+    kfree(spinlock);
+}
+
+void spinlock_acquire(spinlock_t* spinlock)
+{
+    uint32_t value = 1;
+    while(value)
+        value = lock_cmpxchg(&spinlock->value, 0, 1);
+}
+
+void spinlock_release(spinlock_t* spinlock)
+{
+    lock_xchg(&spinlock->value, 0);
+}
+
+bool spinlock_can_acquire(spinlock_t* spinlock)
+{
+    return lock_read(&spinlock->value) == 0;
+}
+#endif /* _ENABLE_SMP_ */
