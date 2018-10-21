@@ -7,6 +7,9 @@
 #define KNULL (void*)0xDEADBEEFUL
 #define KMEM_POISON 0xFEEE1UL
 
+// Forward decleration
+struct intr_stack;
+
 typedef uint32_t uintptr_t;
 // typedef uint32_t size_t;
 typedef int32_t ssize_t;

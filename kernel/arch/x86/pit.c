@@ -47,7 +47,7 @@ struct pit_timer_dev
 struct pit_timer_dev timer_devs[2];
 bool handling_timer = false;
 
-static irq_ret_t pit_handler(struct ic_dev* dev)
+static irq_ret_t pit_handler(struct irq_handler* handler)
 {
     struct pit_timer_dev* timer = &(timer_devs[0]);
     timer->raw_dev.counter += timer->raw_dev.resolution;

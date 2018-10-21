@@ -34,12 +34,10 @@ void mutex_acquire(mutex_t* mutex);
 void mutex_release(mutex_t* mutex);
 bool mutex_can_acquire(mutex_t* semapore);
 
-#ifdef _ENABLE_SMP_ // Spinlocks are SMP only
 spinlock_t* spinlock_create();
 void spinlock_destroy(spinlock_t* spinlock);
 void spinlock_acquire(spinlock_t* spinlock);
 void spinlock_release(spinlock_t* spinlock);
 bool spinlock_can_acquire(spinlock_t* spinlock);
-#endif
 
 #endif

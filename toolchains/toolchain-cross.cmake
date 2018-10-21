@@ -14,6 +14,14 @@ set(CMAKE_FIND_ROOT_PATH ${CMAKE_SOURCE_DIR}/sysroot/usr/local/)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 
+# Placeholders until we get our toolchain up and running
+add_definitions(-D__K4OS__=1)
+if(TARGET_ARCH STREQUAL "x86_64")
+    set(CMAKE_SIZEOF_VOID_P 8)
+else()
+    set(CMAKE_SIZEOF_VOID_P 4)
+endif()
+
 set(CMAKE_C_FLAGS_INIT "-ffreestanding -nostdlib")
 set(CMAKE_CXX_FLAGS_INIT "-ffreestanding -nostdlib")
 

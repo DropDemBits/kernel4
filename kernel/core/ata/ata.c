@@ -3,7 +3,7 @@
 #include <common/io/pci.h>
 #include <common/util/kfuncs.h>
 
-#ifdef __x86__
+#ifdef __X86__
 extern void pata_init(uint16_t ata_subsys);
 #else
 void pata_init(uint16_t ata_subsys) {}

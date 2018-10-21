@@ -31,6 +31,8 @@ extern uint32_t mb_mem_upper;
 extern uint32_t mb_mods_count;
 extern uint32_t mb_mods_addr;
 
+extern uint64_t mb_rsdp_addr;
+
 void multiboot_parse();
 void multiboot_reclaim();
 

@@ -69,7 +69,7 @@ static void irq_wrapper(void* params, uint8_t int_num)
     struct irq_handler* node = handler_list[irq];
     while(node != NULL)
     {
-        if(node->function(pic_get_dev()) == IRQ_HANDLED)
+        if(node->function(node) == IRQ_HANDLED)
             break;
         node = node->next;
     }

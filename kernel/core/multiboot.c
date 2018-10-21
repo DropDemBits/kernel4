@@ -37,6 +37,25 @@ struct multiboot_tags_header
     uint32_t reserved;
 };
 
+struct acpi_rsdp
+{
+    char Sig[3];
+    uint8_t Checksum;
+    char OEMID[6];
+    uint8_t Version;
+    uint32_t RsdtAddress;
+};
+
+struct acpi_xsdp
+{
+    struct acpi_rsdp RSDP;
+
+    uint32_t Length;
+    uint64_t XsdtAddress;
+    uint8_t ExtendedChecksum;
+    uint8_t Rsvd[3];
+};
+
 void* multiboot_ptr = (void*)0;
 size_t multiboot_magic = 0;
 // 4KiB aligned pointer
@@ -52,6 +71,9 @@ uint32_t mb_mem_upper;
 uint32_t initrd_start = 0xDEADBEEF;
 uint32_t initrd_size = 0;
 
+// RSDP Physical Location
+uint64_t mb_rsdp_addr = 0;
+
 /* Forward Declerations */
 void parse_mb1();
 void parse_mb2();
@@ -63,6 +85,42 @@ const char* region_names[] = {
     "ACPI NVS",
     "Bad RAM",
 };
+
+static uint32_t find_rsdp(uint32_t search_base, uint32_t search_limit)
+{
+#ifdef __X86__
+    uint32_t address = search_base & ~0xF;
+    const char* rsdp_sig = "RSD PTR ";
+
+    while(address < search_limit)
+    {
+        uint32_t* sig = (uint32_t*)address;
+        if(memcmp(rsdp_sig, sig, 8) == 0)
+        {
+            // Check csum
+            struct acpi_xsdp* xsdp = (struct acpi_xsdp*)address;
+            uint8_t* xsdp_bytes = (uint8_t*)address;
+            uint8_t csum = 0;
+
+            for(int i = 0; i < sizeof(struct acpi_rsdp); i++)
+                csum += xsdp_bytes[i];
+
+            if(xsdp->RSDP.Version >= 2)
+            {
+                for(int i = sizeof(struct acpi_rsdp); i < sizeof(struct acpi_xsdp); i++)
+                    csum += xsdp_bytes[i];
+            }
+
+            if(!csum)
+                return address;
+        }
+        
+        // Address will always be 16 byte aligned
+        address += 16;
+    }
+#endif
+    return 0;
+}
 
 void multiboot_parse()
 {
@@ -185,6 +243,35 @@ void parse_mb1()
             mmap = (mb_mmap_t*) ((uintptr_t)mmap + mmap->size + sizeof(mmap->size));
         }
     }
+
+#ifdef __X86__
+    // Only find the RSDP on x86 machines
+    klog_early_logln(INFO, "Searching for RSDP...");
+    uint32_t address = 0;
+
+    // Begin with searching in the EBDA
+    uint32_t ebda_seg = *((uint16_t*)0x40E) << 4;
+    klog_early_logln(INFO, "- in EBDA (0x%05p)", ebda_seg);
+    address = find_rsdp(ebda_seg, ebda_seg + 1024);
+
+    if(address == 0)
+    {
+        // Search in the BIOS ROM region (0xE0000 - 0xFFFFF)
+        klog_early_logln(INFO, "- in BIOS ROM");
+        address = find_rsdp(0xE0000, 0xFFFFF);
+    }
+
+    if(address != 0)
+    {
+        klog_early_logln(INFO, "Found RSDP @ 0x%05p", address);
+        mb_rsdp_addr = (uint64_t)address;
+    }
+    else
+    {
+        klog_early_logln(INFO, "Unable to find RSDP (Pre-ACPI machine?)");
+    }
+
+#endif
 }
 
 /**
@@ -256,6 +343,14 @@ void parse_mb2()
                 break;
             case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME:
                 klog_early_logln(INFO, "Loaded by bootloader \"%s\"", ((struct multiboot_tag_string*)tag)->string);
+                break;
+            case MULTIBOOT_TAG_TYPE_ACPI_OLD:
+                if(mb_rsdp_addr != 0)
+                    break;
+            case MULTIBOOT_TAG_TYPE_ACPI_NEW:
+                // Copy address of the RSDP copy
+                mb_rsdp_addr = (uint64_t)(tag+1);
+                klog_early_logln(INFO, "Found RSDP @ %p", mb_rsdp_addr);
                 break;
             default:
                 break;

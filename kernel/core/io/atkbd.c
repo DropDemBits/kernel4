@@ -77,7 +77,7 @@ static bool send_command(uint8_t command, uint8_t subcommand)
     return true;
 }
 
-static void at_keyboard_isr()
+static irq_ret_t at_keyboard_isr(struct irq_handler* handler)
 {
     taskswitch_disable();
     uint8_t data = ps2_device_read(kbd_device, false);
@@ -101,6 +101,7 @@ static void at_keyboard_isr()
     }
     
     taskswitch_enable();
+    return IRQ_HANDLED;
 }
 
 static void keycode_decoder()

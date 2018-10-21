@@ -31,9 +31,12 @@
                 "${workspaceRoot}/kernel/arch/x86/include",
                 "${workspaceRoot}/kernel/arch/x86_64/include",
                 "${workspaceRoot}/kernel/arch/i386/include",
-                "${workspaceRoot}/libk/include"
+                "${workspaceRoot}/libk/include",
+                "${workspaceFolder}/acpi/source/include"
             ],
-            "defines": [],
+            "defines": [
+                "__K4OS__"
+            ],
             "intelliSenseMode": "clang-x64",
             "browse": {
                 "path": [

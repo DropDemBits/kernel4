@@ -29,12 +29,12 @@
 
 // Forward Decleration
 struct timer_dev;
-struct ic_dev;
+struct irq_handler;
 struct intr_stack;
 
 typedef void (*timer_handler_t)(struct timer_dev* dev);
 typedef int irq_ret_t;
-typedef irq_ret_t (*irq_function_t)(struct ic_dev* dev);
+typedef irq_ret_t (*irq_function_t)(struct irq_handler* handler);
 
 struct heap_info
 {

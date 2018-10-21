@@ -19,6 +19,7 @@
  */
 
 #include <common/types.h>
+#include <common/hal.h>
 
 #ifndef __PS2_H__
 #define __PS2_H__
@@ -48,7 +49,7 @@ struct ps2_device
 };
 
 void ps2_init();
-void ps2_handle_device(int device, isr_t handler);
+void ps2_handle_device(int device, irq_function_t handler);
 uint8_t ps2_device_read(int device, bool wait_for);
 void ps2_device_write(int device, bool wait_for, uint8_t data);
 enum ps2_devtype ps2_device_get_type(int device);

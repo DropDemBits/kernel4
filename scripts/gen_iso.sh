@@ -9,6 +9,7 @@ echo "Creating ISO for target $1"
 mkdir -p isodir/boot/grub/
 cat > isodir/boot/grub/grub.cfg << EOF
 set timeout=0
+set default="1"
 menuentry "K4 (Multiboot)" {
     multiboot "/k4-$1.kern"
     module "/initrd.tar" "initrd.tar"
@@ -26,7 +27,7 @@ rm -f isodir/k4-*.kern
 
 set -e
 #cp kernel/bin/$1/k4-$1.kern isodir/
-cp build/$1/k4-$1.kern isodir/
+cp build/$1/kernel/k4-$1.kern isodir/
 cp initrd/initrd/initrd.tar isodir/
 
 grub-mkrescue --product-name="DURRR" isodir -o k4-$1.iso

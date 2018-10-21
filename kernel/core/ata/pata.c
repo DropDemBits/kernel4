@@ -92,7 +92,7 @@ static struct ata_dev** device_list = NULL;
 static bool volatile irq_fired = false;
 static uint16_t ata_subsys = 0;
 
-static void pata_irq_handler()
+static irq_ret_t pata_irq_handler(struct irq_handler* handler)
 {
     if(current_device != KNULL && current_device->dev.processing_command)
     {
@@ -104,8 +104,9 @@ static void pata_irq_handler()
     else
     {
         klog_logln(ata_subsys, WARN, "IRQ fired outside of command");
-        // The PICs only need an eoi, not a specific IRQ eoi
     }
+
+    return IRQ_HANDLED;
 }
 
 // TODO: Merge with main ATA driver file

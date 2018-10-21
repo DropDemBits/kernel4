@@ -76,7 +76,7 @@ bool semaphore_can_acquire(semaphore_t* semaphore)
 
 mutex_t* mutex_create()
 {
-    return semaphore_create(1);
+    return (mutex_t*)semaphore_create(1);
 }
 
 void mutex_destroy(mutex_t* mutex)
@@ -100,7 +100,6 @@ bool mutex_can_acquire(mutex_t* mutex)
     return !mutex->count;
 }
 
-#ifdef _ENABLE_SMP_
 spinlock_t* spinlock_create()
 {
     spinlock_t* lock = kmalloc(sizeof(lock));
@@ -129,4 +128,3 @@ bool spinlock_can_acquire(spinlock_t* spinlock)
 {
     return lock_read(&spinlock->value) == 0;
 }
-#endif /* _ENABLE_SMP_ */
