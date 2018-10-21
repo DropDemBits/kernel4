@@ -107,9 +107,9 @@ void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
     size_t num_pages = (Length + 0xFFF) & ~0xFFF;
 
     for(size_t off = 0; off < num_pages; off += 0x1000)
-        mmu_map_direct(dynamic_base + off, PhysicalAddress + off);
+        mmu_map_direct(dynamic_base + off, (PhysicalAddress & ~0xFFF) + off);
 
-    return (void*)dynamic_base;
+    return (void*)(dynamic_base + (PhysicalAddress & 0xFFF));
 }
 
 void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)

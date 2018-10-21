@@ -192,8 +192,6 @@ void kmain()
     uart_init();
     klog_early_logln(INFO, "Parsing Multiboot info");
     multiboot_parse();
-    // Init Early ACPI here as mmu_init destroys the identity mapping
-    acpi_early_init();
     klog_early_logln(INFO, "Initialising MM");
     mm_init();
     mmu_init();
@@ -201,6 +199,7 @@ void kmain()
     fb_init();
     multiboot_reclaim();
     main_fb_init();
+    acpi_early_init();
 
     klog_early_logln(INFO, "Initialising HAL");
     hal_init();
