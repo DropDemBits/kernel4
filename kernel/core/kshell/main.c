@@ -93,8 +93,11 @@ static void print_log(uint16_t log_level)
             uint64_t timestamp_secs = entry->timestamp / 1000000000;
             uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
 
-            sprintf(buffer, "[%3llu.%05llu] (%4s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
-            tty_puts(tty, buffer);
+            if(!(entry->flags & KLOG_FLAG_NO_HEADER))
+            {
+                sprintf(buffer, "[%3llu.%05llu] (%4s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+                tty_puts(tty, buffer);
+            }
 
             for(uint16_t i = 0; i < entry->length; i++)
             {

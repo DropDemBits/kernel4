@@ -1,6 +1,6 @@
 #include <string.h>
 
-void* strncopy(char* dest, const char* src, size_t num)
+void* strncpy(char* dest, const char* src, size_t num)
 {
     if(dest == src) return dest;
     

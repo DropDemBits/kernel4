@@ -33,6 +33,7 @@ stdlib/lltoa.o \
 stdlib/ulltoa.o \
 stdlib/atoi.o \
 stdlib/atol.o \
+stdlib/strtoul.o \
 string/memcmp.o \
 string/memcpy.o \
 string/memmove.o \
@@ -46,6 +47,10 @@ string/strnicmp.o \
 string/strlen.o \
 string/strtok_r.o \
 string/strspn.o \
+string/strupr.o \
+string/strstr.o \
+string/strcat.o \
+string/strncat.o \
 ctype/ctype.o \
 
 BIN_PREFIX := bin/$(TARGET_ARCH)/

@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <common/acpi.h>
 #include <common/hal.h>
 #include <common/util/kfuncs.h>
 #include <common/util/klog.h>
@@ -191,6 +192,8 @@ void kmain()
     uart_init();
     klog_early_logln(INFO, "Parsing Multiboot info");
     multiboot_parse();
+    // Init Early ACPI here as mmu_init destroys the identity mapping
+    acpi_early_init();
     klog_early_logln(INFO, "Initialising MM");
     mm_init();
     mmu_init();

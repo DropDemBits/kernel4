@@ -269,22 +269,25 @@ int mmu_map(unsigned long address)
     return retval;
 }
 
-static void mmu_unmap_direct(unsigned long address)
+bool mmu_unmap_direct(unsigned long address)
 {
+    if( get_pml4e_entry(address)->p == 0 ||
+        get_pdpe_entry(address)->p == 0 ||
+        get_pde_entry(address)->p == 0 ||
+        get_pte_entry(address)->p == 0) return false;
+    
     get_pte_entry(address)->p = 0;
     get_pte_entry(address)->rw = 0;
     get_pte_entry(address)->su = 0;
     invlpg(address);
+
+    return true;
 }
 
 void mmu_unmap(unsigned long address)
 {
-    if(    get_pml4e_entry(address)->p == 0 ||
-        get_pdpe_entry(address)->p == 0 ||
-        get_pde_entry(address)->p == 0 ||
-        get_pte_entry(address)->p == 0) return;
-
-    mmu_unmap_direct(address);
+    if(!mmu_unmap_direct(address))
+        return;
     mm_free(get_pte_entry(address)->frame << 12, 1);
     get_pte_entry(address)->frame = KMEM_POISON;
 }

@@ -20,6 +20,7 @@ void exit(int status);
 extern char* itoa (int value, char * str, int base);
 extern char* lltoa (long long value, char * str, int base);
 extern char* ulltoa (unsigned long long value, char * str, int base);
+unsigned long int strtoul (const char* str, char** endptr, int base);
 
 extern int atoi (const char * str);
 extern long int atol (const char * str);

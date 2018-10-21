@@ -1,6 +1,5 @@
 
 include_directories(include)
-include_directories(${CMAKE_SOURCE_DIR}/sysroot/usr/local/include)
 
 add_definitions(-D__KERNEL__)
 
@@ -33,7 +32,8 @@ list(APPEND SOURCES
     core/ata/pata.c
     core/ata/ata.c
     core/kshell/main.c
-    core/acpi/osl.c)
+    core/acpi/osl.c
+    core/acpi/acpi.c)
 
 if(TARGET_ARCH STREQUAL "i386" OR TARGET_ARCH STREQUAL "x86_64")
     include(arch/x86/CMakeLists.txt)
@@ -43,9 +43,10 @@ endif()
 
 # Misc.
 set(TARGET_NAME k4-kernel)
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 
 add_executable(${TARGET_NAME} ${SOURCES})
 
 set_target_properties(${TARGET_NAME} PROPERTIES OUTPUT_NAME k4-${TARGET_ARCH}.kern)
 set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS "-T ${LINKER_FILE} ${LINKER_FLAGS}")
-target_link_libraries(${TARGET_NAME} libk "-lgcc")
+target_link_libraries(${TARGET_NAME} acpi libk "-lgcc")

@@ -36,6 +36,7 @@ void mmu_init();
 int mmu_map(unsigned long address);
 int mmu_map_direct(unsigned long address, unsigned long mapping);
 void mmu_unmap(unsigned long address);
+bool mmu_unmap_direct(unsigned long address);
 bool mmu_is_usable(unsigned long address);
 void mmu_switch_address_space(uint64_t page_context_base);
 paging_context_t* mmu_create_context();

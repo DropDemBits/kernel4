@@ -22,6 +22,7 @@
 #include <stdio.h>
 
 #include <common/types.h>
+#include <common/acpi.h>
 #include <common/multiboot.h>
 #include <common/multiboot2.h>
 #include <common/mm/mm.h>
@@ -90,12 +91,11 @@ static uint32_t find_rsdp(uint32_t search_base, uint32_t search_limit)
 {
 #ifdef __X86__
     uint32_t address = search_base & ~0xF;
-    const char* rsdp_sig = "RSD PTR ";
 
     while(address < search_limit)
     {
         uint32_t* sig = (uint32_t*)address;
-        if(memcmp(rsdp_sig, sig, 8) == 0)
+        if(ACPI_VALIDATE_RSDP_SIG(sig))
         {
             // Check csum
             struct acpi_xsdp* xsdp = (struct acpi_xsdp*)address;

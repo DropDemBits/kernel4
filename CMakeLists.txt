@@ -16,6 +16,7 @@ add_definitions(-D__${TARGET_ARCH}__=1)
 include_directories("${PROJECT_SOURCE_DIR}/acpi/source/include")
 include_directories("${PROJECT_SOURCE_DIR}/kernel/include")
 include_directories("${PROJECT_SOURCE_DIR}/kernel/arch/${TARGET_ARCH}/include")
+include_directories("${PROJECT_SOURCE_DIR}/sysroot/usr/local/include")
 
 if(TARGET_ARCH STREQUAL "i386" OR TARGET_ARCH STREQUAL "x86_64")
     include_directories("${PROJECT_SOURCE_DIR}/kernel/arch/x86/include")
@@ -42,4 +43,3 @@ set_target_properties(
 add_subdirectory("acpi/")
 
 add_subdirectory("kernel/")
-target_link_libraries(acpi)

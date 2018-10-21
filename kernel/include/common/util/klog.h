@@ -4,6 +4,8 @@
 #ifndef __KLOG_H__
 #define __KLOG_H__ 1
 
+#define KLOG_FLAG_NO_HEADER 0b00000001
+
 enum klog_level
 {
     EOL = 0x0,
@@ -44,7 +46,13 @@ bool klog_is_init();
 // Early-init versions of the methods below
 // All of these will use the subsytem id 0 for "EARLY"
 void klog_early_log(enum klog_level level, const char* format, ...);
+void klog_early_logv(enum klog_level level, const char* format, va_list args);
 void klog_early_logln(enum klog_level level, const char* format, ...);
+void klog_early_loglnv(enum klog_level level, const char* format, va_list args);
+void klog_early_logf(enum klog_level level, uint8_t flags, const char* format, ...);
+void klog_early_logfv(enum klog_level level, uint8_t flags, const char* format, va_list args);
+void klog_early_loglnf(enum klog_level level, uint8_t flags, const char* format, ...);
+void klog_early_loglnfv(enum klog_level level, uint8_t flags, const char* format, va_list args);
 void klog_early_logc(enum klog_level level, const char c);
 
 /**
@@ -60,6 +68,10 @@ void klog_log(uint16_t subsys_id, enum klog_level level, const char* format, ...
 void klog_logv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args);
 void klog_logln(uint16_t subsys_id, enum klog_level level, const char* format, ...);
 void klog_loglnv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args);
+void klog_logf(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, ...);
+void klog_logfv(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, va_list args);
+void klog_loglnf(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, ...);
+void klog_loglnfv(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, va_list args);
 void klog_logc(uint16_t subsys_id, enum klog_level level, const char c);
 
 #endif

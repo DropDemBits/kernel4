@@ -165,9 +165,8 @@
 #define ACPI_CPU_FLAGS  cpu_flags_t
 #define ACPI_UINTPTR_T  uintptr_t
 
-// Uncomment when libk implements the expected functions
-// #define ACPI_USE_SYSTEM_CLIBRARY
-// #define ACPI_USE_STANDARD_HEADERS
+#define ACPI_USE_SYSTEM_CLIBRARY
+#define ACPI_USE_STANDARD_HEADERS
 
 #define ACPI_MUTEX_TYPE             ACPI_OSL_MUTEX
 
@@ -177,6 +176,8 @@
 
 #define COMPILER_DEPENDENT_INT64    int64_t
 #define COMPILER_DEPENDENT_UINT64   uint64_t
+
+#define ACPI_USE_NATIVE_DIVIDE
 
 // Machine/Arch dependent stuff
 #define ACPI_MACHINE_WIDTH          ARCH_BITS

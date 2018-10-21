@@ -205,9 +205,9 @@ int mmu_map(unsigned long address)
     return mmu_map_direct(address, frame);
 }
 
-static bool mmu_unmap_direct(unsigned long address)
+bool mmu_unmap_direct(unsigned long address)
 {
-    if(    get_pde_entry(address)->p == 0 ||
+    if( get_pde_entry(address)->p == 0 ||
         get_pte_entry(address)->p == 0) return false;
 
     get_pte_entry(address)->p = 0;

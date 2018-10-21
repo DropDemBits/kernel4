@@ -113,40 +113,76 @@ uint16_t klog_add_subsystem(char* name)
 
 void klog_early_log(enum klog_level level, const char* format, ...)
 {
+    va_list args;
+    va_start(args, format);
+    klog_early_logfv(level, 0, format, args);
+    va_end(args);
+}
+
+void klog_early_logf(enum klog_level level, uint8_t flags, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    klog_early_logfv(level, flags, format, args);
+    va_end(args);
+}
+
+void klog_early_logv(enum klog_level level, const char* format, va_list args)
+{
+    klog_early_logfv(level, 0, format, args);
+}
+
+void klog_early_logfv(enum klog_level level, uint8_t flags, const char* format, va_list args)
+{
     if(EARLY_BUFFER_LEN - early_index < EARLY_BUFFER_LEN / 16)
         return;
 
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
-    entry->flags = 0;
+    entry->flags = flags;
     entry->length = 0;
     entry->timestamp = 0;
     entry->subsystem_id = EARLY_SUBSYSTEM;
 
-    va_list args;
-    va_start(args, format);
     entry->length += vsprintf(entry->data, format, args);
-    va_end(args);
 
     early_index += sizeof(struct klog_entry) + entry->length;
 }
 
 void klog_early_logln(enum klog_level level, const char* format, ...)
 {
+    va_list args;
+    va_start(args, format);
+    klog_early_loglnv(level, format, args);
+    va_end(args);
+}
+
+void klog_early_loglnf(enum klog_level level, uint8_t flags, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    klog_early_loglnfv(level, flags, format, args);
+    va_end(args);
+}
+
+void klog_early_loglnv(enum klog_level level, const char* format, va_list args)
+{
+    klog_early_loglnfv(level, 0, format, args);
+}
+
+void klog_early_loglnfv(enum klog_level level, uint8_t flags, const char* format, va_list args)
+{
     if(EARLY_BUFFER_LEN - early_index < EARLY_BUFFER_LEN / 16)
         return;
     
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
-    entry->flags = 0;
+    entry->flags = flags;
     entry->timestamp = 0;
     entry->length = 0;
     entry->subsystem_id = EARLY_SUBSYSTEM;
 
-    va_list args;
-    va_start(args, format);
     entry->length += vsprintf(entry->data, format, args);
-    va_end(args);
     
     entry->data[entry->length] = '\n';
     entry->length++;

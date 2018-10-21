@@ -1,10 +1,16 @@
+#include <stdarg.h>
+
 #include <common/acpi.h>
 #include <common/hal.h>
 #include <common/mb2parse.h>
+#include <common/io/pci.h>
 #include <common/mm/mm.h>
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
 #include <common/util/kfuncs.h>
+
+#include <arch/iobase.h>
+#include <arch/io.h>
 
 struct acpi_handler
 {
@@ -18,6 +24,23 @@ struct acpi_handler
 // Working within the API provided, there is a list of IRQ handlers to accomodate a variable list of handlers
 static struct acpi_handler* handler_head = KNULL;
 static process_t* acpid_process = KNULL;
+
+static uintptr_t mapping_base = MMIO_MAP_BASE + 0x1000; // Add a page to skip over MMIO temporary mapping
+static uint8_t*  mmio_mapping = (uint8_t*)MMIO_MAP_BASE;
+
+/**
+ * @brief  Reserves a section of memory to be mapped
+ * @note   
+ * @param  bytes: The number of bytes to map
+ * @retval The base of the allocation
+ */
+static size_t page_alloc(size_t bytes)
+{
+    size_t page_bytes = (bytes + 0xFFF) & ~0xFFF;
+    size_t base = mapping_base;
+    mapping_base += page_bytes;
+    return base;
+}
 
 static irq_ret_t acpi_handler_wrapper(struct irq_handler* handler)
 {
@@ -68,17 +91,30 @@ ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_TABLE_HEA
     return AE_OK;
 }
 
+ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_PHYSICAL_ADDRESS *NewAddress, UINT32 *NewTableLength)
+{
+    // We don't implement this
+    return AE_NOT_IMPLEMENTED;
+}
+
 /**** Memory Management ****/
 
 void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
 {
-    // TODO: Build local heap
-    return NULL;
+    // TODO: Replace with actual memory management allocation
+    // Watermark allocate the pages
+    size_t dynamic_base = page_alloc(Length);
+    size_t num_pages = (Length + 0xFFF) & ~0xFFF;
+
+    for(size_t off = 0; off < num_pages; off += 0x1000)
+        mmu_map_direct(dynamic_base + off, PhysicalAddress + off);
+
+    return (void*)dynamic_base;
 }
 
 void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
 {
-
+    // Will not unmap memory for now...
 }
 
 ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
@@ -159,6 +195,11 @@ void AcpiOsStall(UINT32 Microseconds)
         busy_wait();
         now = timer_read_counter(0);
     }
+}
+
+void AcpiOsWaitEventsComplete(void)
+{
+    // TODO: Wait until all pending GPE threads have executed
 }
 
 /**** Mutual Exclusion & Synchronization ****/
@@ -382,4 +423,176 @@ ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLE
     }
 
     return AE_NOT_EXIST;
+}
+
+/**** MMIO Access ****/
+
+// TODO: Put MMIO accesses behind io abstraction
+ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width)
+{
+    mmu_map_direct((uintptr_t)mmio_mapping, (Address & ~0xFFF));
+    uint8_t* mmio_address = mmio_mapping + (Address & 0xFFF);
+
+    switch(Width >> 3)
+    {
+    case 1:
+        *Value = (uint64_t)(*mmio_address);
+        break;
+    case 2:
+        *Value = (uint64_t)(*((uint16_t*)mmio_address));
+        break;
+    case 4:
+        *Value = (uint64_t)(*((uint32_t*)mmio_address));
+        break;
+    case 8:
+        *Value = *((uint64_t*)mmio_address);
+        break;
+    default:
+        break;
+    }
+    mmu_unmap_direct((uintptr_t)mmio_mapping);
+    return (AE_OK);
+}
+
+ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT32 Width)
+{
+    mmu_map_direct((uintptr_t)mmio_mapping, (Address & ~0xFFF));
+    uint8_t* mmio_address = mmio_mapping + (Address & 0xFFF);
+
+    switch(Width >> 3)
+    {
+        case 1:
+            *mmio_address = (uint8_t)Value;
+            break;
+        case 2:
+            *((uint16_t*)mmio_address) = (uint16_t)Value;
+            break;
+        case 4:
+            *((uint32_t*)mmio_address) = (uint32_t)Value;
+            break;
+        case 8:
+            *((uint64_t*)mmio_address) = (uint64_t)Value;
+            break;
+        default:
+            break;
+    }
+    mmu_unmap_direct((uintptr_t)mmio_mapping);
+    return (AE_OK);
+}
+
+/**** Port IO Access ****/
+
+// TODO: Put Port IO accesses behind io abstraction
+
+ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32 *Value, UINT32 Width)
+{
+    switch(Width >> 3)
+    {
+        case 1:
+            *Value = (uint32_t)inb((UINT16)Address);
+            break;
+        case 2:
+            *Value = (uint32_t)inw((UINT16)Address);
+            break;
+        case 4:
+            *Value = (uint32_t)inl((UINT16)Address);
+            break;
+        default:
+            break;
+    }
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsWritePort(ACPI_IO_ADDRESS Address, UINT32 Value, UINT32 Width)
+{
+    switch(Width >> 3)
+    {
+        case 1:
+            outb((UINT16)Address, (uint8_t)Value);
+            break;
+        case 2:
+            outw((UINT16)Address, (uint16_t)Value);
+            break;
+        case 4:
+            outl((UINT16)Address, (uint32_t)Value);
+            break;
+        default:
+            break;
+    }
+
+    return (AE_OK);
+}
+
+/**** PCI Configuration Access ****/
+
+ACPI_STATUS AcpiOsReadPciConfiguration (ACPI_PCI_ID *PciId, UINT32 Reg, UINT64 *Value, UINT32 Width)
+{
+    if(Width < 64)
+    {
+        *Value = (uint64_t)pci_read_raw(PciId->Bus, PciId->Device, PciId->Function, Reg, Width >> 3);
+    }
+    else
+    {
+        uint64_t data = 0;
+        data |= (uint64_t)pci_read_raw(PciId->Bus, PciId->Device, PciId->Function, Reg+0x4, Width >> 3);
+        data <<= 32;
+        data |= (uint64_t)pci_read_raw(PciId->Bus, PciId->Device, PciId->Function, Reg+0x0, Width >> 3);
+        *Value = data;
+    }
+    return (AE_OK);
+}
+
+ACPI_STATUS AcpiOsWritePciConfiguration (ACPI_PCI_ID *PciId, UINT32 Reg, UINT64 Value, UINT32 Width)
+{
+    if(Width < 64)
+    {
+        pci_write_raw(PciId->Bus, PciId->Device, PciId->Function, Reg, Width >> 3, (uint32_t)Value);
+    }
+    else
+    {
+        pci_write_raw(PciId->Bus, PciId->Device, PciId->Function, Reg+0x0, Width >> 3, (uint32_t)(Value >>  0));
+        pci_write_raw(PciId->Bus, PciId->Device, PciId->Function, Reg+0x4, Width >> 3, (uint32_t)(Value >> 32));
+    }
+}
+
+/**** Formatted Output ****/
+
+void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    AcpiOsVprintf(format, args);
+    va_end(args);
+}
+
+void ACPI_INTERNAL_VAR_XFACE AcpiOsVprintf(const char* format, va_list args)
+{
+    if(!klog_is_init())
+        klog_early_logfv(INFO, KLOG_FLAG_NO_HEADER, format, args);
+    else
+        klog_logv(acpi_subsys_id(), INFO, format, args);
+}
+
+void AcpiOsRedirectOutput(void* Destination) {}
+
+/**** Misc. ACPI Functions ****/
+
+UINT64 AcpiOsGetTimer(void)
+{
+    // ACPI needs the timer resolution to be in 100ns units
+    return timer_read_counter(0) / 100;
+}
+
+ACPI_STATUS AcpiOsSignal(UINT32 Function, void* Info)
+{
+    if(Function == ACPI_SIGNAL_FATAL)
+        return AE_ERROR;
+    else
+        return AE_OK;
+}
+
+ACPI_STATUS AcpiOsGetLine(char* Buffer, UINT32 BufferLength, UINT32* BytesRead)
+{
+    *BytesRead = 0;
+    return AE_OK;
 }
