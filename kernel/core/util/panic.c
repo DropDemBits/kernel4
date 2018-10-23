@@ -52,12 +52,15 @@ static void reshow_log()
     while(entry->level != EOL)
     {
         uint64_t timestamp_secs = entry->timestamp / 1000000000;
-        uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
+        uint64_t timestamp_ms = (entry->timestamp / 1) % 1000000000;
 
-        sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
-        uart_writestr(buffer, strlen(buffer));
-        if(tty != KNULL)
-            tty_puts(tty, buffer);
+        if(!(entry->flags & KLOG_FLAG_NO_HEADER))
+        {
+            sprintf(buffer, "[%3llu.%010llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            uart_writestr(buffer, strlen(buffer));
+            if(tty != KNULL)
+                tty_puts(tty, buffer);
+        }
 
         for(uint16_t i = 0; i < entry->length; i++)
         {
@@ -69,6 +72,7 @@ static void reshow_log()
                 uart_writec('\r');
         }
         
+        next:
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 

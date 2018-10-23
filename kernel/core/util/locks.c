@@ -116,7 +116,7 @@ void spinlock_acquire(spinlock_t* spinlock)
 {
     uint32_t value = 1;
     while(value)
-        value = lock_cmpxchg(&spinlock->value, 0, 1);
+        value = lock_cmpxchg(&(spinlock->value), 0, 1);
 }
 
 void spinlock_release(spinlock_t* spinlock)

@@ -37,6 +37,7 @@ geniso: build-libk build-kernel initrd/initrd/initrd.tar
 
 pxeboot: build-libk build-kernel initrd/initrd/initrd.tar
 	mkdir -p pxedest
-	@$(foreach TARGET,$(TARGETS),cp kernel/bin/$(TARGET)/k4-$(TARGET).kern pxedest/ &&) echo Done
+	@#$(foreach TARGET,$(TARGETS),cp kernel/bin/$(TARGET)/k4-$(TARGET).kern pxedest/ &&) echo Done
+	@$(foreach TARGET,$(TARGETS),cp build/$(TARGET)/kernel/k4-$(TARGET).kern pxedest/ &&) echo Done
 	cp initrd/initrd/initrd.tar pxedest/
 	sudo cp pxedest/* /var/lib/tftpboot/

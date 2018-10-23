@@ -282,11 +282,13 @@ void core_fini()
 {
     uint16_t core_subsystem = klog_add_subsystem("CORE");
 
-    kbd_init();
-    ps2_init();
     klog_logln(core_subsystem, INFO, "Setting up system calls");
     syscall_init();
 
+    acpi_init();
+
+    kbd_init();
+    ps2_init();
     ata_init();
     pci_init();
 

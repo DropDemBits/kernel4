@@ -7,7 +7,7 @@
 #include <common/mm/mm.h>
 
 #define EARLY_SUBSYSTEM 0
-#define EARLY_BUFFER_LEN 4096
+#define EARLY_BUFFER_LEN 16384
 #define MAX_BUFFER_SIZE 0x0C000000 // 64MiB
 
 #define NUM_IDS 256
@@ -77,9 +77,12 @@ void klog_init()
 
     log_buffer = (char*)(uintptr_t)get_klog_base();
     log_index = early_index;
-    allocated_limit = 8192;
-    mmu_map_direct((uintptr_t)log_buffer, mm_alloc(1));
-    mmu_map_direct((uintptr_t)log_buffer + 4096, mm_alloc(1));
+    allocated_limit = EARLY_BUFFER_LEN + 4096;
+    
+    for(size_t i = 0; i < allocated_limit; i+= 0x1000)
+    {
+        mmu_map_direct((uintptr_t)log_buffer + i, mm_alloc(1));
+    }
 
     // Clear buffer of old data
     memset(log_buffer, 0, allocated_limit);
@@ -222,7 +225,7 @@ void klog_log(uint16_t subsys_id, enum klog_level level, const char* format, ...
 {
     va_list args;
     va_start(args, format);
-    klog_logv(subsys_id, level, format, args);
+    klog_logfv(subsys_id, level, 0, format, args);
     va_end(args);
 }
 
@@ -230,15 +233,41 @@ void klog_logln(uint16_t subsys_id, enum klog_level level, const char* format, .
 {
     va_list args;
     va_start(args, format);
-    klog_loglnv(subsys_id, level, format, args);
+    klog_loglnfv(subsys_id, level, 0, format, args);
+    va_end(args);
+}
+
+void klog_logf(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    klog_logfv(subsys_id, level, flags, format, args);
+    va_end(args);
+}
+
+void klog_loglnf(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    klog_loglnfv(subsys_id, level, flags, format, args);
     va_end(args);
 }
 
 void klog_logv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args)
 {
+    klog_logfv(subsys_id, level, 0, format, args);
+}
+
+void klog_loglnv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args)
+{
+    klog_loglnfv(subsys_id, level, 0, format, args);
+}
+
+void klog_logfv(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, va_list args)
+{
     struct klog_entry* entry = (struct klog_entry*)(log_buffer + log_index);
     entry->level = level;
-    entry->flags = 0;
+    entry->flags = flags;
     entry->timestamp = timer_read_counter(0);
     entry->length = 0;
     entry->subsystem_id = subsys_id;
@@ -250,11 +279,11 @@ void klog_logv(uint16_t subsys_id, enum klog_level level, const char* format, va
     check_alloc();
 }
 
-void klog_loglnv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args)
+void klog_loglnfv(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, va_list args)
 {
     struct klog_entry* entry = (struct klog_entry*)(log_buffer + log_index);
     entry->level = level;
-    entry->flags = 0;
+    entry->flags = flags;
     entry->timestamp = timer_read_counter(0);
     entry->length = 1;
     entry->subsystem_id = subsys_id;

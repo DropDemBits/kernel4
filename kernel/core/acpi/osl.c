@@ -206,7 +206,7 @@ void AcpiOsWaitEventsComplete(void)
 
 ACPI_STATUS AcpiOsCreateMutex(ACPI_MUTEX *OutHandle)
 {
-    if(OutHandle == NULL);
+    if(OutHandle == NULL)
         return AE_BAD_PARAMETER;
 
     mutex_t* mutex = mutex_create();
@@ -224,20 +224,6 @@ void AcpiOsDeleteMutex(ACPI_MUTEX Handle)
         return;
 
     mutex_destroy(Handle);
-}
-
-ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle)
-{
-    if(OutHandle == NULL || InitialUnits > 0);
-        return AE_BAD_PARAMETER;
-
-    semaphore_t* semaphore = semaphore_create(MaxUnits);
-    if(semaphore == NULL)
-        return AE_NO_MEMORY;
-
-    *OutHandle = semaphore;
-    
-    return AE_OK;
 }
 
 ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout)
@@ -272,6 +258,20 @@ void AcpiOsReleaseMutex(ACPI_MUTEX Handle)
         return;
 
     mutex_release(Handle);
+}
+
+ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle)
+{
+    if(OutHandle == NULL || InitialUnits > 0)
+        return AE_BAD_PARAMETER;
+
+    semaphore_t* semaphore = semaphore_create(MaxUnits);
+    if(semaphore == NULL)
+        return AE_NO_MEMORY;
+
+    *OutHandle = semaphore;
+    
+    return AE_OK;
 }
 
 ACPI_STATUS AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle)
@@ -319,7 +319,7 @@ ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units)
 
 ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
 {
-    if(OutHandle == NULL);
+    if(OutHandle == NULL)
         return AE_BAD_PARAMETER;
 
     spinlock_t* lock = spinlock_create();
@@ -568,9 +568,9 @@ void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char* format, ...)
 void ACPI_INTERNAL_VAR_XFACE AcpiOsVprintf(const char* format, va_list args)
 {
     if(!klog_is_init())
-        klog_early_logfv(INFO, KLOG_FLAG_NO_HEADER, format, args);
+        klog_early_logfv(DEBUG, KLOG_FLAG_NO_HEADER, format, args);
     else
-        klog_logv(acpi_subsys_id(), INFO, format, args);
+        klog_logfv(acpi_subsys_id(), DEBUG, KLOG_FLAG_NO_HEADER, format, args);
 }
 
 void AcpiOsRedirectOutput(void* Destination) {}

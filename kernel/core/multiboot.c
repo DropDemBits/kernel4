@@ -40,7 +40,7 @@ struct multiboot_tags_header
 
 struct acpi_rsdp
 {
-    char Sig[3];
+    char Sig[8];
     uint8_t Checksum;
     char OEMID[6];
     uint8_t Version;
@@ -351,6 +351,8 @@ void parse_mb2()
                 // Copy address of the RSDP copy
                 mb_rsdp_addr = (uint64_t)(tag+1);
                 klog_early_logln(INFO, "Found RSDP @ %p", mb_rsdp_addr);
+                klog_early_logln(INFO, "%.8s v%d", ((struct acpi_xsdp*)(mb_rsdp_addr))->RSDP.Sig, ((struct acpi_xsdp*)(mb_rsdp_addr))->RSDP.Version);
+
                 break;
             default:
                 break;

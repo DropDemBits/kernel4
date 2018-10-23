@@ -167,7 +167,7 @@ int vsprintf(char *dest, const char *format, va_list params)
                 // Put padding chars on until we match the limit
                 int i = 0;
                 for(; min_chars > buf_len; i++, min_chars--)
-                    dest[i + index] = '0';
+                    dest[i + index] = ' ';
                 index += i;
                 amount += i;
             }
@@ -278,7 +278,7 @@ int vsprintf(char *dest, const char *format, va_list params)
 
             size_t buf_len = strlen(ulltoa(number, buffer, 16));
 
-            if(buf_len < min_chars && padding_char == ' ')
+            if(buf_len < min_chars && padding_char == ' ' && !left_justify)
             {
                 // Put spaces on until we match the limit (done before in order to shift num)
                 int i = 0;

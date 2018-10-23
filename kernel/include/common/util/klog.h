@@ -68,10 +68,10 @@ void klog_log(uint16_t subsys_id, enum klog_level level, const char* format, ...
 void klog_logv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args);
 void klog_logln(uint16_t subsys_id, enum klog_level level, const char* format, ...);
 void klog_loglnv(uint16_t subsys_id, enum klog_level level, const char* format, va_list args);
-void klog_logf(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, ...);
-void klog_logfv(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, va_list args);
-void klog_loglnf(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, ...);
-void klog_loglnfv(uint16_t subsys_id, uint8_t flags, enum klog_level level, const char* format, va_list args);
+void klog_logf(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, ...);
+void klog_logfv(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, va_list args);
+void klog_loglnf(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, ...);
+void klog_loglnfv(uint16_t subsys_id, enum klog_level level, uint8_t flags, const char* format, va_list args);
 void klog_logc(uint16_t subsys_id, enum klog_level level, const char c);
 
 #endif

@@ -21,29 +21,31 @@ ACPI_STATUS acpi_early_init()
     }
     klog_early_logln(INFO, "Gathered ACPI tables");
 
-    klog_early_logln(DEBUG, "ACPI Tables:");
-    char sig[5];
-    char oem_id[9];
-    char oemtable_id[9];
-    char asl_id[5];
-    memset(sig, 0, 5);
-    memset(oem_id, 0, 9);
-    memset(oemtable_id, 0, 9);
-    memset(asl_id, 0, 5);
+    klog_early_logln(INFO, "ACPI Tables:");
 
     for(size_t i = 0; i < ACPI_MAX_EARLY_TABLES; i++)
     {
-        ACPI_TABLE_HEADER* table = acpi_early_get_table(i);
+        ACPI_TABLE_HEADER* table;
+        AcpiGetTableByIndex(i, &table);
 
         if(table == NULL)
             break;
-        
-        memcpy(sig, table->Signature, 4);
-        memcpy(oem_id, table->OemId, 8);
-        memcpy(oemtable_id, table->OemTableId, 8);
-        memcpy(asl_id, table->AslCompilerId, 4);
 
-        klog_early_logln(DEBUG, "[%s] %s %s %s", sig, oem_id, oemtable_id, asl_id);
+        if(ACPI_COMPARE_NAME(table->Signature, ACPI_SIG_FACS))
+            klog_early_logln(INFO, "\t%.4s (%8dB) v%02.2x",
+                table->Signature,
+                table->Length,
+                table->Revision);
+        else
+            klog_early_logln(INFO, "\t%.4s (%8dB) v%02.2x OEM=%-8.8s %-8.8s %-4.4s",
+                table->Signature,
+                table->Length,
+                table->Revision,
+                table->OemId,
+                table->OemTableId,
+                table->AslCompilerId);
+        
+        AcpiPutTable(table);
     }
 
     return (status);
@@ -51,12 +53,12 @@ ACPI_STATUS acpi_early_init()
 
 ACPI_TABLE_HEADER* acpi_early_get_table(uint32_t idx)
 {    
-    ACPI_TABLE_DESC* retable;
-    ACPI_STATUS Status = AcpiGetTableByIndex(idx, &retable);
+    ACPI_TABLE_DESC* table;
+    ACPI_STATUS Status = AcpiGetTableByIndex(idx, &table);
 
-    if(ACPI_FAILURE(Status));
+    if(ACPI_FAILURE(Status) && table == NULL);
         return NULL;
-    return retable;
+    return table;
 }
 
 /**
@@ -70,6 +72,7 @@ ACPI_STATUS acpi_init()
     ACPI_STATUS status;
 
     acpi_subsys = klog_add_subsystem("ACPI");
+    klog_logln(acpi_subsys, INFO, "Initializing ACPI subsystem");
 
     status = AcpiInitializeSubsystem();
     if(ACPI_FAILURE(status))
@@ -112,7 +115,6 @@ ACPI_STATUS acpi_init()
         return (status);
     }
 
-    klog_logln(acpi_subsys, INFO, "Initialized ACPI subsystem");
     return (AE_OK);
 }
 
