@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <common/hal.h>
 #include <common/ata/ata.h>
 #include <common/mm/liballoc.h>
@@ -233,14 +235,14 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     if(inb(control_base + ATA_ALT_STATUS) == 0)
         return EABSENT;
 
-    klog_logln(ata_subsys, DEBUG, "ata_dev%d status: %x (%d)", id, last_status, loop_counter);
+    klog_logln(ata_subsys, DEBUG, "ata_dev%d status: %x (%d, %x)", id, last_status, loop_counter, command);
 
     last_status = inb(control_base + ATA_ALT_STATUS);
 
     // Command completed successfully
     if((last_status & (STATUS_BSY | STATUS_DRQ)) == 0)
         return 0;
-    
+
     // Command completed with an error
     if((last_status & STATUS_ERR) == STATUS_ERR)
         return 1;
@@ -558,6 +560,8 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     outb(control_base + ATA_DEV_CTRL, 0x00);
 
     struct pata_dev* controller = kmalloc(sizeof(struct pata_dev));
+    memset(controller, 0, sizeof(struct pata_dev));
+
     controller->dev.dev_lock = mutex_create();
     controller->dev.processing_command = false;
     controller->dev.is_active = true;
@@ -584,8 +588,18 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     uint8_t id_hi = inb(command_base + ATA_LBAHI);
 
          if(id_low == 0x14 && id_hi == 0xEB) init_atapi_device();
-    else if(id_low == 0x3C && id_hi == 0xC3) klog_logln(ata_subsys, DEBUG, "Setting up SATA device");
-    else if(id_low == 0x69 && id_hi == 0x96) klog_logln(ata_subsys, DEBUG, "Setting up SATAPI device");
+    else if(id_low == 0x3C && id_hi == 0xC3) klog_logln(ata_subsys, DEBUG, "Detected SATA Enclosure Management Bridge");
+    else if(id_low == 0x69 && id_hi == 0x96) klog_logln(ata_subsys, DEBUG, "Detected SATA Port Multiplier");
+    else if(id_low == 0x00 && id_hi == 0x00) controller->dev.device_type = TYPE_ATA;
+    else
+    {
+        klog_logln(ata_subsys, ERROR, "ata_dev%d: Unknown Device Sig: %x %x", controller->dev.id, id_low, id_hi);
+        controller->dev.is_active = false;
+        controller->dev.processing_command = false;
+        current_id = ATA_INVALID_ID;
+        current_device = KNULL;
+        return controller;
+    }
 
     char* type_names[] = {"PATA", "ATAPI", "SATA", "SATAPI"};
     klog_logln(ata_subsys, DEBUG, "ATA Device Present (%d, %s)", controller->dev.id, type_names[controller->dev.device_type]);
