@@ -83,7 +83,7 @@ static uint64_t msr_read(uint32_t msr_index)
 {
     uint32_t eax, edx;
     asm volatile("rdmsr":"=a"(eax),"=d"(edx):"c"(msr_index));
-    uint64_t value = (eax) | (edx << 32);
+    uint64_t value = (eax) | ((uint64_t)edx << 32);
     return value;
 }
 
@@ -112,7 +112,7 @@ static ACPI_SUBTABLE_HEADER* madt_find_table(ACPI_TABLE_MADT* madt, uint8_t Type
 
 void hal_init()
 {
-    ACPI_TABLE_MADT* madt = acpi_early_get_table(ACPI_SIG_MADT, 1);
+    ACPI_TABLE_MADT* madt = (ACPI_TABLE_MADT*)acpi_early_get_table(ACPI_SIG_MADT, 1);
 
     if(madt != NULL)
     {
@@ -179,11 +179,11 @@ void hal_init()
         }
 
         ACPI_MADT_LOCAL_APIC_NMI* madt_nmi = (ACPI_MADT_LOCAL_APIC_NMI*)madt_find_table(madt, ACPI_MADT_TYPE_LOCAL_APIC_NMI, 1);
-        apic_set_lint_entry(madt_nmi->Lint, (madt_nmi->IntiFlags >> 1) & 1, (madt_nmi->IntiFlags >> 3) & 1, APIC_DELMODE_NMI);
+        if(madt_nmi != NULL)
+            apic_set_lint_entry(madt_nmi->Lint, (madt_nmi->IntiFlags >> 1) & 1, (madt_nmi->IntiFlags >> 3) & 1, APIC_DELMODE_NMI);
         
         default_ic = ioapic_get_dev();
         ic_mode = IC_MODE_IOAPIC;
-        acpi_put_table(madt);
     }
     /*else if(apic_exists())
     {
@@ -205,11 +205,12 @@ void hal_init()
 
         // Mask all IRQs
         for(int i = 0; i < 16; i++)
-            pic_mask(i);
+            pic_get_dev()->mask(i);
 
         default_ic = pic_get_dev();
         ic_mode = IC_MODE_PIC;
     }
+    acpi_put_table((ACPI_TABLE_HEADER*)madt);
     // acpi_set_pic_mode(ic_mode);
 
     for(int i = 0; i < MAX_TIMERS; i++)
@@ -391,7 +392,7 @@ void dump_registers(struct intr_stack *stack)
 
     thread_t* at = sched_active_thread();
     KLOG_FATAL("Current Thread: %#p", at);
-    if(((uintptr_t)at & ~0xFFF) != KNULL && ((uintptr_t)at & ~0xFFF) != NULL)
+    if(((uintptr_t)at & ~0xFFF) != (uintptr_t)KNULL && ((uintptr_t)at & ~0xFFF) != (uintptr_t)NULL)
     {
         KLOG_FATAL("\tID: %d (%s)", at->tid, at->name);
         KLOG_FATAL("\tPriority: %d", at->priority);

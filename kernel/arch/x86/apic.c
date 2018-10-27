@@ -157,6 +157,34 @@ void apic_set_lint_entry(uint8_t lint_entry, uint8_t polarity, uint8_t trigger_m
     apic_write(APIC_LVT_LINT0 + (lint_entry << 4), (polarity << APIC_LVT_POL_SHF) | (trigger_mode << APIC_LVT_TRIG_SHF) | (delivery_mode << APIC_LVT_DELMODE_SHF));
 }
 
+void ioapic_set_mask(uint8_t line, bool is_masked)
+{
+    uint32_t redir_reg = (line * 2) + IOAPIC_REDTBL;
+
+    if(is_masked)
+        ioapic_write(main_ioapic.address, redir_reg, (ioapic_read(main_ioapic.address, redir_reg) | IOAPIC_REDIR_MASK));
+    else
+        ioapic_write(main_ioapic.address, redir_reg, (ioapic_read(main_ioapic.address, redir_reg) & ~IOAPIC_REDIR_MASK));
+}
+
+void ioapic_set_vector(uint8_t line, uint8_t vector)
+{
+    uint32_t redir_reg = (line * 2) + IOAPIC_REDTBL;
+    ioapic_write(main_ioapic.address, redir_reg, (ioapic_read(main_ioapic.address, redir_reg) & ~0xFF) | vector);
+}
+
+void ioapic_set_mode(uint8_t line, uint8_t polarity, uint8_t trigger_mode, uint8_t dest, uint8_t delivery_mode)
+{
+    uint32_t redir_reg = (line * 2) + IOAPIC_REDTBL;
+    uint32_t vector = ioapic_read(main_ioapic.address, redir_reg) & IOAPIC_REDIR_VEC;
+    uint32_t new_mode = (polarity << IOAPIC_REDIR_TRIG_SHF) | (trigger_mode << IOAPIC_REDIR_POL_SHF) | (delivery_mode << IOAPIC_REDIR_DELMODE_SHF) | vector;
+
+    // Mask & write (automatically unmasked)
+    ioapic_set_mask(line, true);
+    ioapic_write(main_ioapic.address, redir_reg + 1, dest << IOAPIC_REDIR_DEST_SHF);
+    ioapic_write(main_ioapic.address, redir_reg, new_mode);
+}
+
 void ioapic_init(uint64_t phybase, uint32_t irq_base)
 {
     klog_early_logln(INFO, "Initializing IOAPIC @ %p (+%d)", phybase, irq_base);
@@ -185,34 +213,6 @@ void ioapic_init(uint64_t phybase, uint32_t irq_base)
 
         isr_add_handler(i + IRQ_BASE, apic_isr_handler, NULL);
     }
-}
-
-void ioapic_set_mask(uint8_t line, bool is_masked)
-{
-    uint32_t redir_reg = (line * 2) + IOAPIC_REDTBL;
-
-    if(is_masked)
-        ioapic_write(main_ioapic.address, redir_reg, (ioapic_read(main_ioapic.address, redir_reg) | IOAPIC_REDIR_MASK));
-    else
-        ioapic_write(main_ioapic.address, redir_reg, (ioapic_read(main_ioapic.address, redir_reg) & ~IOAPIC_REDIR_MASK));
-}
-
-void ioapic_set_vector(uint8_t line, uint8_t vector)
-{
-    uint32_t redir_reg = (line * 2) + IOAPIC_REDTBL;
-    ioapic_write(main_ioapic.address, redir_reg, (ioapic_read(main_ioapic.address, redir_reg) & ~0xFF) | vector);
-}
-
-void ioapic_set_mode(uint8_t line, uint8_t polarity, uint8_t trigger_mode, uint8_t dest, uint8_t delivery_mode)
-{
-    uint32_t redir_reg = (line * 2) + IOAPIC_REDTBL;
-    uint32_t vector = ioapic_read(main_ioapic.address, redir_reg) & IOAPIC_REDIR_VEC;
-    uint32_t new_mode = (polarity << IOAPIC_REDIR_TRIG_SHF) | (trigger_mode << IOAPIC_REDIR_POL_SHF) | (delivery_mode << IOAPIC_REDIR_DELMODE_SHF) | vector;
-
-    // Mask & write (automatically unmasked)
-    ioapic_set_mask(line, true);
-    ioapic_write(main_ioapic.address, redir_reg + 1, dest << IOAPIC_REDIR_DEST_SHF);
-    ioapic_write(main_ioapic.address, redir_reg, new_mode);
 }
 
 void ioapic_route_line(uint32_t global_source, uint32_t bus_source, uint8_t polarity, uint8_t trigger_mode)
@@ -316,6 +316,8 @@ struct irq_handler* ioapic_handle_irq(uint8_t irq, irq_function_t handler)
     irq_handler->handler_type = LEGACY;
     irq_handler->trigger_type = EDGE;
 
+    cpu_flags_t flags = hal_disable_interrupts();
+
     isr_add_handler(irq + IRQ_BASE, apic_isr_handler, NULL);
 
     if(main_ioapic.handler_list[irq] == NULL)
@@ -335,6 +337,8 @@ struct irq_handler* ioapic_handle_irq(uint8_t irq, irq_function_t handler)
     }
 
     ioapic_set_mask(irq, false);
+
+    hal_enable_interrupts(flags);
     return irq_handler;
 }
 

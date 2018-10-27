@@ -225,31 +225,31 @@ void setup_idt()
     // IRQs
     // Master PIC
     create_descriptor(32, (uint64_t) irq0_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
-    create_descriptor(33, (uint64_t) irq1_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(34, (uint64_t) irq2_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(35, (uint64_t) irq3_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(36, (uint64_t) irq4_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(37, (uint64_t) irq5_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(38, (uint64_t) irq6_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(39, (uint64_t) irq7_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(33, (uint64_t) irq1_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(34, (uint64_t) irq2_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(35, (uint64_t) irq3_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(36, (uint64_t) irq4_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(37, (uint64_t) irq5_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(38, (uint64_t) irq6_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(39, (uint64_t) irq7_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
     // Slave PIC
-    create_descriptor(40, (uint64_t) irq8_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(41, (uint64_t) irq9_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(42, (uint64_t)irq10_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(43, (uint64_t)irq11_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(44, (uint64_t)irq12_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(45, (uint64_t)irq13_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(46, (uint64_t)irq14_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(47, (uint64_t)irq15_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(40, (uint64_t) irq8_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(41, (uint64_t) irq9_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(42, (uint64_t)irq10_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(43, (uint64_t)irq11_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(44, (uint64_t)irq12_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(45, (uint64_t)irq13_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(46, (uint64_t)irq14_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(47, (uint64_t)irq15_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
     // Extra IO APIC entries
-    create_descriptor(48, (uint64_t)irq16_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(49, (uint64_t)irq17_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(50, (uint64_t)irq18_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(51, (uint64_t)irq19_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(52, (uint64_t)irq20_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(53, (uint64_t)irq21_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(54, (uint64_t)irq22_entry, 0x08, IDT_TYPE_TRAP, 0);
-    create_descriptor(55, (uint64_t)irq23_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(48, (uint64_t)irq16_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(49, (uint64_t)irq17_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(50, (uint64_t)irq18_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(51, (uint64_t)irq19_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(52, (uint64_t)irq20_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(53, (uint64_t)irq21_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(54, (uint64_t)irq22_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
+    create_descriptor(55, (uint64_t)irq23_entry, 0x08, IDT_TYPE_INTERRUPT, 0);
 
     // Interrupt syscall
     create_descriptor(0x80, (uint64_t)syscall_entry, 0x0B, IDT_TYPE_INTERRUPT, 0);

@@ -60,6 +60,9 @@
 
 // Forward Declerations
 bool pic_check_spurious(uint8_t irq);
+void pic_mask(uint8_t irq);
+void pic_unmask(uint8_t irq);
+void pic_eoi(uint8_t irq);
 
 static struct irq_handler* handler_list[NR_PIC_IRQS];
 static bool is_enabled = false;
@@ -215,7 +218,7 @@ void pic_eoi(uint8_t irq)
 void pic_free_irq(struct irq_handler* handler)
 {
     // If the PIC is not enabled, don't free IRQ handlers
-    if(!is_enabled)
+    if(handler == NULL || !is_enabled)
         return;
 
     // As we are modifying the interrupt list, encapsulate inside of a disable-enable interrupt pair
@@ -248,7 +251,7 @@ struct irq_handler* pic_handle_irq(uint8_t irq, irq_function_t handler)
 {
     // If the PIC is not enabled, don't handle IRQs
     if(!is_enabled)
-        return;
+        return NULL;
 
     // Return null on out of range
     if(irq >= NR_PIC_IRQS)

@@ -178,6 +178,7 @@ ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Functio
         acpid_process = process_create();
     
     thread_create(acpid_process, Function, PRIORITY_KERNEL, "ACPID Thread", Context);
+    return AE_OK;
 }
 
 void AcpiOsSleep(UINT64 Milliseconds)
@@ -200,6 +201,8 @@ void AcpiOsStall(UINT32 Microseconds)
 void AcpiOsWaitEventsComplete(void)
 {
     // TODO: Wait until all pending GPE threads have executed
+    if(klog_is_init())
+        klog_logln(acpi_subsys_id(), ERROR, "Can't wait for GPE thread execution");
 }
 
 /**** Mutual Exclusion & Synchronization ****/

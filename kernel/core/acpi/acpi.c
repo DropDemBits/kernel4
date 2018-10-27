@@ -105,14 +105,14 @@ ACPI_STATUS acpi_init()
 
 ACPI_TABLE_HEADER* acpi_early_get_table(char* sig, uint32_t instance)
 {
-    ACPI_TABLE_DESC* table = NULL;
+    ACPI_TABLE_HEADER* table = NULL;
     AcpiGetTable(sig, instance, &table);
     return table;
 }
 
 ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance)
 {    
-    ACPI_TABLE_DESC* table = NULL;
+    ACPI_TABLE_HEADER* table = NULL;
     ACPI_STATUS Status = AcpiGetTable(sig, instance, &table);
 
     if(ACPI_FAILURE(Status) && table == NULL);
@@ -127,5 +127,5 @@ void acpi_put_table(ACPI_TABLE_HEADER* table)
 
 uint16_t acpi_subsys_id()
 {
-    return acpi_subsys_id;
+    return acpi_subsys;
 }
