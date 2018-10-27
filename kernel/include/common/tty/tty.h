@@ -4,6 +4,26 @@
 #ifndef __TTY_H__
 #define __TTY_H__
 
+enum EGA_Colours
+{
+    EGA_BLACK = 0,
+    EGA_BLUE,
+    EGA_GREEN,
+    EGA_CYAN,
+    EGA_RED,
+    EGA_MAGENTA,
+    EGA_BROWN,
+    EGA_LIGHT_GRAY,
+    EGA_DARK_GRAY,
+    EGA_BRIGHT_BLUE,
+    EGA_BRIGHT_GREEN,
+    EGA_BRIGHT_CYAN,
+    EGA_BRIGHT_RED,
+    EGA_BRIGHT_MAGENTA,
+    EGA_BRIGHT_YELLOW,
+    EGA_WHITE,
+};
+
 enum OutputType {
     VGA_CONSOLE = 0,
     FB_CONSOLE = 1,

@@ -1,6 +1,7 @@
 
 #include <common/acpi.h>
 #include <common/util/klog.h>
+#include <common/util/kfuncs.h>
 
 static ACPI_TABLE_DESC early_tables[ACPI_MAX_EARLY_TABLES];
 
@@ -123,6 +124,51 @@ ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance)
 void acpi_put_table(ACPI_TABLE_HEADER* table)
 {
     AcpiPutTable(table);
+}
+
+ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)
+{
+    ACPI_STATUS Status;
+    Status = AcpiEnterSleepStatePrep(sleep_state);
+    if(ACPI_FAILURE(Status))
+    {
+        klog_logln(acpi_subsys, ERROR, "Error in preparing to enter S%d: %s", sleep_state, AcpiFormatException(Status));
+        return Status;
+    }
+
+    // AcpiEnterSleepState MUST be executed without interrupts
+    hal_disable_interrupts_raw();
+
+    Status = AcpiEnterSleepState(sleep_state);
+    if(ACPI_FAILURE(Status))
+    {
+        klog_logln(acpi_subsys, FATAL, "Failed to enter sleep state S%d: %s", sleep_state, AcpiFormatException(Status));
+        return Status;
+    }
+
+    // We only return here if we entered S1 (Power-On-Suspend)
+    return AE_OK;
+}
+
+ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state)
+{
+    ACPI_STATUS Status;
+    
+    Status = AcpiLeaveSleepStatePrep(sleep_state);
+    if(ACPI_FAILURE(Status))
+    {
+        klog_logln(acpi_subsys, ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
+        return Status;
+    }
+
+    Status = AcpiLeaveSleepState(sleep_state);
+    if(ACPI_FAILURE(Status))
+    {
+        klog_logln(acpi_subsys, ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
+        return Status;
+    }
+
+    return AE_OK;
 }
 
 uint16_t acpi_subsys_id()

@@ -44,6 +44,22 @@ void acpi_put_table(ACPI_TABLE_HEADER* table);
 void acpi_get_pirt();
 
 /**
+ * @brief  Enters the specifed sleep state
+ * @note   
+ * @param  sleep_state: The sleep state to enter
+ * @retval AE_OK if sleep was entered successfully, or the appropriate error code
+ */
+ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state);
+
+/**
+ * @brief  Leaves from the last sleep state
+ * @note   
+ * @param  sleep_state: The sleep state to leave
+ * @retval AE_OK if sleep was left successfully, or the appropriate error code
+ */
+ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state);
+
+/**
  * @brief  Initalizes the full ACPI subsystem
  * @note   
  * @retval AE_OK if everything was initialized properly

@@ -599,3 +599,9 @@ ACPI_STATUS AcpiOsGetLine(char* Buffer, UINT32 BufferLength, UINT32* BytesRead)
     *BytesRead = 0;
     return AE_OK;
 }
+
+/* Undocumented in programmer's ref */
+ACPI_STATUS AcpiOsEnterSleep (UINT8 SleepState, UINT32 RegaValue, UINT32 RegbValue)
+{
+    return AE_OK;
+}

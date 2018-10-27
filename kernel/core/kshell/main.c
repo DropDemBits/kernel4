@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#include <common/acpi.h>
 #include <common/mb2parse.h>
 #include <common/io/keycodes.h>
 #include <common/io/kbd.h>
@@ -84,7 +85,7 @@ static void print_log(uint16_t log_level)
 {
     struct klog_entry* entry = (struct klog_entry*)(uintptr_t)get_klog_base();
 
-    char buffer[256];
+    char buffer[128];
 
     while(entry->level != EOL)
     {
@@ -93,16 +94,14 @@ static void print_log(uint16_t log_level)
             uint64_t timestamp_secs = entry->timestamp / 1000000000;
             uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
 
-            if(!(entry->flags & KLOG_FLAG_NO_HEADER))
+            if((entry->flags & KLOG_FLAG_NO_HEADER) != KLOG_FLAG_NO_HEADER)
             {
                 sprintf(buffer, "[%3llu.%05llu] (%4s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
                 tty_puts(tty, buffer);
             }
 
             for(uint16_t i = 0; i < entry->length; i++)
-            {
                 tty_putchar(tty, entry->data[i]);
-            }
         }
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
@@ -216,7 +215,7 @@ static bool shell_parse()
         return true;
     } else if(is_command("help", command) || is_command("?", command))
     {
-        puts("Kshell version 0.5\n");
+        puts("Kshell version 0.6\n");
         puts("Available commands (slashes = aliases, square brackets = arguments):");
         puts("\thelp/?:          \tShows this information");
         puts("\thelloworld/hw:   \tShows an example string");
@@ -228,6 +227,7 @@ static bool shell_parse()
         puts("\tsleep [time]:    \tSleeps the shell for [time] milliseconds");
         puts("\tklog [level]:    \tShows the kernel log from the specified log level");
         puts("\t                 \tand above");
+        puts("\tshutdown:        \tShuts down the computer");
         return true;
     } else if(is_command("exit", command))
     {
@@ -295,6 +295,17 @@ static bool shell_parse()
             log_level = DEBUG;
 
         print_log(log_level);
+        return true;
+    } else if(is_command("shutdown", command))
+    {
+        // Print shutdown message
+        tty_set_colours(tty, EGA_BRIGHT_YELLOW, EGA_BLACK);
+        printf("Goodbye");
+        request_refresh();
+        sched_sleep_ms(500);
+
+        // Enter sleep state
+        acpi_enter_sleep(5);
         return true;
     }
 
