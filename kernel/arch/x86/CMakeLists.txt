@@ -8,6 +8,7 @@ list(APPEND SOURCES
     arch/x86/io/uart.c
     arch/x86/hal.c
     arch/x86/pic.c
+    arch/x86/apic.c
     arch/x86/pit.c
     arch/x86/syscall.c
     arch/x86/vga.c

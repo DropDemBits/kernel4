@@ -21,15 +21,18 @@
 #include <stdio.h>
 
 #include <common/hal.h>
+#include <common/acpi.h>
 #include <common/sched/sched.h>
 #include <common/util/kfuncs.h>
 
+#include <arch/apic.h>
 #include <arch/pic.h>
 #include <arch/pit.h>
 #include <arch/idt.h>
 #include <stack_state.h>
 
 #define MAX_TIMERS 64
+#define MSR_APIC_BASE 0x1B
 
 #define KLOG_FATAL(msg, ...) \
     if(klog_is_init()) {klog_logln(0, FATAL, msg, __VA_ARGS__);} \
@@ -50,6 +53,9 @@ static uint64_t timer_id_bitmap = ~1;
 // Default timer (index to array below)
 static unsigned int default_timer = 0x0;
 static struct timer_dev* timers[MAX_TIMERS];
+
+static struct ic_dev* default_ic;
+static uint8_t ic_mode = IC_MODE_PIC;
 
 // Valid timer id's are in the range of 1 - 64
 static unsigned int next_timer_id()
@@ -73,25 +79,135 @@ static bool apic_exists()
     return (edx >> 9) & 0x1;
 }
 
+static uint64_t msr_read(uint32_t msr_index)
+{
+    uint32_t eax, edx;
+    asm volatile("rdmsr":"=a"(eax),"=d"(edx):"c"(msr_index));
+    uint64_t value = (eax) | (edx << 32);
+    return value;
+}
+
+static ACPI_SUBTABLE_HEADER* madt_find_table(ACPI_TABLE_MADT* madt, uint8_t Type, uint32_t Instance)
+{
+    if(Instance == 0)
+        return NULL;
+
+    ACPI_SUBTABLE_HEADER* madt_ics = (ACPI_SUBTABLE_HEADER*)(madt + 1);
+    uint32_t len = madt->Header.Length - sizeof(ACPI_TABLE_MADT);
+
+    while(len > 0)
+    {
+        if(madt_ics->Type == Type)
+        {
+            Instance--;
+            if(Instance == 0)
+                return madt_ics;
+        }
+        len -= madt_ics->Length;
+        madt_ics = (ACPI_SUBTABLE_HEADER*)((uintptr_t)madt_ics + madt_ics->Length);
+    }
+
+    return NULL;
+}
+
 void hal_init()
 {
-    // Check for APIC
-    if(apic_exists())
-    {
-        // TODO: Enable & init apic
-        //outb(PIC1_DATA, 0xFF);
-        //outb(PIC2_DATA, 0xFF);
-    }
-    pic_get_dev()->enable(0x20);
+    ACPI_TABLE_MADT* madt = acpi_early_get_table(ACPI_SIG_MADT, 1);
 
-    if(!use_apic)
+    if(madt != NULL)
     {
-        for(int i = 0; i < 16; i++) pic_eoi(i);
+        // We have a MADT
+
+        // If there is a legacy PIC, disable it
+        if((madt->Flags & ACPI_MADT_PCAT_COMPAT) == ACPI_MADT_DUAL_PIC)
+            pic_get_dev()->disable(0xF0);
+
+        uint64_t apic_base = (uint64_t)madt->Address;
+
+        // Common
+        uint32_t current_instance = 1;
+
+        // Initialize BSP LAPIC
+        ACPI_MADT_LOCAL_APIC* madt_lapic = (ACPI_MADT_LOCAL_APIC*)madt_find_table(madt, ACPI_MADT_TYPE_LOCAL_APIC, 1);
+        if(madt_lapic == NULL || (madt_lapic->LapicFlags & ACPI_MADT_ENABLED) != ACPI_MADT_ENABLED)
+        {
+            klog_early_logln(ERROR, "No APIC found");
+            return;
+        }
+        else
+        {
+            apic_init(apic_base);
+        }
+
+        // Initialize IOAPICs
+        current_instance = 1;
+        ACPI_MADT_IO_APIC* madt_ioapic = (ACPI_MADT_IO_APIC*)madt_find_table(madt, ACPI_MADT_TYPE_IO_APIC, 1);
+        while(madt_ioapic != NULL)
+        {
+            ioapic_init(madt_ioapic->Address, madt_ioapic->GlobalIrqBase);
+            madt_ioapic = (ACPI_MADT_IO_APIC*)madt_find_table(madt, ACPI_MADT_TYPE_IO_APIC, ++current_instance);
+        }
+
+        // Setup IOAPIC routing
+        current_instance = 1;
+        ACPI_MADT_INTERRUPT_OVERRIDE* madt_iso = (ACPI_MADT_INTERRUPT_OVERRIDE*)madt_find_table(madt, ACPI_MADT_TYPE_INTERRUPT_OVERRIDE, 1);
+        while(madt_iso != NULL)
+        {
+            // Skip non-ISA routings
+            if(madt_iso->Bus != 0)
+                goto skip_entry;
+
+            uint8_t polarity = (uint8_t)((madt_iso->IntiFlags) & 0x3);
+            uint8_t trigger_mode = (uint8_t)((madt_iso->IntiFlags >> 2) & 0x3);
+
+            // If the polarity is bus-conformant, set to active low
+            if(polarity == ACPI_MADT_POLARITY_CONFORMS)
+                polarity = IOAPIC_POLARITY_HIGH;
+            else 
+                polarity >>= 1;
+
+            // If the trigger mode is bus-conformant, set to edge triggered
+            if(trigger_mode == ACPI_MADT_TRIGGER_CONFORMS)
+                trigger_mode = IOAPIC_TRIGGER_EDGE;
+            else
+                trigger_mode >>= 1;
+
+            ioapic_route_line(madt_iso->GlobalIrq, madt_iso->SourceIrq, polarity, trigger_mode);
+
+        skip_entry:
+            madt_iso = (ACPI_MADT_INTERRUPT_OVERRIDE*)madt_find_table(madt, ACPI_MADT_TYPE_INTERRUPT_OVERRIDE, ++current_instance);
+        }
+        
+        default_ic = ioapic_get_dev();
+        ic_mode = IC_MODE_IOAPIC;
+        acpi_put_table(madt);
+    }
+    else if(apic_exists())
+    {
+        // We may not have ACPI, but have an APIC (ie. have an MP table) 
+        // Disable the legacy PIC
+        pic_get_dev()->disable(0xF0);
+
+        // Read the MSR for the APIC base
+        uint64_t apic_base = msr_read(MSR_APIC_BASE) & ~0xFFF;
+        apic_init(apic_base);
+
+        default_ic = ioapic_get_dev();
+        ic_mode = IC_MODE_IOAPIC;
+    }
+    else
+    {
+        // The system only has a legacy PIC, init that
+        pic_get_dev()->enable(0x20);
 
         // Mask all IRQs
         for(int i = 0; i < 16; i++)
             pic_mask(i);
+
+        default_ic = pic_get_dev();
+        ic_mode = IC_MODE_PIC;
     }
+    // acpi_set_pic_mode(ic_mode);
 
     for(int i = 0; i < MAX_TIMERS; i++)
         timers[i] = KNULL;
@@ -200,7 +316,7 @@ uint64_t timer_read_counter(unsigned long id)
         return 0;
     else if(id == 0)
         timer_id = default_timer;
-    if(timers[timer_id] == KNULL)
+    if(timers[timer_id] == KNULL || timers[timer_id] == NULL)
         return 0;
     
     return timers[timer_id]->counter;
@@ -223,17 +339,25 @@ bool ic_check_spurious(uint16_t irq)
 
 struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_t handler)
 {
-    return hal_get_ic()->handle_irq(irq, handler);
+    if(ic_mode == IC_MODE_PIC)
+        return hal_get_ic()->handle_irq(irq, handler);
+    else
+        return hal_get_ic()->handle_irq((uint8_t)ioapic_map_irq(irq), handler);
 }
 
 void ic_irq_free(struct irq_handler* handler)
 {
-    return;
+    hal_get_ic()->free_irq(handler);
 }
 
 struct ic_dev* hal_get_ic()
 {
-    return pic_get_dev();
+    return default_ic;
+}
+
+uint8_t hal_get_ic_mode()
+{
+    return ic_mode;
 }
 
 struct heap_info* get_heap_info()

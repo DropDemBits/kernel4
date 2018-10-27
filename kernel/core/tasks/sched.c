@@ -469,7 +469,7 @@ void sched_setidle(thread_t* thread)
 
 void sched_lock()
 {
-    hal_disable_interrupts_raw();
+    flags = hal_disable_interrupts();
     sched_semaphore++;
 }
 
@@ -477,7 +477,7 @@ void sched_unlock()
 {
     sched_semaphore--;
     if(sched_semaphore == 0)
-        hal_enable_interrupts_raw();
+        hal_enable_interrupts(flags);
 }
 
 void taskswitch_disable()

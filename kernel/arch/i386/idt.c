@@ -72,6 +72,19 @@ extern void irq13_entry();
 extern void irq14_entry();
 extern void irq15_entry();
 
+// IO APIC Stuff
+extern void irq16_entry();
+extern void irq17_entry();
+extern void irq18_entry();
+extern void irq19_entry();
+extern void irq20_entry();
+extern void irq21_entry();
+extern void irq22_entry();
+extern void irq23_entry();
+
+// Only for definite spurious irqs
+extern void spurious_irq();
+
 extern void syscall_entry();
 
 typedef struct
@@ -210,7 +223,6 @@ void setup_idt()
     create_descriptor(36, (uint32_t) irq4_entry, 0x08, IDT_TYPE_TRAP);
     create_descriptor(37, (uint32_t) irq5_entry, 0x08, IDT_TYPE_TRAP);
     create_descriptor(38, (uint32_t) irq6_entry, 0x08, IDT_TYPE_TRAP);
-    // Spurious #1
     create_descriptor(39, (uint32_t) irq7_entry, 0x08, IDT_TYPE_TRAP);
     // Slave PIC
     create_descriptor(40, (uint32_t) irq8_entry, 0x08, IDT_TYPE_TRAP);
@@ -220,8 +232,20 @@ void setup_idt()
     create_descriptor(44, (uint32_t)irq12_entry, 0x08, IDT_TYPE_TRAP);
     create_descriptor(45, (uint32_t)irq13_entry, 0x08, IDT_TYPE_TRAP);
     create_descriptor(46, (uint32_t)irq14_entry, 0x08, IDT_TYPE_TRAP);
-    // Spurious #2 (normal in APIC)
     create_descriptor(47, (uint32_t)irq15_entry, 0x08, IDT_TYPE_TRAP);
+    // Extra IO APIC entries
+    create_descriptor(48, (uint32_t)irq16_entry, 0x08, IDT_TYPE_TRAP);
+    create_descriptor(49, (uint32_t)irq17_entry, 0x08, IDT_TYPE_TRAP);
+    create_descriptor(50, (uint32_t)irq18_entry, 0x08, IDT_TYPE_TRAP);
+    create_descriptor(51, (uint32_t)irq19_entry, 0x08, IDT_TYPE_TRAP);
+    create_descriptor(52, (uint32_t)irq20_entry, 0x08, IDT_TYPE_TRAP);
+    create_descriptor(53, (uint32_t)irq21_entry, 0x08, IDT_TYPE_TRAP);
+    create_descriptor(54, (uint32_t)irq22_entry, 0x08, IDT_TYPE_TRAP);
+    create_descriptor(55, (uint32_t)irq23_entry, 0x08, IDT_TYPE_TRAP);
 
     create_descriptor(0x80, (uint32_t)syscall_entry, 0x0B, IDT_TYPE_INTERRUPT);
+
+    // Spurious IRQ entries
+    for(size_t i = 0; i < 16; i++)
+        create_descriptor(i + 0xF0, (uint32_t)spurious_irq, 0x08, IDT_TYPE_TRAP);
 }

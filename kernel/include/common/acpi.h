@@ -13,12 +13,35 @@
 ACPI_STATUS acpi_early_init();
 
 /**
- * @brief  Gets the early copy of a table
- * @note   
- * @param  idx: The index into the early table array
- * @retval The pointer to the early table, or NULL if it doesn't exist
+ * @brief  Gets an ACPI table with the specified signature and instance
+ *         The pointer returned should be put back using acpi_put_table()
+ * @note   For tables that don't have multiple instances (not SSDT), instance should be 1
+ *         This version ignores errors. For input validation, use acpi_get_table()
+ * @param  sig: The signature of the table to find
+ * @param  instance: The instance of the table to use. 1 based
+ * @retval The pointer to the ACPI table, or NULL if an error occured
  */
-ACPI_TABLE_HEADER* acpi_early_get_table(uint32_t idx);
+ACPI_TABLE_HEADER* acpi_early_get_table(char* sig, uint32_t instance);
+
+/**
+ * @brief  Gets an ACPI table with the specified signature and instance
+ *         The pointer returned should be put back using acpi_put_table()
+ * @note   For tables that don't have multiple instances (not SSDT), instance should be 1
+ * @param  sig: The signature of the table to find
+ * @param  instance: The instance of the table to use. 1 based
+ * @retval The pointer to the ACPI table, or NULL if an error occured
+ */
+ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance);
+
+/**
+ * @brief  Puts a table back into the ACPI subsystem
+ * @note   
+ * @param  table: The table to put back
+ * @retval None
+ */
+void acpi_put_table(ACPI_TABLE_HEADER* table);
+
+void acpi_get_pirt();
 
 /**
  * @brief  Initalizes the full ACPI subsystem

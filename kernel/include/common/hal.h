@@ -27,6 +27,9 @@
 #define IRQ_HANDLED 0
 #define IRQ_NOT_HANDLED 1
 
+#define IC_MODE_PIC  0
+#define IC_MODE_IOAPIC 1
+
 // Forward Decleration
 struct timer_dev;
 struct irq_handler;
@@ -66,15 +69,15 @@ struct timer_dev
 };
 
 typedef void (*ic_enable_func)(uint8_t irq_base);
-typedef void (*ic_disable_func)(void);
+typedef void (*ic_disable_func)(uint8_t disable_base);
 
 typedef void (*ic_mask_func)(uint8_t irq);
 typedef void (*ic_unmask_func)(uint8_t irq);
 typedef bool (*ic_spurious_func)(uint8_t irq);
 typedef void (*ic_eoi_func)(uint8_t irq);
 
+typedef struct irq_handler* (*ic_handle_func)(uint8_t irq, irq_function_t handler);
 typedef void (*ic_free_func)(struct irq_handler* handler);
-typedef int (*ic_handle_func)(uint8_t irq, irq_function_t handler);
 
 struct ic_dev
 {
@@ -85,8 +88,8 @@ struct ic_dev
     ic_unmask_func unmask;
     ic_spurious_func is_spurious;
     ic_eoi_func eoi;
-    ic_free_func free_irq;
     ic_handle_func handle_irq;
+    ic_free_func free_irq;
 };
 
 enum irq_type

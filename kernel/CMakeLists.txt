@@ -43,7 +43,7 @@ endif()
 
 # Misc.
 set(TARGET_NAME k4-kernel)
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 
 add_executable(${TARGET_NAME} ${SOURCES})
 

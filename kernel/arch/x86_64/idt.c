@@ -72,6 +72,19 @@ extern void irq13_entry();
 extern void irq14_entry();
 extern void irq15_entry();
 
+// IO APIC Stuff
+extern void irq16_entry();
+extern void irq17_entry();
+extern void irq18_entry();
+extern void irq19_entry();
+extern void irq20_entry();
+extern void irq21_entry();
+extern void irq22_entry();
+extern void irq23_entry();
+
+// Only for definite spurious irqs
+extern void spurious_irq();
+
 extern void syscall_entry();
 
 typedef struct
@@ -218,7 +231,6 @@ void setup_idt()
     create_descriptor(36, (uint64_t) irq4_entry, 0x08, IDT_TYPE_TRAP, 0);
     create_descriptor(37, (uint64_t) irq5_entry, 0x08, IDT_TYPE_TRAP, 0);
     create_descriptor(38, (uint64_t) irq6_entry, 0x08, IDT_TYPE_TRAP, 0);
-    // Spurious #1
     create_descriptor(39, (uint64_t) irq7_entry, 0x08, IDT_TYPE_TRAP, 0);
     // Slave PIC
     create_descriptor(40, (uint64_t) irq8_entry, 0x08, IDT_TYPE_TRAP, 0);
@@ -228,9 +240,21 @@ void setup_idt()
     create_descriptor(44, (uint64_t)irq12_entry, 0x08, IDT_TYPE_TRAP, 0);
     create_descriptor(45, (uint64_t)irq13_entry, 0x08, IDT_TYPE_TRAP, 0);
     create_descriptor(46, (uint64_t)irq14_entry, 0x08, IDT_TYPE_TRAP, 0);
-    // Spurious #2 (normal in APIC)
     create_descriptor(47, (uint64_t)irq15_entry, 0x08, IDT_TYPE_TRAP, 0);
+    // Extra IO APIC entries
+    create_descriptor(48, (uint64_t)irq16_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(49, (uint64_t)irq17_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(50, (uint64_t)irq18_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(51, (uint64_t)irq19_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(52, (uint64_t)irq20_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(53, (uint64_t)irq21_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(54, (uint64_t)irq22_entry, 0x08, IDT_TYPE_TRAP, 0);
+    create_descriptor(55, (uint64_t)irq23_entry, 0x08, IDT_TYPE_TRAP, 0);
 
     // Interrupt syscall
     create_descriptor(0x80, (uint64_t)syscall_entry, 0x0B, IDT_TYPE_INTERRUPT, 0);
+
+    // Spurious IRQ entries
+    for(size_t i = 0; i < 16; i++)
+        create_descriptor(i + 0xF0, (uint64_t)spurious_irq, 0x08, IDT_TYPE_TRAP, 0);
 }

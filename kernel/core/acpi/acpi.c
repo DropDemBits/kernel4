@@ -51,21 +51,6 @@ ACPI_STATUS acpi_early_init()
     return (status);
 }
 
-ACPI_TABLE_HEADER* acpi_early_get_table(uint32_t idx)
-{    
-    ACPI_TABLE_DESC* table;
-    ACPI_STATUS Status = AcpiGetTableByIndex(idx, &table);
-
-    if(ACPI_FAILURE(Status) && table == NULL);
-        return NULL;
-    return table;
-}
-
-/**
- * @brief  Initalizes the full ACPI subsystem
- * @note   
- * @retval AE_OK if everything was initialized properly
- */
 ACPI_STATUS acpi_init()
 {
     // Full blown init of subsystem
@@ -116,6 +101,28 @@ ACPI_STATUS acpi_init()
     }
 
     return (AE_OK);
+}
+
+ACPI_TABLE_HEADER* acpi_early_get_table(char* sig, uint32_t instance)
+{
+    ACPI_TABLE_DESC* table = NULL;
+    AcpiGetTable(sig, instance, &table);
+    return table;
+}
+
+ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance)
+{    
+    ACPI_TABLE_DESC* table = NULL;
+    ACPI_STATUS Status = AcpiGetTable(sig, instance, &table);
+
+    if(ACPI_FAILURE(Status) && table == NULL);
+        return NULL;
+    return table;
+}
+
+void acpi_put_table(ACPI_TABLE_HEADER* table)
+{
+    AcpiPutTable(table);
 }
 
 uint16_t acpi_subsys_id()

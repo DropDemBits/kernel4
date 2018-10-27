@@ -58,11 +58,20 @@
 
 #define NR_PIC_IRQS 16
 
+// Forward Declerations
+bool pic_check_spurious(uint8_t irq);
+
 static struct irq_handler* handler_list[NR_PIC_IRQS];
+static bool is_enabled = false;
 
 static void irq_wrapper(void* params, uint8_t int_num)
 {
     uint8_t irq = int_num - 32;
+
+    // Check if it's a spurious interrupt
+    if(pic_check_spurious(irq))
+        return;
+
     pic_mask(irq);
     pic_eoi(irq);
 
@@ -123,6 +132,10 @@ void pic_setup(uint8_t irq_base)
     outb(PIC2_DATA, ICW4_MPM);
     io_wait();
 
+    // Get rid of any boot IRQs
+    for(int i = 0; i < 16; i++)
+        pic_eoi(i);
+
     // Restore Masks
     outb(PIC1_DATA, mask_a);
     outb(PIC2_DATA, mask_b);
@@ -130,10 +143,19 @@ void pic_setup(uint8_t irq_base)
     // Clear all interrupt handlers
     for(int i = 0; i < NR_PIC_IRQS; i++)
         handler_list[i] = NULL;
+
+    is_enabled = true;
 }
 
-void pic_disable()
+void pic_disable(uint8_t disable_base)
 {
+    // Move PIC to disable base
+    pic_setup(disable_base);
+
+    // Mask all PIC interrupts
+    outb(PIC1_DATA, 0xFF);
+    outb(PIC1_DATA, 0xFF);
+    is_enabled = false;
 }
 
 void pic_mask(uint8_t irq)
@@ -170,13 +192,12 @@ void pic_unmask(uint8_t irq)
 
 bool pic_check_spurious(uint8_t irq)
 {
-    if(irq != 7 && irq != 15) return false;
     uint32_t irr = pic_read_irr();
-
-    if(irq == 7  && ~(irr & 0x08))
+    if(irq == 7 && ~(irr & 0x08))
     {
         return true;
-    } else if(irq == 15 && ~(irr & 0x80))
+    }
+    else if(irq == 15 && ~(irr & 0x80))
     {
         outb(PIC1_CMD, OCW2_EOI);
         return true;
@@ -186,12 +207,17 @@ bool pic_check_spurious(uint8_t irq)
 
 void pic_eoi(uint8_t irq)
 {
-    if(irq >= 8) outb(PIC2_CMD, OCW2_EOI);
+    if(irq >= 8)
+        outb(PIC2_CMD, OCW2_EOI);
     outb(PIC1_CMD, OCW2_EOI);
 }
 
 void pic_free_irq(struct irq_handler* handler)
 {
+    // If the PIC is not enabled, don't free IRQ handlers
+    if(!is_enabled)
+        return;
+
     // As we are modifying the interrupt list, encapsulate inside of a disable-enable interrupt pair
     cpu_flags_t flags = hal_disable_interrupts();
 
@@ -220,6 +246,10 @@ void pic_free_irq(struct irq_handler* handler)
 
 struct irq_handler* pic_handle_irq(uint8_t irq, irq_function_t handler)
 {
+    // If the PIC is not enabled, don't handle IRQs
+    if(!is_enabled)
+        return;
+
     // Return null on out of range
     if(irq >= NR_PIC_IRQS)
         return NULL;
@@ -268,8 +298,8 @@ struct ic_dev pic_dev = {
     .unmask = pic_unmask,
     .is_spurious = pic_check_spurious,
     .eoi = pic_eoi,
-    .free_irq = pic_free_irq,
     .handle_irq = pic_handle_irq,
+    .free_irq = pic_free_irq,
 };
 
 struct ic_dev* pic_get_dev()

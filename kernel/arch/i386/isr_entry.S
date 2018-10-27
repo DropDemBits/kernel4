@@ -42,14 +42,6 @@ irq\int_num\()_entry:
     jmp isr_entry
 .endm
 
-.macro spur_irq_entry int_num
-.globl irq\int_num\()_entry
-irq\int_num\()_entry:
-    push $0
-    push $\int_num+32\()
-    jmp isr_entry
-.endm
-
 isr_noerr_entry 0
 isr_noerr_entry 1
 isr_noerr_entry 2
@@ -76,23 +68,34 @@ isr_err_entry 21
 isr_err_entry 29
 isr_err_entry 30
 // RSV 31
-irq_entry 0
-irq_entry 1
-irq_entry 2
-irq_entry 3
-irq_entry 4
-irq_entry 5
-irq_entry 6
-spur_irq_entry 7
-
-irq_entry 8
-irq_entry 9
+irq_entry  0
+irq_entry  1
+irq_entry  2
+irq_entry  3
+irq_entry  4
+irq_entry  5
+irq_entry  6
+irq_entry  7
+irq_entry  8
+irq_entry  9
 irq_entry 10
 irq_entry 11
 irq_entry 12
 irq_entry 13
 irq_entry 14
-spur_irq_entry 15
+irq_entry 15
+irq_entry 16
+irq_entry 17
+irq_entry 18
+irq_entry 19
+irq_entry 20
+irq_entry 21
+irq_entry 22
+irq_entry 23
+
+.globl spurious_irq
+spurious_irq:
+    iret
 
 .global syscall_entry
 .extern set_esp0

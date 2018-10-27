@@ -257,6 +257,8 @@ void reshow_buf()
 {
     struct klog_entry* entry = (struct klog_entry*)get_klog_base();
     char buffer[128];
+    const char* fmt = "[%u.%u] (%s): ";
+    memset(buffer, 0, sizeof(buffer));
 
     while(entry->level != EOL)
     {
