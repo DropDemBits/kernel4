@@ -6,9 +6,11 @@
 #define APIC_DELMODE_FIXED          0
 #define APIC_DELMODE_LOWEST_PRIO    1
 #define APIC_DELMODE_SMI            2
+
 #define APIC_DELMODE_NMI            4
 #define APIC_DELMODE_INIT           5
 #define APIC_DELMODE_SIPI           6
+#define APIC_DELMODE_EXTINT         7
 
 #define IOAPIC_POLARITY_HIGH 0
 #define IOAPIC_POLARITY_LOW  1
@@ -24,6 +26,8 @@
  * @retval None
  */
 void apic_init(uint64_t phybase);
+
+void apic_set_lint_entry(uint8_t lint_entry, uint8_t polarity, uint8_t trigger_mode, uint8_t delivery_mode);
 
 /**
  * @brief  Initializes an IOAPIC

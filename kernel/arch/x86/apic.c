@@ -17,6 +17,26 @@
 #define APIC_ICR1       0x300
 #define APIC_ICR2       0x310
 
+// LVT
+#define APIC_LVT_CMCI   0x2F0
+#define APIC_LVT_TIMER  0x320
+#define APIC_LVT_TSENS  0x330
+#define APIC_LVT_PMCR   0x340
+#define APIC_LVT_LINT0  0x350
+#define APIC_LVT_LINT1  0x360
+
+// APIC Timer
+#define APIC_TIMER_RCR  0x380
+#define APIC_TIMER_CCR  0x390
+#define APIC_TIMER_DCR  0x3E0
+
+#define APIC_LVT_VEC         0x000FF
+#define APIC_LVT_DELMODE_SHF 8
+#define APIC_LVT_POL_SHF     13
+#define APIC_LVT_TRIG_SHF    15
+#define APIC_LVT_DEST_SHF    24
+
+/** IO APIC Constants**/
 #define IOAPIC_ID       0x00
 #define IOAPIC_VER      0x01
 #define IOAPIC_ARB      0x02
@@ -54,6 +74,18 @@ struct irq_mapping
     struct irq_mapping* next;
     uint32_t global_irq;
     uint8_t isa_irq;
+};
+
+static const char* apic_delmode_names[] = 
+{
+    "Fixed",
+    "LowestPrio",
+    "SMI",
+    "Rsvd",
+    "NMI",
+    "INIT",
+    "SIPI",
+    "ExtInt",
 };
 
 // TODO: Replace with a real IO Space virtual mem allocator
@@ -113,6 +145,16 @@ void apic_init(uint64_t phybase)
 
     // Enable LAPIC && Set SIV to FF
     apic_write(APIC_SIVR, apic_read(APIC_SIVR) | 0x1FF);
+}
+
+void apic_set_lint_entry(uint8_t lint_entry, uint8_t polarity, uint8_t trigger_mode, uint8_t delivery_mode)
+{
+    // Can't be greater than LINT1, or be a fixed or external delivery
+    if(lint_entry > 1 || delivery_mode == APIC_DELMODE_FIXED || delivery_mode == APIC_DELMODE_EXTINT)
+        return;
+
+    klog_early_logln(INFO, "Setting up LINT%d %s vector (Level: %d, Low: %d)", lint_entry, apic_delmode_names[delivery_mode], trigger_mode, polarity);
+    apic_write(APIC_LVT_LINT0 + (lint_entry << 4), (polarity << APIC_LVT_POL_SHF) | (trigger_mode << APIC_LVT_TRIG_SHF) | (delivery_mode << APIC_LVT_DELMODE_SHF));
 }
 
 void ioapic_init(uint64_t phybase, uint32_t irq_base)

@@ -177,12 +177,15 @@ void hal_init()
         skip_entry:
             madt_iso = (ACPI_MADT_INTERRUPT_OVERRIDE*)madt_find_table(madt, ACPI_MADT_TYPE_INTERRUPT_OVERRIDE, ++current_instance);
         }
+
+        ACPI_MADT_LOCAL_APIC_NMI* madt_nmi = (ACPI_MADT_LOCAL_APIC_NMI*)madt_find_table(madt, ACPI_MADT_TYPE_LOCAL_APIC_NMI, 1);
+        apic_set_lint_entry(madt_nmi->Lint, (madt_nmi->IntiFlags >> 1) & 1, (madt_nmi->IntiFlags >> 3) & 1, APIC_DELMODE_NMI);
         
         default_ic = ioapic_get_dev();
         ic_mode = IC_MODE_IOAPIC;
         acpi_put_table(madt);
     }
-    else if(apic_exists())
+    /*else if(apic_exists())
     {
         // We may not have ACPI, but have an APIC (ie. have an MP table) 
         // Disable the legacy PIC
@@ -194,7 +197,7 @@ void hal_init()
 
         default_ic = ioapic_get_dev();
         ic_mode = IC_MODE_IOAPIC;
-    }
+    }*/
     else
     {
         // The system only has a legacy PIC, init that
