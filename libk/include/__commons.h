@@ -11,6 +11,8 @@ extern "C"
 #   define NULL (void*)0
 #endif
 
+#define __EXPORT_SPEC__ extern
+
 #ifdef __cplusplus
 }
 #endif

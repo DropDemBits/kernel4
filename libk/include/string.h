@@ -8,31 +8,31 @@ extern "C"
 {
 #endif
 
-int memcmp(const void* str1, const void* str2, size_t num);
-void* memcpy(void* dest, const void* src, size_t num);
-void* memmove(void* dest, const void* src, size_t num);
-void* memset(void* str, const int c, size_t num);
+__EXPORT_SPEC__ int memcmp(const void* str1, const void* str2, size_t num);
+__EXPORT_SPEC__ void* memcpy(void* dest, const void* src, size_t num);
+__EXPORT_SPEC__ void* memmove(void* dest, const void* src, size_t num);
+__EXPORT_SPEC__ void* memset(void* str, const int c, size_t num);
 
-size_t strlen(const char* str);
-int strcmp(const char* str1, const char* str2);
-int strncmp(const char* str1, const char* str2, size_t num);
-void* strcpy(char* dest, const char* src);
-void* strncpy(char* dest, const char* src, size_t num);
-char* strcat (char* dest, const char* src);
-char* strncat (char* dest, const char* src, size_t num);
-const char* strstr (const char* str1, const char* str2);
+__EXPORT_SPEC__ size_t strlen(const char* str);
+__EXPORT_SPEC__ int strcmp(const char* str1, const char* str2);
+__EXPORT_SPEC__ int strncmp(const char* str1, const char* str2, size_t num);
+__EXPORT_SPEC__ void* strcpy(char* dest, const char* src);
+__EXPORT_SPEC__ void* strncpy(char* dest, const char* src, size_t num);
+__EXPORT_SPEC__ char* strcat (char* dest, const char* src);
+__EXPORT_SPEC__ char* strncat (char* dest, const char* src, size_t num);
+__EXPORT_SPEC__ const char* strstr (const char* str1, const char* str2);
 
-size_t strspn(const char* str, const char* delim);
-char* strtok_r(char* str, const char* delim, char** lasts);
+__EXPORT_SPEC__ size_t strspn(const char* str, const char* delim);
+__EXPORT_SPEC__ char* strtok_r(char* str, const char* delim, char** lasts);
 
 //Non standard
-int strnicmp(const char* str1, const char* str2, size_t length);
+__EXPORT_SPEC__ int strnicmp(const char* str1, const char* str2, size_t length);
 
-char* _strupr(char* s);
+__EXPORT_SPEC__ char* _strupr(char* s);
 #define strupr(s) _strupr(s);
 
-#ifdef __cplusplus__strings__
-int stricmp(const char* str1, const char* str2, size_t length);
+#ifndef __cplusplus__strings__
+__EXPORT_SPEC__ int stricmp(const char* str1, const char* str2, size_t length);
 #endif
 
 #ifdef __cplusplus

@@ -12,12 +12,14 @@ extern "C"
 // Macros
 #define EOF -1
 
-int printf(const char *format, ...);
-int sprintf(char *dest, const char *format, ...);
-int vprintf(const char *format, va_list params);
-int vsprintf(char *dest, const char *format, va_list params);
-int puts(const char *str);
-int putchar(int ic);
+__EXPORT_SPEC__ int printf(const char *format, ...);
+__EXPORT_SPEC__ int sprintf(char *dest, const char *format, ...);
+__EXPORT_SPEC__ int vprintf(const char *format, va_list params);
+__EXPORT_SPEC__ int vsprintf(char *dest, const char *format, va_list params);
+__EXPORT_SPEC__ int snprintf(char *dest, size_t n, const char *format, ...);
+__EXPORT_SPEC__ int vsnprintf(char *dest, size_t n, const char *format, va_list params);
+__EXPORT_SPEC__ int puts(const char *str);
+__EXPORT_SPEC__ int putchar(int ic);
 
 #ifdef __cplusplus
 }

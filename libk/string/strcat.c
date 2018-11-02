@@ -11,7 +11,7 @@ char* strcat (char* dest, const char* src)
 
     // Directly append onto the end
     char* dest_chars = dest + dest_len;
-    char* src_chars = src;
+    const char* src_chars = src;
     while(*src_chars)
         *(dest_chars++) = *(src_chars++);
 

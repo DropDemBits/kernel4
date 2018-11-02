@@ -305,7 +305,14 @@ static bool shell_parse()
         sched_sleep_ms(500);
 
         // Enter sleep state
-        acpi_enter_sleep(5);
+        ACPI_STATUS Status = acpi_enter_sleep(5);
+        if(ACPI_FAILURE(Status))
+        {
+            putchar('?');
+            tty_set_colours(tty, shell_text_clr, shell_bg_clr);
+            putchar('\n');
+            printf("An error occurred while trying to shutdown: %s\n", AcpiFormatException(Status));
+        }
         return true;
     }
 

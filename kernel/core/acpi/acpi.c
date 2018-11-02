@@ -34,10 +34,9 @@ ACPI_STATUS acpi_early_init()
             break;
 
         if(ACPI_COMPARE_NAME(table->Signature, ACPI_SIG_FACS))
-            klog_early_logln(INFO, "\t%.4s (%8dB) v%02.2x",
+            klog_early_logln(INFO, "\t%.4s (%8dB)",
                 table->Signature,
-                table->Length,
-                table->Revision);
+                table->Length);
         else
             klog_early_logln(INFO, "\t%.4s (%8dB) v%02.2x OEM=%-8.8s %-8.8s %-4.4s",
                 table->Signature,
@@ -129,8 +128,7 @@ ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance)
 
 void acpi_put_table(ACPI_TABLE_HEADER* table)
 {
-    if(acpi_initalized)
-        AcpiPutTable(table);
+    AcpiPutTable(table);
 }
 
 ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)

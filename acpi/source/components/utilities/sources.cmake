@@ -4,7 +4,7 @@ list(APPEND ACPICA_SOURCES
     source/components/utilities/utascii.c
     source/components/utilities/utbuffer.c
     source/components/utilities/utcache.c
-    source/components/utilities/utclib.c
+    # source/components/utilities/utclib.c
     source/components/utilities/utcopy.c
     source/components/utilities/utdebug.c
     source/components/utilities/utdecode.c
@@ -25,7 +25,7 @@ list(APPEND ACPICA_SOURCES
     source/components/utilities/utosi.c
     source/components/utilities/utownerid.c
     source/components/utilities/utpredef.c
-    source/components/utilities/utprint.c
+    # source/components/utilities/utprint.c
     source/components/utilities/utresdecode.c
     source/components/utilities/utresrc.c
     source/components/utilities/utstate.c

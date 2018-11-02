@@ -15,7 +15,7 @@ static void print(char *dest, const char* data, size_t data_length, size_t* offs
     *offset += data_length;
 }
 
-int vsprintf(char *dest, const char *format, va_list params)
+int vsnprintf(char *dest, size_t num, const char *format, va_list params)
 {
     int written = 0;
     size_t index = 0;
@@ -26,6 +26,8 @@ int vsprintf(char *dest, const char *format, va_list params)
     char buffer[65];
     size_t precision = 0;
     bool left_justify = false;
+    bool will_overflow = false;
+    num -= 1;
 
     // Padding
     size_t min_chars = 0;
@@ -33,19 +35,24 @@ int vsprintf(char *dest, const char *format, va_list params)
 
     while(*format)
     {
+        if(will_overflow || !num)
+            break;
+
         if(*format != '%')
         {
             printc:
                 amount = 1;
-                while(format[amount] && format[amount] != '%')
+                while(format[amount] && format[amount] != '%' && num--)
                     amount++;
                 print(dest, format, amount, &index);
                 written += amount;
                 format += amount;
+                will_overflow = (num == 0);
 
                 // Since we never jump to the reset portion, reset amount here
                 amount = 0;
                 left_justify = false;
+
                 continue;
         }
 
@@ -136,6 +143,12 @@ int vsprintf(char *dest, const char *format, va_list params)
         {
             format++;
             char c = (char) va_arg(params, int); // Gets promoted to int
+
+            if(buf_len > num)
+            {
+                buf_len = num;
+                will_overflow = true;
+            }
             print(dest, &c, sizeof(c), &index);
             amount += 1;
         }
@@ -160,6 +173,11 @@ int vsprintf(char *dest, const char *format, va_list params)
                 amount += i;
             }
 
+            if(buf_len > num)
+            {
+                buf_len = num;
+                will_overflow = true;
+            }
             print(dest, s, buf_len, &index);
 
             if(buf_len < min_chars && left_justify)
@@ -196,22 +214,29 @@ int vsprintf(char *dest, const char *format, va_list params)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len; i++, min_chars--)
+                for(; min_chars > buf_len && num; i++, min_chars--, num--)
                     dest[i + index] = padding_char;
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
 
+            if(buf_len > num)
+            {
+                buf_len = num;
+                will_overflow = true;
+            }
             print(dest, buffer, strlen(buffer), &index);
 
             if(buf_len < min_chars && left_justify)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len; i++, min_chars--)
+                for(; min_chars > buf_len; num; i++, min_chars--, num--)
                     dest[i + index] = '0';
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
             amount += buf_len;
             format++;
@@ -243,18 +268,25 @@ int vsprintf(char *dest, const char *format, va_list params)
                     dest[i + index] = padding_char;
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
 
+            if(buf_len > num)
+            {
+                buf_len = num;
+                will_overflow = true;
+            }
             print(dest, buffer, strlen(buffer), &index);
 
             if(buf_len < min_chars && left_justify)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len; i++, min_chars--)
+                for(; min_chars > buf_len ** num; i++, min_chars--, num--)
                     dest[i + index] = '0';
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
             amount += buf_len;
             format++;
@@ -286,13 +318,21 @@ int vsprintf(char *dest, const char *format, va_list params)
                     dest[i + index] = padding_char;
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
 
             if(pound)
             {
+                if(num <= 2)
+                {
+                    buf_len = num;
+                    will_overflow = true;
+                    continue;
+                }
                 print(dest, "0", 1, &index);
                 print(dest, format, 1, &index);
                 amount += 2;
+                num -= 2;
             }
 
             if(*format == 'x')
@@ -306,25 +346,32 @@ int vsprintf(char *dest, const char *format, va_list params)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len; i++, min_chars--)
+                for(; min_chars > buf_len && num; i++, min_chars--, num--)
                     dest[i + index] = padding_char;
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
 
+            if(buf_len > num)
+            {
+                buf_len = num;
+                will_overflow = true;
+            }
             print(dest, buffer, buf_len, &index);
 
             if(buf_len < min_chars && left_justify)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len; i++, min_chars--)
+                for(; min_chars > buf_len && num; i++, min_chars--, num--)
                     dest[i + index] = '0';
                 index += i;
                 amount += i;
             }
             amount += buf_len;
             format++;
+            will_overflow = (num == 0);
         }
         else if(*format == 'p')
         {
@@ -337,28 +384,42 @@ int vsprintf(char *dest, const char *format, va_list params)
             {
                 // Put spaces on until we match the limit (done before in order to shift num)
                 int i = 0;
-                for(; min_chars > buf_len; i++, min_chars--)
+                for(; min_chars > buf_len && num; i++, min_chars--, num--)
                     dest[i + index] = padding_char;
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
 
             if(pound)
             {
+                if(num <= 2)
+                {
+                    buf_len = num;
+                    will_overflow = true;
+                    continue;
+                }
                 print(dest, "0x", 2, &index);
                 amount += 2;
+                num -= 2;
             }
             
             if(buf_len < min_chars)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len; i++, min_chars--)
+                for(; min_chars > buf_len && num; i++, min_chars--, num--)
                     dest[i + index] = padding_char;
                 index += i;
                 amount += i;
+                will_overflow = (num == 0);
             }
 
+            if(buf_len > num)
+            {
+                buf_len = num;
+                will_overflow = true;
+            }
             amount += buf_len;
             print(dest, buffer, buf_len, &index);
 
@@ -379,6 +440,7 @@ int vsprintf(char *dest, const char *format, va_list params)
         padding_char = ' ';
         min_chars = 0;
         length = 0;
+        num -= amount;
         written += amount;
         amount = 0;
         pound = false;

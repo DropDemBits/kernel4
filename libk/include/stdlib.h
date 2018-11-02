@@ -15,15 +15,15 @@ extern "C"
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE -1
 
-void abort(void) __attribute__((noreturn));
-void exit(int status);
-extern char* itoa (int value, char * str, int base);
-extern char* lltoa (long long value, char * str, int base);
-extern char* ulltoa (unsigned long long value, char * str, int base);
-unsigned long int strtoul (const char* str, char** endptr, int base);
+__EXPORT_SPEC__ void abort(void) __attribute__((noreturn));
+__EXPORT_SPEC__ void exit(int status);
+__EXPORT_SPEC__ char* itoa (int value, char * str, int base);
+__EXPORT_SPEC__ char* lltoa (long long value, char * str, int base);
+__EXPORT_SPEC__ char* ulltoa (unsigned long long value, char * str, int base);
+__EXPORT_SPEC__ unsigned long int strtoul (const char* str, char** endptr, int base);
 
-extern int atoi (const char * str);
-extern long int atol (const char * str);
+__EXPORT_SPEC__ int atoi (const char * str);
+__EXPORT_SPEC__ long int atol (const char * str);
 
 #ifdef __cplusplus
 }

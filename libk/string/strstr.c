@@ -12,7 +12,7 @@ const char* strstr (const char* str1, const char* str2)
 
     compare_len -= substr_len;
 
-    char* start = str1;
+    const char* start = str1;
 
     while(strncmp(str2, start, substr_len) != 0 && compare_len--)
         start++;

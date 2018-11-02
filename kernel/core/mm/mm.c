@@ -426,11 +426,9 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
 
     if(node != KNULL && (base + length) >= (uintptr_t)&kernel_phystart && base <= (uintptr_t)&kernel_phypage_end && type == MEM_REGION_AVAILABLE)
     {
-        asm("xchg %%bx, %%bx"::"a"(base),"b"(length));
         // If the current region overlaps with the kernel image and the new region was availabe, reserve that range
         for(size_t bit = 0; bit < ((kern_size >> 12) & 0x7FFF); bit++)
             bm_set_bit(node, bit + (kern_base >> 12));
-        asm("xchg %bx, %bx");
     }
 }
 

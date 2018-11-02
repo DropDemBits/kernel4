@@ -210,7 +210,7 @@ void hal_init()
         default_ic = pic_get_dev();
         ic_mode = IC_MODE_PIC;
     }
-    acpi_put_table((ACPI_TABLE_HEADER*)madt);
+    acpi_put_table(madt);
     // acpi_set_pic_mode(ic_mode);
 
     for(int i = 0; i < MAX_TIMERS; i++)
