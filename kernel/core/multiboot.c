@@ -216,7 +216,6 @@ void parse_mb1()
         klog_early_logln(INFO, "Memory Regions:");
         mb_mmap_t* mmap = (mb_mmap_t*)((uintptr_t)mb1->mmap_addr);
 
-        bool first_iter = true;
         while((size_t)mmap < mb1->mmap_addr + mb1->mmap_length) {
             mb2_mmap_t* actual = (mb2_mmap_t*)((uintptr_t)mmap + sizeof(mmap->size));
 
@@ -226,17 +225,20 @@ void parse_mb1()
                 goto next_entry;
 
             mm_add_region(actual->addr, actual->len, actual->type);
-            if(first_iter)
+            if(actual->addr + actual->len >= multiboot_base && actual->addr <= multiboot_base + multiboot_size)
             {
                 // Reserve multboot info
                 mm_add_region(  multiboot_base,
                                 multiboot_size,
                                 MULTIBOOT_MEMORY_RESERVED);
-                                // Reserve initrd
+            }
+
+            if(actual->addr + actual->len >= initrd_start && actual->addr <= initrd_start + initrd_size)
+            {
+                // Reserve initrd
                 mm_add_region(  initrd_start,
                                 initrd_size,
                                 MULTIBOOT_MEMORY_RESERVED);
-                first_iter = false;
             }
 
             next_entry:
@@ -268,7 +270,7 @@ void parse_mb1()
     }
     else
     {
-        klog_early_logln(INFO, "Unable to find RSDP (Pre-ACPI machine?)");
+        klog_early_logln(INFO, "Unable to find RSDP (Pre-ACPI / (U)EFI machine?)");
     }
 
 #endif
@@ -377,20 +379,25 @@ void parse_mb2()
 
         klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type: %s", mmap->addr, mmap->len, region_names[mmap->type-1]);
         mm_add_region(mmap->addr, mmap->len, mmap->type);
-        if(first_iter)
+
+        // Reserve multiboot info region
+        multiboot_base = (unsigned long)multiboot_ptr & ~0xFFF;
+        multiboot_size = info_size;
+
+        if(mmap->addr + mmap->len >= multiboot_base && mmap->addr <= multiboot_base + multiboot_size)
         {
-            // Reserve multiboot info region
-            multiboot_base = (unsigned long)multiboot_ptr & ~0xFFF;
-            multiboot_size = info_size;
-            mm_add_region(    multiboot_base,
+            // Reserve multboot info
+            mm_add_region(  multiboot_base,
                             multiboot_size,
                             MULTIBOOT_MEMORY_RESERVED);
+        }
+
+        if(mmap->addr + mmap->len >= initrd_start && mmap->addr <= initrd_start + initrd_size)
+        {
             // Reserve initrd
-            mm_add_region(    initrd_start,
+            mm_add_region(  initrd_start,
                             initrd_size,
                             MULTIBOOT_MEMORY_RESERVED);
-
-            first_iter = false;
         }
     }
 }

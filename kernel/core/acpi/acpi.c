@@ -7,6 +7,7 @@ static ACPI_TABLE_DESC early_tables[ACPI_MAX_EARLY_TABLES];
 
 // ACPI KLOG subsystem ID
 static uint16_t acpi_subsys = 0;
+static bool acpi_initalized = false;
 
 ACPI_STATUS acpi_early_init()
 {
@@ -101,6 +102,8 @@ ACPI_STATUS acpi_init()
         return (status);
     }
 
+    acpi_initalized = true;
+
     return (AE_OK);
 }
 
@@ -112,7 +115,10 @@ ACPI_TABLE_HEADER* acpi_early_get_table(char* sig, uint32_t instance)
 }
 
 ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance)
-{    
+{
+    if(!acpi_initalized)
+        return NULL;
+
     ACPI_TABLE_HEADER* table = NULL;
     ACPI_STATUS Status = AcpiGetTable(sig, instance, &table);
 
@@ -123,11 +129,15 @@ ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance)
 
 void acpi_put_table(ACPI_TABLE_HEADER* table)
 {
-    AcpiPutTable(table);
+    if(acpi_initalized)
+        AcpiPutTable(table);
 }
 
 ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)
 {
+    if(!acpi_initalized)
+        return AE_ERROR;
+
     ACPI_STATUS Status;
     Status = AcpiEnterSleepStatePrep(sleep_state);
     if(ACPI_FAILURE(Status))
@@ -152,6 +162,9 @@ ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)
 
 ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state)
 {
+    if(!acpi_initalized)
+        return AE_ABORT_METHOD;
+
     ACPI_STATUS Status;
     
     Status = AcpiLeaveSleepStatePrep(sleep_state);

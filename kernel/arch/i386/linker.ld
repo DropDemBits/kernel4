@@ -21,34 +21,35 @@
 ENTRY(_start)
 TARGET(elf32-i386)
 KERNEL_VMA = 0x80100000;
+KERNEL_PMA = 0x00100000;
 
 SECTIONS {
 
     . = KERNEL_VMA;
     kernel_start = .;
-    kernel_phystart = . - KERNEL_VMA + 0x100000;
-    .init ALIGN(4K) : AT(ADDR(.init) - 0x80000000) {
+    kernel_phystart = . - KERNEL_VMA + KERNEL_PMA;
+    .init ALIGN(4K) : AT(ADDR(.init) - KERNEL_VMA + KERNEL_PMA) {
         *(.multiboot)
         *(init.code)
         *(init.data)
         *(init.bss)
     }
 
-    .text ALIGN(4K) : AT(ADDR(.text) - 0x80000000) {
+    .text ALIGN(4K) : AT(ADDR(.text) - KERNEL_VMA + KERNEL_PMA) {
         *(.text)
     }
 
-    .rodata ALIGN(4K) : AT(ADDR(.rodata) - 0x80000000) {
+    .rodata ALIGN(4K) : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_PMA) {
         *(.rodata)
     }
 
     rodata_end = .;
 
-    .data ALIGN(4K) : AT(ADDR(.data) - 0x80000000) {
+    .data ALIGN(4K) : AT(ADDR(.data) - KERNEL_VMA + KERNEL_PMA) {
         *(.data)
     }
 
-    .bss ALIGN(4K) : AT(ADDR(.bss) - 0x80000000) {
+    .bss ALIGN(4K) : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_PMA) {
         *(.COMMON)
         *(.bss)
         *(.bootstrap_stack)
@@ -63,5 +64,6 @@ SECTIONS {
 
     kernel_end = .;
     kernel_page_end = ALIGN(4K);
+    kernel_phypage_end = kernel_page_end - KERNEL_VMA + KERNEL_PMA;
     kernel_physize = kernel_page_end - kernel_start;
 }

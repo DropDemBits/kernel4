@@ -21,8 +21,9 @@
 #include <common/mm/mm.h>
 #include <common/util/kfuncs.h>
 
-extern size_t kernel_phystart;
+extern uintptr_t kernel_phystart;
 extern size_t kernel_physize;
+extern uintptr_t kernel_phypage_end;
 extern void* mm_get_base();
 
 enum {
@@ -339,13 +340,12 @@ void mm_init()
 
 void mm_add_region(unsigned long base, size_t length, uint32_t type)
 {
-    mem_region_t *tail = list_get_tail(region_list);
+    mem_region_t *node = list_get_tail(region_list);
     bool cover_kernel = false;
 
-    if(tail == KNULL)
+    if(node == KNULL)
     {
         bool base_in_bda = false;
-        cover_kernel = true;
 
         // Set first 8K block in region for region tracking
         if(base < 0x1000)
@@ -378,12 +378,12 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
         region_list->flags.reserved = 0xFFU;
         region_list->flags.present = 1;
 
-        tail = list_get_tail(region_list);
-        tail->bitmap = (uint64_t*)(base - 0x1000);
+        node = list_get_tail(region_list);
+        node->bitmap = (uint64_t*)(base - 0x1000);
 
-        for(size_t i = 0; i < 512 && tail->bitmap != KNULL; i++)
+        for(size_t i = 0; i < 512 && node->bitmap != KNULL; i++)
         {
-            tail->bitmap[i] = 0xFFFFFFFFFFFFFFFFULL;
+            node->bitmap[i] = 0xFFFFFFFFFFFFFFFFULL;
         }
 
         // Set bits for allocated blocks
@@ -391,12 +391,14 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
         bm_set_bit(region_list, (base - 0x2000) >> 12);
         bm_set_bit(region_list, (base - 0x1000) >> 12);
     }
-    if((base >> 27) > (tail->base >> 27))
+
+    // Check if new block is outside of the last block
+    if((base >> 27) > (node->base >> 27))
     {
-        if(type != 1 && type != 3) return;
+        if(type != MEM_REGION_AVAILABLE && type != MEM_REGION_RECLAIMABLE) return;
 
         // Alloc new block & ptr
-        tail = mm_create_region(tail, base >> 27);
+        node = mm_create_region(node, base >> 27);
     }
 
     // Set bits according to type
@@ -404,26 +406,31 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
     {
         for(size_t bit = 0; bit < ((length >> 12) & 0x7FFF); bit++)
         {
-            if(type == 1)
-            {
-                bm_clear_bit(tail, bit + (base >> 12));
-            }
-            else bm_set_bit(tail, bit + (base >> 12));
-        }
-
-        if(cover_kernel)
-        {
-            // Reserve kernel image region
-            mm_add_region(    (unsigned long)&kernel_phystart,
-                            (size_t)&kernel_physize,
-                            2);
-            cover_kernel = false;
+            if(type == MEM_REGION_AVAILABLE)
+                bm_clear_bit(node, bit + (base >> 12));
+            else
+                bm_set_bit(node, bit + (base >> 12));
         }
 
         if(++block >= (length >> 27)) break;
 
         // Alloc new block & ptr
-        tail = mm_create_region(tail, (base >> 27) + block);
+        node = mm_create_region(node, (base >> 27) + block);
+    }
+
+    uintptr_t kern_base = &kernel_phystart;
+    size_t kern_size = (size_t)&kernel_physize;
+
+    // Preserve find the node containing the kernel region
+    node = list_search_block(region_list, kern_base);
+
+    if(node != KNULL && (base + length) >= (uintptr_t)&kernel_phystart && base <= (uintptr_t)&kernel_phypage_end && type == MEM_REGION_AVAILABLE)
+    {
+        asm("xchg %%bx, %%bx"::"a"(base),"b"(length));
+        // If the current region overlaps with the kernel image and the new region was availabe, reserve that range
+        for(size_t bit = 0; bit < ((kern_size >> 12) & 0x7FFF); bit++)
+            bm_set_bit(node, bit + (kern_base >> 12));
+        asm("xchg %bx, %bx");
     }
 }
 

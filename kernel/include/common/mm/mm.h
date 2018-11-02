@@ -23,6 +23,13 @@
 #ifndef __MM_H__
 #define __MM_H__ 1
 
+enum MemoryRegionType
+{
+    MEM_REGION_AVAILABLE = 1,
+    MEM_REGION_RESERVED,
+    MEM_REGION_RECLAIMABLE,
+};
+
 /**
  * Address space
  */
