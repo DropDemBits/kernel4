@@ -312,13 +312,20 @@ unsigned long mmu_get_mapping(unsigned long address)
     return get_pte_entry(address)->frame << 12;
 }
 
-bool mmu_is_usable(unsigned long address)
+bool mmu_check_access(unsigned long address, uint32_t flags)
 {
-    if( get_pml4e_entry(address)->p &&
-        get_pdpe_entry(address)->p &&
-        get_pde_entry(address)->p &&
-        get_pte_entry(address)->p) return true;
-    return false;
+    if( get_pml4e_entry(address)->p == 0 ||
+        get_pdpe_entry(address)->p == 0 ||
+        get_pde_entry(address)->p == 0)
+        return false;
+
+    uint32_t entry_flags = 0;
+    entry_flags |= (get_pte_entry(address)->p  << 0);
+    entry_flags |= (get_pte_entry(address)->rw << 1);
+    entry_flags |= (get_pte_entry(address)->xd << 2);
+    entry_flags |= (get_pte_entry(address)->su << 3);
+
+    return (entry_flags & flags) == flags;
 }
 
 void* mm_get_base()

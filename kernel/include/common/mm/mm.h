@@ -32,6 +32,7 @@
 #define MMU_ACCESS_RW               ( MMU_ACCESS_R | MMU_ACCESS_W | MMU_ACCESS_X )
 #define MMU_ACCESS_RX               ( MMU_ACCESS_R | MMU_ACCESS_X )
 #define MMU_ACCESS_RWX              ( MMU_ACCESS_R | MMU_ACCESS_W | MMU_ACCESS_X )
+#define MMU_ACCESS_MASK             0x0000000F
 
 // Caching types
 #define MMU_CACHE_UC                0x00000000
@@ -101,7 +102,14 @@ bool mmu_unmap(unsigned long address, bool erase_entry);
  */
 unsigned long mmu_get_mapping(unsigned long address);
 
-bool mmu_is_usable(unsigned long address);
+/**
+ * @brief  Checks whether the specifed address can be accessed
+ * @note   
+ * @param  address: The address to check
+ * @param  flags: The access types to check (R/Present,W,X,U)
+ * @retval True if it can, false otherwise
+ */
+bool mmu_check_access(unsigned long address, uint32_t flags);
 
 // MMU Context
 void mmu_switch_address_space(uint64_t page_context_base);

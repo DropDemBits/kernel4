@@ -114,6 +114,7 @@ void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
 
 void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
 {
+    // TODO: Unmap allocated dynamic memory
     // Will not unmap memory for now...
 }
 
@@ -122,10 +123,10 @@ ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS
     if(LogicalAddress == NULL || PhysicalAddress == NULL)
         return AE_BAD_PARAMETER;
 
-    if(!mmu_is_usable((uintptr_t)LogicalAddress))
+    if(!mmu_check_access((uintptr_t)LogicalAddress, MMU_ACCESS_R))
         return AE_ERROR;
 
-    *PhysicalAddress = 0;
+    *PhysicalAddress = mmu_get_mapping((uintptr_t)LogicalAddress);
 }
 
 // Heap allocations
@@ -143,7 +144,7 @@ BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
 {
     for(size_t offset = 0; offset < (Length + 0xFFF) & ~0xFFF; offset += 0x1000)
     {
-        if(!mmu_is_usable((uintptr_t)Memory + offset))
+        if(!mmu_check_access((uintptr_t)Memory + offset, MMU_ACCESS_R))
             return FALSE;
     }
 
@@ -155,7 +156,7 @@ BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length)
     // TODO: Check if the pages are writeable too
     for(size_t offset = 0; offset < (Length + 0xFFF) & ~0xFFF; offset += 0x1000)
     {
-        if(!mmu_is_usable((uintptr_t)Memory + offset))
+        if(!mmu_check_access((uintptr_t)Memory + offset, MMU_ACCESS_W))
             return FALSE;
     }
 

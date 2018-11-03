@@ -247,7 +247,7 @@ void main_fb_init()
             break;
     }
 
-    if(status != 0 || !mmu_is_usable(get_fb_address()))
+    if(status != 0 || !mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
         return;
 
     if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
