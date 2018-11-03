@@ -85,7 +85,7 @@ void usermode_entry()
 {
     unsigned long retaddr = 0x400000;
 
-    mmu_map(retaddr);
+    mmu_map(retaddr, mm_alloc(1), MMU_ACCESS_RX | MMU_ACCESS_USER);
     memcpy((void*)retaddr, &usermode_code, 4096);
 
     enter_usermode((void*)(sched_active_thread()), retaddr);
@@ -233,12 +233,22 @@ void main_fb_init()
     // Map framebuffer (and any extra bits of it)
     unsigned long fb_size = (fb_info.width * fb_info.height * fb_info.bytes_pp + 0xFFF) & ~0xFFF;
 
-    for(unsigned long off = 0;
-        off <= fb_size;
-        off += 0x1000)
+    int status = 0;
+
+    for(unsigned long off = 0; off <= fb_size; off += 0x1000)
     {
-        mmu_map_direct(framebuffer + off, fb_info.base_addr + off);
+        status = mmu_map(framebuffer + off, fb_info.base_addr + off, MMU_ACCESS_RW | MMU_CACHE_WC);
+
+        // Retry using WB caching if mapping failed
+        if(status != 0 && status == MMU_MAPPING_NOT_CAPABLE)
+            status = mmu_map(framebuffer + off, fb_info.base_addr + off, MMU_ACCESS_RW | MMU_CACHE_WB);
+
+        if(status != 0)
+            break;
     }
+
+    if(status != 0 || !mmu_is_usable(get_fb_address()))
+        return;
 
     if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
     {
@@ -318,13 +328,13 @@ void core_fini()
     klog_logln(core_subsystem, INFO, "PAlloc test: Addr0 (%#p)", (uintptr_t)addr);
 
     // Part 2: Mapping
-    mmu_map_direct(laddr, addr);
+    mmu_map(laddr, addr, MMU_ACCESS_RW);
     *laddr = 0xbeefb00f;
     klog_logln(core_subsystem, INFO, "At Addr1 direct map (%#p): %#lx", laddr, *laddr);
 
     // Part 3: Remapping
-    mmu_unmap(laddr);
-    mmu_map(laddr);
+    mmu_unmap(laddr, true);
+    mmu_map(laddr, mm_alloc(1), MMU_ACCESS_RW);
     klog_logln(core_subsystem, INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
     if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 

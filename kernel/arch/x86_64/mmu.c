@@ -38,22 +38,22 @@ struct PageError {
 };
 
 struct PageEntry {
-    uint64_t p : 1;   // Present bit
-    uint64_t rw : 1;  // Read/Write bit
-    uint64_t su : 1;  // Supervisor/User bit
-    uint64_t pwt : 1; // Page Write-through
-    uint64_t pcd : 1; // Page cache disable
-    uint64_t a : 1;   // Accessed bit
-    uint64_t d : 1;   // Dirty bit
-    uint64_t pat : 1; // Present bit
-    uint64_t g : 1;   // Global
-    uint64_t avl : 3; // Available for use
-    uint64_t frame : 36;
+    uint64_t p      : 1;    // Present bit
+    uint64_t rw     : 1;    // Read/Write bit
+    uint64_t su     : 1;    // Supervisor/User bit
+    uint64_t pwt    : 1;    // Page Write-through
+    uint64_t pcd    : 1;    // Page cache disable
+    uint64_t a      : 1;    // Accessed bit
+    uint64_t d      : 1;    // Dirty bit
+    uint64_t pat    : 1;    // Page Attribute bit
+    uint64_t g      : 1;    // Global bit
+    uint64_t avl    : 3;    // Available for use
+    uint64_t frame  : 36;
 
-    uint64_t rsv : 4; // Reserved bits
-    uint64_t ign : 7; // Ignored (Available) bits
-    uint64_t pk : 4;  // Protection Key
-    uint64_t xd : 1;  // NX bit
+    uint64_t rsv    : 4;    // Reserved bits
+    uint64_t ign    : 7;    // Ignored (Available) bits
+    uint64_t pk     : 4;    // Protection Key
+    uint64_t xd     : 1;    // NX bit
 } __attribute__((__packed__));
 typedef struct PageEntry page_entry_t;
 
@@ -126,7 +126,7 @@ static page_entry_t* get_pte_entry(unsigned long address)
 }
 
 // Returns true if a new structure was allocated, false otherwise.
-static bool check_and_map_entry(page_entry_t* entry, unsigned long address)
+static bool check_and_map_entry(page_entry_t* entry, unsigned long address, uint32_t flags)
 {
     if(!entry->p)
     {
@@ -149,14 +149,10 @@ static bool check_and_map_entry(page_entry_t* entry, unsigned long address)
 
             entry->frame = frame >> 12;
             entry->p = 1;
-            entry->rw = 1;
-            entry->xd = 0;
+            entry->rw = (flags & MMU_ACCESS_W) >> 1;
+            entry->xd = ((~flags) & MMU_ACCESS_X) >> 2;
             entry->rsv = 0;
-
-            if((uintptr_t)address < 0xFFFF800000000000)
-                entry->su = 1;
-            else
-                entry->su = 0;
+            entry->su = (flags & MMU_ACCESS_USER) >> 3;
         }
 
         invlpg(address);
@@ -168,7 +164,7 @@ static bool check_and_map_entry(page_entry_t* entry, unsigned long address)
 
 void pf_handler(struct intr_stack *frame, uint8_t int_num)
 {
-    struct PageError *page_error = (struct PageError*)&frame->err_code;
+    struct PageError *page_error = (struct PageError*)&(frame->err_code);
     uint64_t address = frame->cr2;
 
     if(address < 0x400000)
@@ -182,7 +178,10 @@ void pf_handler(struct intr_stack *frame, uint8_t int_num)
         }
     } else
     {
-        kpanic_intr(frame, "Page fault at %#p (error code %x)", address, frame->err_code);
+        page_entry_t* entry = get_pte_entry(address);
+        kpanic_intr(frame, "Page fault at %p (error code PWUF: %d%d%d%d, PG PWUX: %d%d%d%d)", address,
+                    page_error->was_present, page_error->was_write, page_error->was_user, page_error->was_instruction_fetch,
+                    entry->p, entry->rw, entry->su, entry->xd);
     }
 }
 
@@ -204,97 +203,118 @@ void mmu_init()
     current_context = &initial_context;
 }
 
-int mmu_map_direct(unsigned long address, unsigned long mapping)
+int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
 {
-    if(mapping == (uintptr_t)KNULL || address == (uintptr_t)KNULL) return -1;
+    int status = 0;
+
+    if(mapping == (uintptr_t)KNULL || address == (uintptr_t)KNULL)
+        return MMU_MAPPING_INVAL;
 
     // TODO: Add PML5 support
     // Check PML4E Presence
-    if(check_and_map_entry(get_pml4e_entry(address), address))
+    if(check_and_map_entry(get_pml4e_entry(address), address, flags))
     {
         uint64_t pdpe_base = ((uintptr_t)address >> PDPT_SHIFT) & (PDPE_MASK & ~0x1FF);
         memset(&(get_lookup(pdpe_lookup)[pdpe_base]), 0x00, 0x1000);
     }
     else if(get_pml4e_entry(address)->frame == KMEM_POISON || !get_pml4e_entry(address)->frame)
-        return -1;
+        return MMU_MAPPING_ERROR;
 
     // Check PDPE Presence
-    if(check_and_map_entry(get_pdpe_entry(address), address))
+    if(check_and_map_entry(get_pdpe_entry(address), address, flags))
     {
         uint64_t pde_base = ((uintptr_t)address >> PDT_SHIFT) & (PDE_MASK & ~0x1FF);
         memset(&(get_lookup(pde_lookup)[pde_base]), 0x00, 0x1000);
     }
     else if(get_pdpe_entry(address)->frame == KMEM_POISON || !get_pml4e_entry(address)->frame)
-        return -1;
+        return MMU_MAPPING_ERROR;
 
     // Check PDE Presence
-    if(check_and_map_entry(get_pde_entry(address), address))
+    if(check_and_map_entry(get_pde_entry(address), address, flags))
     {
         uint64_t pte_base = ((uintptr_t)address >> PTT_SHIFT) & (PTE_MASK & ~0x1FF);
         memset(&(get_lookup(pte_lookup)[pte_base]), 0x00, 0x1000);
     }
     else if(get_pde_entry(address)->frame == KMEM_POISON || !get_pml4e_entry(address)->frame)
-        return -1;
+        return MMU_MAPPING_ERROR;
 
     // Check if we are trying to map to an already mapped address
     if(get_pte_entry(address)->p)
-        return -2;
+        return MMU_MAPPING_EXISTS;
 
     // This is an unmapped address, so map it
-    get_pte_entry(address)->xd = 0;
-    get_pte_entry(address)->rsv = 0;
-    get_pte_entry(address)->p = 1;
-    get_pte_entry(address)->rw = 1;
     get_pte_entry(address)->frame = mapping >> 12;
 
-    if((uintptr_t)address < 0xFFFF800000000000)
-        get_pte_entry(address)->su = 1;
-    else
-        get_pte_entry(address)->su = 0;
+    status = mmu_change_attr(address, flags);
+    return status;
+}
 
+int mmu_change_attr(unsigned long address, uint32_t flags)
+{
+    uint8_t pat_index = 0;
+
+    if( get_pml4e_entry(address)->p == 0 ||
+        get_pdpe_entry(address)->p == 0 ||
+        get_pde_entry(address)->p == 0)
+        return MMU_MAPPING_ERROR;
+
+    get_pte_entry(address)->p =  (flags & MMU_ACCESS_R) >> 0;
+    get_pte_entry(address)->rw = (flags & MMU_ACCESS_W) >> 1;
+    get_pte_entry(address)->xd = ((~flags) & MMU_ACCESS_X) >> 2;
+    get_pte_entry(address)->su = (flags & MMU_ACCESS_USER) >> 3;
+    get_pte_entry(address)->rsv = 0;
+
+    // Set up caching flags
+    switch(flags & MMU_CACHE_MASK)
+    {
+        case MMU_CACHE_WB:  pat_index = 0b000; break;
+        case MMU_CACHE_WT:  pat_index = 0b001; break;
+        case MMU_CACHE_UCO: pat_index = 0b010; break;
+        case MMU_CACHE_UC:  pat_index = 0b011; break;
+        case MMU_CACHE_WC:  pat_index = 0b100; break;
+        case MMU_CACHE_WP:  pat_index = 0b111; break;
+        default:
+            return MMU_MAPPING_NOT_CAPABLE;
+    }
+
+    get_pte_entry(address)->pwt = (pat_index >> 0) & 1;
+    get_pte_entry(address)->pcd = (pat_index >> 1) & 1;
+    get_pte_entry(address)->pat = (pat_index >> 2) & 1;
     invlpg(address);
+
     return 0;
 }
 
-int mmu_map(unsigned long address)
-{
-    unsigned long frame = mm_alloc(1);
-
-    if(frame == (uintptr_t)KNULL)
-        return -1;
-
-    int retval = mmu_map_direct(address, frame);
-    if(retval == -1LL) kpanic("OOPSIES");
-    if(retval == -2LL) kpanic("HELP MEH");
-    return retval;
-}
-
-bool mmu_unmap_direct(unsigned long address)
+bool mmu_unmap(unsigned long address, bool erase)
 {
     if( get_pml4e_entry(address)->p == 0 ||
         get_pdpe_entry(address)->p == 0 ||
-        get_pde_entry(address)->p == 0 ||
-        get_pte_entry(address)->p == 0) return false;
+        get_pde_entry(address)->p == 0) return false;
     
     get_pte_entry(address)->p = 0;
-    get_pte_entry(address)->rw = 0;
-    get_pte_entry(address)->su = 0;
+    if(erase)
+    {
+        mmu_change_attr(address, 0);
+        get_pte_entry(address)->frame = KMEM_POISON >> 12;
+    }
     invlpg(address);
 
     return true;
 }
 
-void mmu_unmap(unsigned long address)
+unsigned long mmu_get_mapping(unsigned long address)
 {
-    if(!mmu_unmap_direct(address))
-        return;
-    mm_free(get_pte_entry(address)->frame << 12, 1);
-    get_pte_entry(address)->frame = KMEM_POISON;
+    if( get_pml4e_entry(address)->p == 0 ||
+        get_pdpe_entry(address)->p == 0 ||
+        get_pde_entry(address)->p == 0)
+        return 0;
+
+    return get_pte_entry(address)->frame << 12;
 }
 
 bool mmu_is_usable(unsigned long address)
 {
-    if(    get_pml4e_entry(address)->p &&
+    if( get_pml4e_entry(address)->p &&
         get_pdpe_entry(address)->p &&
         get_pde_entry(address)->p &&
         get_pte_entry(address)->p) return true;
@@ -312,7 +332,7 @@ paging_context_t* mmu_create_context()
     unsigned long pml4_context = mm_alloc(1);
 
     // Map context to temporary address
-    mmu_map_direct(temp_map_base, pml4_context);
+    mmu_map(temp_map_base, pml4_context, MMU_ACCESS_RW | MMU_CACHE_WB);
     memset((void*)temp_map_base, 0x00, 0x1000);
 
     // Copy relavent mappings to address space (Excluding temporary and recursive mapping)
@@ -328,7 +348,7 @@ paging_context_t* mmu_create_context()
     paging_context_t *context = kmalloc(sizeof(paging_context_t));
     context->phybase = pml4_context;
 
-    mmu_unmap_direct(temp_map_base);
+    mmu_unmap(temp_map_base, true);
     return context;
 }
 

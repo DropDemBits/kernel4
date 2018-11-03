@@ -103,12 +103,12 @@ void __attribute__((noreturn)) kvpanic(const char* message_string, va_list args)
     if(klog_is_init())
     {
         klog_logln(0, FATAL, "Exception occured in kernel:");
-        klog_logln(0, FATAL, message_string, args);
+        klog_loglnv(0, FATAL, message_string, args);
     }
     else
     {
         klog_early_logln(FATAL, "Exception occured in kernel:");
-        klog_early_logln(FATAL, message_string, args);
+        klog_early_loglnv(FATAL, message_string, args);
     }
 
     reshow_log();
@@ -120,12 +120,12 @@ void __attribute__((noreturn)) kvpanic_intr(struct intr_stack *stack, const char
     if(klog_is_init())
     {
         klog_logln(0, FATAL, "Exception occured in kernel:");
-        klog_logln(0, FATAL, message_string, args);
+        klog_loglnv(0, FATAL, message_string, args);
     }
     else
     {
         klog_early_logln(FATAL, "Exception occured in kernel:");
-        klog_early_logln(FATAL, message_string, args);
+        klog_early_loglnv(FATAL, message_string, args);
     }
     dump_registers(stack);
 

@@ -140,8 +140,7 @@ void apic_init(uint64_t phybase)
 {
     klog_early_logln(INFO, "Initializing APIC @ %p", phybase);
 
-    // TODO: Map APIC region as UC
-    mmu_map_direct(apic_map, (uintptr_t)phybase);
+    mmu_map(apic_map, (uintptr_t)phybase, MMU_ACCESS_RW | MMU_CACHE_UC);
 
     // Enable LAPIC && Set SIV to FF
     apic_write(APIC_SIVR, apic_read(APIC_SIVR) | 0x1FF);
@@ -191,7 +190,7 @@ void ioapic_init(uint64_t phybase, uint32_t irq_base)
 
     memset(&main_ioapic, 0, sizeof(struct ioapic_dev));
 
-    mmu_map_direct(ioapic_map, phybase);
+    mmu_map(ioapic_map, phybase, MMU_ACCESS_RW | MMU_CACHE_UC);
     main_ioapic.address = (void*)ioapic_map;
     main_ioapic.irq_base = irq_base;
     main_ioapic.redirect_len = ((ioapic_read(ioapic_map, 1) >> 16) & IOAPIC_REDIR_VEC) + 1;

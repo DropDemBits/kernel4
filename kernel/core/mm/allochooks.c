@@ -37,7 +37,7 @@ static size_t alloc_memblocks(size_t length)
 
     for(; length > 0; length--)
     {
-        if(mmu_map(free_base) != 0)
+        if(mmu_map(free_base, mm_alloc(1), MMU_FLAGS_DEFAULT) != 0)
         {
             errored = true;
             break;
@@ -58,7 +58,8 @@ static void free_memblocks(size_t length)
 {
     for(; length > 0 && free_base - (length << 12) > heap_base; length--)
     {
-        mmu_unmap(free_base);
+        mm_free(mmu_get_mapping(free_base), 1);
+        mmu_unmap(free_base, true);
         free_base -= 0x1000;
     }
 }

@@ -61,7 +61,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
 
         // Map stack pages
         for(int i = 0; i < (THREAD_STACK_SIZE >> 12); i++)
-            mmu_map_direct(thread->kernel_stacktop - (i << 12), mm_alloc(1));
+            mmu_map(thread->kernel_stacktop - (i << 12), mm_alloc(1), MMU_FLAGS_DEFAULT);
     }
 
     uint32_t* thread_stack = (uint32_t*)thread->kernel_sp;

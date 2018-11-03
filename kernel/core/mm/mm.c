@@ -312,13 +312,13 @@ void mm_init()
         mem_region_t* block = region_list;
         mem_region_t* next_pointer = mm_get_base();
 
-        mmu_map_direct((unsigned long)next_pointer, (unsigned long)region_list);
+        mmu_map((unsigned long)next_pointer, (unsigned long)region_list, MMU_FLAGS_DEFAULT);
         region_list = mm_get_base();
         next_pointer++;
 
         while(block->next != KNULL)
         {
-            mmu_map_direct((unsigned long)next_pointer, (unsigned long)block->next);
+            mmu_map((unsigned long)next_pointer, (unsigned long)block->next, MMU_FLAGS_DEFAULT);
             block->next = next_pointer++;
             block = block->next;
         }
@@ -328,7 +328,7 @@ void mm_init()
         block = region_list;
         while(block != KNULL)
         {
-            mmu_map_direct((unsigned long)block_pointer, (unsigned long)block->bitmap);
+            mmu_map((unsigned long)block_pointer, (unsigned long)block->bitmap, MMU_FLAGS_DEFAULT);
             block->bitmap = block_pointer;
 
             block_pointer += (0x1000 >> 3);
