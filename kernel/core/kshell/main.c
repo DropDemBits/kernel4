@@ -48,6 +48,9 @@
 
 #define INPUT_SIZE 255
 #define ARG_DELIM (" \t")
+#define SHELL_WIDTH 80
+#define SHELL_HEIGHT 25
+#define SHELL_SCREENS 64
 
 static char* input_buffer = KNULL;
 static int index = 0;
@@ -321,11 +324,12 @@ static bool shell_parse()
 
 void kshell_main()
 {
-    tty = kmalloc(sizeof(tty_dev_t));
-    uint16_t* buffer = kmalloc(80*25*2*4);
-    memset(buffer, 0, 80*25*2*4);
+    uint16_t* buffer = kmalloc(SHELL_WIDTH * SHELL_HEIGHT * SHELL_SCREENS * 2);
 
-    tty_init(tty, 80, 25, buffer, 80*25*2*4, NULL);
+    tty = kmalloc(sizeof(tty_dev_t));
+    memset(buffer, 0, SHELL_WIDTH * SHELL_HEIGHT * SHELL_SCREENS * 2);
+
+    tty_init(tty, SHELL_WIDTH, SHELL_HEIGHT, buffer, SHELL_WIDTH * SHELL_HEIGHT * SHELL_SCREENS * 2, NULL);
     tty_select_active(tty);
 
     refresh_thread = thread_create(
