@@ -95,6 +95,13 @@ int vsprintf(char *dest, const char *format, va_list params)
             goto parse_next_digit;
         }
 
+        if(*format == '*')
+        {
+            // Width is specified in VA_ARGS
+            min_chars = va_arg(params, unsigned long);
+            format++;
+        }
+
         // Precision parsing
         if(*format != '.')
             goto parse_length;
@@ -109,6 +116,13 @@ int vsprintf(char *dest, const char *format, va_list params)
             precision += *format - '0';
             format++;
             goto parse_next_precision;
+        }
+
+        if(*format == '*')
+        {
+            // Precision is specified in VA_ARGS
+            precision = va_arg(params, unsigned long);
+            format++;
         }
 
         // Length
