@@ -25,6 +25,7 @@
 #include <common/sched/sched.h>
 #include <common/util/kfuncs.h>
 
+#include <arch/msr.h>
 #include <arch/apic.h>
 #include <arch/pic.h>
 #include <arch/pit.h>
@@ -32,7 +33,6 @@
 #include <stack_state.h>
 
 #define MAX_TIMERS 64
-#define MSR_APIC_BASE 0x1B
 
 #define KLOG_FATAL(msg, ...) \
     if(klog_is_init()) {klog_logln(0, FATAL, msg, __VA_ARGS__);} \
@@ -77,14 +77,6 @@ static bool apic_exists()
     uint32_t edx;
     asm volatile("cpuid":"=d"(edx):"a"(1));
     return (edx >> 9) & 0x1;
-}
-
-static uint64_t msr_read(uint32_t msr_index)
-{
-    uint32_t eax, edx;
-    asm volatile("rdmsr":"=a"(eax),"=d"(edx):"c"(msr_index));
-    uint64_t value = (eax) | ((uint64_t)edx << 32);
-    return value;
 }
 
 static ACPI_SUBTABLE_HEADER* madt_find_table(ACPI_TABLE_MADT* madt, uint8_t Type, uint32_t Instance)
@@ -192,7 +184,7 @@ void hal_init()
         pic_get_dev()->disable(0xF0);
 
         // Read the MSR for the APIC base
-        uint64_t apic_base = msr_read(MSR_APIC_BASE) & ~0xFFF;
+        uint64_t apic_base = msr_read(MSR_IA32_APIC_BASE) & ~0xFFF;
         apic_init(apic_base);
 
         default_ic = ioapic_get_dev();

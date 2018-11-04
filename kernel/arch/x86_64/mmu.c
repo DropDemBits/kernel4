@@ -25,6 +25,7 @@
 #include <common/tty/fb.h>
 #include <common/tty/tty.h>
 
+#include <arch/msr.h>
 #include <arch/idt.h>
 #include <stack_state.h>
 
@@ -201,6 +202,12 @@ void mmu_init()
 
     initial_context.phybase = cr3;
     current_context = &initial_context;
+
+    // Setup PAT MSR
+    // WB  WT  UC- UC  WC  WP  UC- UC
+    // 06  04  07  00  01  05  07  00
+    uint64_t pat = 0x0007050100070406;
+    msr_write(MSR_IA32_PAT, pat);
 }
 
 int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
@@ -272,7 +279,7 @@ int mmu_change_attr(unsigned long address, uint32_t flags)
         case MMU_CACHE_UCO: pat_index = 0b010; break;
         case MMU_CACHE_UC:  pat_index = 0b011; break;
         case MMU_CACHE_WC:  pat_index = 0b100; break;
-        case MMU_CACHE_WP:  pat_index = 0b111; break;
+        case MMU_CACHE_WP:  pat_index = 0b101; break;
         default:
             return MMU_MAPPING_NOT_CAPABLE;
     }
