@@ -52,7 +52,11 @@ static inline void busy_wait()
 static inline uint32_t lock_cmpxchg(uint32_t* data, uint32_t expected, uint32_t set)
 {
     uint32_t current_value = 0;
-    asm volatile("lock cmpxchg %1, (%2)":"=a"(current_value):"d"(set),"r"((uintptr_t)data),"a"(expected):"cc","memory");
+    asm volatile("lock cmpxchg %1, (%2)\n\t"
+                 "movl $1, %%edx\n\t"
+                 "xor %%eax, %%eax\n\t"
+                 "cmovnz %%edx, %%eax\n\t"
+                 :"=a"(current_value):"d"(set),"r"((uintptr_t)data),"a"(expected):"cc","memory");
     return current_value;
 }
 

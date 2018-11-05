@@ -157,6 +157,8 @@
 #include <common/util/locks.h>
 #include <arch/cpufuncs.h>
 
+#define ACPI_DEBUG_OUTPUT 1
+
 // Lock definitions
 #define ACPI_SPINLOCK   spinlock_t*
 #define ACPI_SEMAPHORE  semaphore_t*
@@ -181,5 +183,35 @@
 
 // Machine/Arch dependent stuff
 #define ACPI_MACHINE_WIDTH          ARCH_BITS
+
+#define ACPI_ACQUIRE_GLOBAL_LOCK(FacsPtr, Acquired)                 \
+do                                                                  \
+{                                                                   \
+    if(!(FacsPtr))                                                  \
+    {                                                               \
+        Acquired = 0;                                               \
+        break;                                                      \
+    }                                                               \
+    uint32_t* global_lock = (uint32_t*)((char*)FacsPtr + 16);       \
+    uint32_t set = 0;                                               \
+    do                                                              \
+    {                                                               \
+        set = ((*global_lock & ~1) | 2) | ((*global_lock >> 1) & 1);    \
+    } while (lock_cmpxchg(global_lock, *global_lock, set));  \
+    Acquired = (*global_lock < 3) ? 1 : 0;                          \
+} while (0)
+
+#define ACPI_RELEASE_GLOBAL_LOCK(FacsPtr, Pending)                  \
+do                                                                  \
+{                                                                   \
+    if(!(FacsPtr))                                                  \
+    {                                                               \
+        Pending = 0;                                                \
+        break;                                                      \
+    }                                                               \
+    uint32_t* global_lock = (uint32_t*)((char*)FacsPtr + 16);       \
+    while(lock_cmpxchg(global_lock, *global_lock, 0));              \
+    Pending = *global_lock & 1;                                     \
+} while (0)
 
 #endif

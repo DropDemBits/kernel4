@@ -189,13 +189,18 @@ void AcpiOsSleep(UINT64 Milliseconds)
 
 void AcpiOsStall(UINT32 Microseconds)
 {
-    uint64_t end_time = timer_read_counter(0) + (Microseconds * ACPI_NSEC_PER_USEC);
+    /*uint64_t end_time = timer_read_counter(0) + (Microseconds * ACPI_NSEC_PER_USEC);
     volatile uint64_t now = timer_read_counter(0);
 
     while(end_time > now)
     {
         busy_wait();
         now = timer_read_counter(0);
+    }*/
+    while(Microseconds--)
+    {
+        busy_wait();
+        io_wait();
     }
 }
 
