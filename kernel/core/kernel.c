@@ -83,13 +83,19 @@ void idle_loop()
 
 void usermode_entry()
 {
+    klog_logln(1, INFO, "Starting up Usermode thread");
     unsigned long retaddr = 0x400000;
 
-    mmu_map(retaddr, mm_alloc(1), MMU_ACCESS_RX | MMU_ACCESS_USER);
-    memcpy((void*)retaddr, &usermode_code, 4096);
+    klog_logln(1, DEBUG, "Beginning code mapping");
+    mmu_map(retaddr, mm_alloc(1), MMU_ACCESS_RWX | MMU_ACCESS_USER);
 
+    klog_logln(1, DEBUG, "Beginning code copy");
+    memcpy((void*)retaddr, &usermode_code, 4096);
+    mmu_change_attr(retaddr, MMU_ACCESS_RX | MMU_ACCESS_USER);
+
+    klog_logln(1, DEBUG, "Done code copy");
     enter_usermode((void*)(sched_active_thread()), retaddr);
-    while(1);
+    while(1) intr_wait();
 }
 
 void info_display()

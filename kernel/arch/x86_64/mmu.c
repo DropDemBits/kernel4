@@ -219,7 +219,7 @@ int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
 
     // TODO: Add PML5 support
     // Check PML4E Presence
-    if(check_and_map_entry(get_pml4e_entry(address), address, flags))
+    if(check_and_map_entry(get_pml4e_entry(address), address, flags | MMU_ACCESS_W))
     {
         uint64_t pdpe_base = ((uintptr_t)address >> PDPT_SHIFT) & (PDPE_MASK & ~0x1FF);
         memset(&(get_lookup(pdpe_lookup)[pdpe_base]), 0x00, 0x1000);
@@ -228,7 +228,7 @@ int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
         return MMU_MAPPING_ERROR;
 
     // Check PDPE Presence
-    if(check_and_map_entry(get_pdpe_entry(address), address, flags))
+    if(check_and_map_entry(get_pdpe_entry(address), address, flags | MMU_ACCESS_W))
     {
         uint64_t pde_base = ((uintptr_t)address >> PDT_SHIFT) & (PDE_MASK & ~0x1FF);
         memset(&(get_lookup(pde_lookup)[pde_base]), 0x00, 0x1000);
@@ -237,7 +237,7 @@ int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
         return MMU_MAPPING_ERROR;
 
     // Check PDE Presence
-    if(check_and_map_entry(get_pde_entry(address), address, flags))
+    if(check_and_map_entry(get_pde_entry(address), address, flags | MMU_ACCESS_W))
     {
         uint64_t pte_base = ((uintptr_t)address >> PTT_SHIFT) & (PTE_MASK & ~0x1FF);
         memset(&(get_lookup(pte_lookup)[pte_base]), 0x00, 0x1000);
