@@ -27,7 +27,7 @@
 static size_t heap_base = 0;
 static size_t heap_limit = 0;
 static size_t free_base = 0;
-static uint64_t flags = 0;
+static cpu_flags_t flags = 0;
 
 static size_t alloc_memblocks(size_t length)
 {
@@ -37,9 +37,13 @@ static size_t alloc_memblocks(size_t length)
 
     for(; length > 0; length--)
     {
-        if(mmu_map(free_base, mm_alloc(1), MMU_FLAGS_DEFAULT) != 0)
+        size_t phy_address = mm_alloc(1);
+        int status = mmu_map(free_base, phy_address, MMU_FLAGS_DEFAULT);
+
+        if(status != 0)
         {
             errored = true;
+            klog_logln(1, ERROR, "Error mapping %p: %d", free_base, status);
             break;
         }
         free_base += 0x1000;
@@ -47,7 +51,7 @@ static size_t alloc_memblocks(size_t length)
 
     if(errored)
     {
-        // Various places don't check for a null pointer, so just panic
+        // Various places in kernel code don't check for a null pointer, so just panic
         kpanic("Could not allocate heap memory (Out of memory?)");
     }
 
@@ -58,9 +62,9 @@ static void free_memblocks(size_t length)
 {
     for(; length > 0 && free_base - (length << 12) > heap_base; length--)
     {
+        free_base -= 0x1000;
         mm_free(mmu_get_mapping(free_base), 1);
         mmu_unmap(free_base, true);
-        free_base -= 0x1000;
     }
 }
 
