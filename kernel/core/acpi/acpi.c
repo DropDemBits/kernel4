@@ -3,6 +3,9 @@
 #include <common/util/klog.h>
 #include <common/util/kfuncs.h>
 
+#define ACPI_EC_IBF 0x02
+#define ACPI_EC_OBF 0x01
+
 struct ECDT_CONTEXT
 {
     uint64_t Control;
@@ -17,28 +20,59 @@ static uint16_t acpi_subsys = 0;
 static bool acpi_initalized = false;
 static struct ECDT_CONTEXT ec_context = {};
 
+static uint8_t acpi_ec_read(uint8_t Address)
+{
+    static uint8_t RD_EC = 0x80;
+    uint8_t data = 0;
+
+    // Send Read (0x80) Command and Address to EC
+    AcpiOsWritePort(ec_context.Control, &RD_EC, 8);
+
+    // Send address
+    AcpiOsWritePort(ec_context.Data, &Address, 8);
+
+    // Read Data
+    AcpiOsReadPort(ec_context.Data, &data, 8);
+
+    return data;
+}
+
+static void acpi_ec_write(uint8_t Address, uint8_t Value)
+{
+    static uint8_t WR_EC = 0x81;
+
+    // Send Write (0x81) Command to EC
+    AcpiOsWritePort(ec_context.Control, &WR_EC, 8);
+
+    // Send address
+    AcpiOsWritePort(ec_context.Data, &Address, 8);
+
+    // Write Data
+    AcpiOsWritePort(ec_context.Data, &Value, 8);
+}
+
 static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 BitWidth, UINT64 *Value, void *HandlerContext, void *RegionContext)
 {
-    /*ACPI_STATUS status;
-    UINT64 ec_target_base;
-    //
+    ACPI_STATUS status;
 
-    switch (Function)
+    /*switch (Function)
     {
         case ACPI_READ:
-            
+            *Value = acpi_ec_read((uint8_t)Address);
             status = AE_OK;
             break;
 
         case ACPI_WRITE:
+            acpi_ec_write((uint8_t)Address, (uint8_t)*Value);
             status = AE_OK;
             break;
     
         default:
             status = AE_BAD_PARAMETER;
     }*/
-    klog_logln(acpi_subsys, ERROR, "EC Address Space Access: %p <-%d<- %x (%d)", Address, Function, BitWidth, *Value);
-    return AE_BAD_PARAMETER;
+
+    klog_logln(acpi_subsys, INFO, "EC Address Space %s: %p = %x", (Function) ? "Write" : "Read", Address, *Value);
+    return AE_OK;
 }
 
 ACPI_STATUS acpi_early_init()
@@ -240,6 +274,8 @@ ACPI_STATUS acpi_init()
         }
 
         klog_logln(acpi_subsys, INFO, "EC AS Handler Initialized (CMD/STS: 0x%02x, DAT: 0x%02x)", ec_context.Control, ec_context.Data);
+
+        // TODO: Handle EC GPE Event (Last step preventing us from actually handling the EC)
 
         ec_handle_failed:
         kfree(ec_crs.Pointer);
