@@ -3,11 +3,43 @@
 #include <common/util/klog.h>
 #include <common/util/kfuncs.h>
 
+struct ECDT_CONTEXT
+{
+    uint64_t Control;
+    uint64_t Data;
+    bool IsPortSpace;
+};
+
 static ACPI_TABLE_DESC early_tables[ACPI_MAX_EARLY_TABLES];
 
 // ACPI KLOG subsystem ID
 static uint16_t acpi_subsys = 0;
 static bool acpi_initalized = false;
+static struct ECDT_CONTEXT ec_context = {};
+
+static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 BitWidth, UINT64 *Value, void *HandlerContext, void *RegionContext)
+{
+    /*ACPI_STATUS status;
+    UINT64 ec_target_base;
+    //
+
+    switch (Function)
+    {
+        case ACPI_READ:
+            
+            status = AE_OK;
+            break;
+
+        case ACPI_WRITE:
+            status = AE_OK;
+            break;
+    
+        default:
+            status = AE_BAD_PARAMETER;
+    }*/
+    klog_logln(acpi_subsys, ERROR, "EC Address Space Access: %p <-%d<- %x (%d)", Address, Function, BitWidth, *Value);
+    return AE_BAD_PARAMETER;
+}
 
 ACPI_STATUS acpi_early_init()
 {
@@ -52,10 +84,20 @@ ACPI_STATUS acpi_early_init()
     return (status);
 }
 
+static ACPI_STATUS null_callback(ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue)
+{
+    *ReturnValue = Object;
+    return AE_CTRL_TERMINATE;
+}
+
+
 ACPI_STATUS acpi_init()
 {
     // Full blown init of subsystem
     ACPI_STATUS status;
+    ACPI_HANDLE ec_handle = NULL;
+    ACPI_TABLE_ECDT* ecdt_table;
+    ACPI_BUFFER ec_crs;
 
     acpi_subsys = klog_add_subsystem("ACPI");
     klog_logln(acpi_subsys, INFO, "Initializing ACPI subsystem");
@@ -101,9 +143,111 @@ ACPI_STATUS acpi_init()
         return (status);
     }
 
+    klog_logln(acpi_subsys, DEBUG, "Initializing ACPI EC");
+
+    // Procedure for finding embedded controller:
+    // 1 - Use ECDT if it exists
+    // 2 - Walk ACPI Namespace for an EC
+
+    // Get ECDT Table
+    ecdt_table = (ACPI_TABLE_ECDT*) acpi_get_table(ACPI_SIG_ECDT, 1);
+
+    if(ecdt_table != NULL)
+    {
+        // Get EC device handle
+        status = AcpiGetHandle(NULL, (ACPI_STRING)ecdt_table->Id, &ec_handle);
+        if(ACPI_FAILURE(status))
+        {
+            klog_logln(acpi_subsys, ERROR, "Failed to get EC handle (%s)", AcpiFormatException(status));
+            goto walk_namespace;
+        }
+
+        // Copy Context over
+        ec_context.Control = ecdt_table->Control.Address;
+        ec_context.Data = ecdt_table->Data.Address;
+        ec_context.IsPortSpace = ecdt_table->Control.SpaceId == ACPI_ADR_SPACE_SYSTEM_IO;
+
+        acpi_put_table((ACPI_TABLE_HEADER*)ecdt_table);
+        goto ec_resources_found;
+    }
+
+    walk_namespace:
+
+    // Walk ACPI namespace to find EC
+    status = AcpiGetDevices("PNP0C09", null_callback, NULL, &ec_handle);
+
+    if(ec_handle != NULL)
+    {
+        // Load EC_CONTEXT addresses from the EC CRS
+        // Data port first, then command / status port
+        ec_crs.Length = 0;
+
+        retry:
+        status = AcpiGetCurrentResources(ec_handle, &ec_crs);
+        if(ACPI_FAILURE(status) == AE_BUFFER_OVERFLOW)
+        {
+            ec_crs.Pointer = kmalloc(ec_crs.Length);
+            goto retry;
+        }
+        else if(ACPI_FAILURE(status))
+        {
+            klog_logln(acpi_subsys, ERROR, "Failed to acquire the CRS for the ACPI EC (%s)", AcpiFormatException(status));
+            goto ec_handle_failed;
+        }
+
+        // Parse CRS
+        ACPI_RESOURCE* crs_res = ec_crs.Pointer;
+        size_t bytes = ec_crs.Length;
+        size_t port_index = 2; // Current port index
+
+        while(bytes)
+        {
+            switch(crs_res->Type)
+            {
+                case ACPI_RESOURCE_TYPE_IO:
+                    ((uint64_t*)&ec_context)[port_index - 1] = crs_res->Data.Io.Minimum;
+                    port_index--;
+                    ec_context.IsPortSpace = true;
+                    break;
+                case ACPI_RESOURCE_TYPE_ADDRESS32:
+                    ((uint64_t*)&ec_context)[port_index - 1] = crs_res->Data.Address32.Address.Minimum;
+                    port_index--;
+                    break;
+                case ACPI_RESOURCE_TYPE_ADDRESS64:
+                    ((uint64_t*)&ec_context)[port_index - 1] = crs_res->Data.Address64.Address.Minimum;
+                    port_index--;
+                    break;
+                case ACPI_RESOURCE_TYPE_END_TAG:
+                    // Stop loop
+                    break;
+            }
+
+            if(!port_index)
+                break;
+
+            // Move to next resource
+            bytes -= crs_res->Length;
+            crs_res = (ACPI_RESOURCE*)((uintptr_t)crs_res + crs_res->Length);
+        }
+
+        ec_resources_found:
+        // Add address space handler for Embedded Controller (EC)
+        status = AcpiInstallAddressSpaceHandler(ec_handle, ACPI_ADR_SPACE_EC, acpi_ec_space_handler, NULL, NULL);
+        if(ACPI_FAILURE(status))
+        {
+            klog_logln(acpi_subsys, ERROR, "Failed to install EC Address Space Handler (%s)", AcpiFormatException(status));
+            goto ec_handle_failed;
+        }
+
+        klog_logln(acpi_subsys, INFO, "EC AS Handler Initialized (CMD/STS: 0x%02x, DAT: 0x%02x)", ec_context.Control, ec_context.Data);
+
+        ec_handle_failed:
+        kfree(ec_crs.Pointer);
+    }
+
     acpi_initalized = true;
 
-    return (AE_OK);
+    return status;
 }
 
 ACPI_TABLE_HEADER* acpi_early_get_table(char* sig, uint32_t instance)
