@@ -35,6 +35,7 @@
 
 #include <common/hal.h>
 #include <common/util/kfuncs.h>
+#include <common/io/uart.h>
 
 /*
  * KSHELL: Basic command line interface
@@ -50,6 +51,7 @@
 #define ARG_DELIM (" \t")
 #define SHELL_WIDTH 80
 #define SHELL_HEIGHT 25
+#define SHELL_SCREEN_SIZE (SHELL_WIDTH * SHELL_HEIGHT)
 #define SHELL_SCREENS 64
 
 static char* input_buffer = KNULL;
@@ -123,25 +125,45 @@ static void shell_readline()
 
     while(1)
     {
-        char kcode = kbd_read();
-        char kchr = kbd_tochar(kcode);
+        char keycode = kbd_read();
+        char kchr = kbd_tochar(keycode);
 
-        if(kcode == KEY_UP_ARROW)
+        // Keycode stuffs
+        switch(keycode)
         {
-            tty_scroll(tty, -1);
+            case KEY_UP_ARROW:
+                tty_scroll(tty, -1);
+                break;
+            case KEY_DOWN_ARROW:
+                if(tty->display_base < tty->draw_base)
+                    tty_scroll(tty, 1);
+                break;
+
+            case KEY_PG_UP:
+                if(((int32_t)tty->display_base - SHELL_SCREEN_SIZE) > (int32_t)tty->scrollback_limit)
+                    // Scroll up an entire screen
+                    tty_scroll(tty, -SHELL_HEIGHT);
+                else if((int32_t)tty->display_base - (int32_t)tty->scrollback_limit > 0)
+                    // Scroll up to the scrollback limit
+                    tty_scroll(tty, -((int32_t)tty->display_base - (int32_t)tty->scrollback_limit) / SHELL_WIDTH);
+                break;
+            case KEY_PG_DOWN:
+                if(((int32_t)tty->display_base + SHELL_SCREEN_SIZE) < (int32_t)tty->draw_base)
+                    // Scroll down an entire screen
+                    tty_scroll(tty, SHELL_HEIGHT);
+                else if((int32_t)tty->draw_base - (int32_t)tty->display_base > 0)
+                    // Scroll down to the draw base
+                    tty_scroll(tty, ((int32_t)tty->draw_base - (int32_t)tty->display_base) / SHELL_WIDTH);
+                break;
         }
-        else if(kcode == KEY_DOWN_ARROW)
-        {
-            if(tty->display_base < tty->draw_base)
-                tty_scroll(tty, 1);
-        }
-        else if(kchr == '\t')
+
+        if(kchr == '\t')
         {
             // Don't show a tab
             continue;
         }
 
-        if(kcode && kchr)
+        if(keycode && kchr)
         {
             // Don't put the charachter on screen if it is a backspace and it
             // is at the beginning of the index buffer
@@ -324,12 +346,12 @@ static bool shell_parse()
 
 void kshell_main()
 {
-    uint16_t* buffer = kmalloc(SHELL_WIDTH * SHELL_HEIGHT * SHELL_SCREENS * 2);
+    uint16_t* buffer = kmalloc(SHELL_SCREEN_SIZE * SHELL_SCREENS * 2);
 
     tty = kmalloc(sizeof(tty_dev_t));
-    memset(buffer, 0, SHELL_WIDTH * SHELL_HEIGHT * SHELL_SCREENS * 2);
+    memset(buffer, 0, SHELL_SCREEN_SIZE * SHELL_SCREENS * 2);
 
-    tty_init(tty, SHELL_WIDTH, SHELL_HEIGHT, buffer, SHELL_WIDTH * SHELL_HEIGHT * SHELL_SCREENS * 2, NULL);
+    tty_init(tty, SHELL_WIDTH, SHELL_HEIGHT, buffer, SHELL_SCREEN_SIZE * SHELL_SCREENS * 2, NULL);
     tty_select_active(tty);
 
     refresh_thread = thread_create(
