@@ -377,7 +377,6 @@ void core_fini()
 #endif
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
-    reshow_buf();
 
     taskswitch_disable();
     process_t *p1 = process_create();

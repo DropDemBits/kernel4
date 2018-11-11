@@ -76,10 +76,8 @@ static void reshow_log()
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 
-    if(tty != KNULL && mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
-    {
+    if(tty != KNULL && mmu_check_access((uintptr_t)get_fb_address(), MMU_ACCESS_RW))
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
-    }
 }
 
 void __attribute__((noreturn)) kpanic(const char* message_string, ...)

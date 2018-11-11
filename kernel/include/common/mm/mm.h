@@ -29,7 +29,7 @@
 #define MMU_ACCESS_X                0x00000004  // Set: Mapping is executable
 #define MMU_ACCESS_USER             0x00000008  // Set: Mapping is user-accessable
 #define MMU_ACCESS_RO               ( MMU_ACCESS_R )
-#define MMU_ACCESS_RW               ( MMU_ACCESS_R | MMU_ACCESS_W | MMU_ACCESS_X )
+#define MMU_ACCESS_RW               ( MMU_ACCESS_R | MMU_ACCESS_W )
 #define MMU_ACCESS_RX               ( MMU_ACCESS_R | MMU_ACCESS_X )
 #define MMU_ACCESS_RWX              ( MMU_ACCESS_R | MMU_ACCESS_W | MMU_ACCESS_X )
 #define MMU_ACCESS_MASK             0x0000000F
