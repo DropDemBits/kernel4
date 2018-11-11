@@ -104,37 +104,37 @@ typedef struct
 extern idt_descriptor_t idt_table;
 
 const char* fault_names[] = {
-    "Division by 0",
-    "Debug Exception",
+    "(#DE) Division by 0",
+    "(#DB) Debug Exception",
     "NMI Exception",
-    "Breakpoint",
-    "Overflow Flag Set",
-    "Bound Range Exceeded",
-    "Invalid Opcode",
-    "No Coprocessor",
-    "Double Fault",
-    "Reserved Fault",
-    "Invalid TSS",
-    "Segment Not Present",
-    "Stack Fault",
-    "General Protection Fault",
-    "Page Fault",
-    "Reserved Fault",
-    "Floating Point Exception",
-    "Alignment Check Exception",
-    "Machine Check Exception",
-    "SIMD/FP Exception",
-    "VMX Virtualization Exception", // AMD Reserved
-    "Control Protection Exception", // AMD Reserved
-    "Reserved Fault",
-    "Reserved Fault",
+    "(#BP) Breakpoint",
+    "(#OE) Overflow",
+    "(#BR) Bound Range Exceeded",
+    "(#UD) Invalid Opcode",
+    "(#NM) No Coprocessor",
+    "(#DF) Double Fault",
+    "(CSO) Reserved Fault",
+    "(#TS) Invalid TSS",
+    "(#NP) Segment Not Present",
+    "(#SS) Stack Segment Fault",
+    "(#GP) General Protection Fault",
+    "(#PF) Page Fault",
+    "(RSV) Reserved Fault",
+    "(#MF) Floating Point Exception",
+    "(#AC) Alignment Check Exception",
+    "(#MC) Machine Check Exception",
+    "(#XM) SIMD/FP Exception",
+    "(#VE) VMX Virtualization Exception", // AMD Reserved
+    "(#CE) Control Protection Exception", // AMD Reserved
     "Reserved Fault",
     "Reserved Fault",
     "Reserved Fault",
     "Reserved Fault",
     "Reserved Fault",
-    "SVM Virtualization Exception", // Intel Reserved
-    "SVM Security Exception",       // Intel Reserved
+    "Reserved Fault",
+    "Reserved Fault",
+    "(#VE) SVM Virtualization Exception", // Intel Reserved
+    "(#SE) SVM Security Exception",       // Intel Reserved
     "Reserved Fault",
 };
 struct isr_handler function_table[256];

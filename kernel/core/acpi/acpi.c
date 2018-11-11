@@ -5,12 +5,15 @@
 
 #define ACPI_EC_IBF 0x02
 #define ACPI_EC_OBF 0x01
+#define RD_EC 0x81
+#define WR_EC 0x81
 
 struct ECDT_CONTEXT
 {
     uint64_t Control;
     uint64_t Data;
     bool IsPortSpace;
+    uint8_t GpeBit;
 };
 
 static ACPI_TABLE_DESC early_tables[ACPI_MAX_EARLY_TABLES];
@@ -20,45 +23,61 @@ static uint16_t acpi_subsys = 0;
 static bool acpi_initalized = false;
 static struct ECDT_CONTEXT ec_context = {};
 
-static uint8_t acpi_ec_read(uint8_t Address)
+static void acpi_ec_read(uint8_t Address, void* Store)
 {
-    static uint8_t RD_EC = 0x80;
-    uint8_t data = 0;
+    uint32_t sts = 0;
 
     // Send Read (0x80) Command and Address to EC
-    AcpiOsWritePort(ec_context.Control, &RD_EC, 8);
+    AcpiOsWritePort(ec_context.Control, RD_EC, 8);
 
-    // Send address
-    AcpiOsWritePort(ec_context.Data, &Address, 8);
+    // Wait until ec is ready for the address and data
+    AcpiOsReadPort(ec_context.Control, &sts, 8);
+    while(sts & ACPI_EC_IBF)
+    {
+        busy_wait();
+        AcpiOsReadPort(ec_context.Control, &sts, 8);
+    }
 
-    // Read Data
-    AcpiOsReadPort(ec_context.Data, &data, 8);
-
-    return data;
+    AcpiOsWritePort(ec_context.Data, Address, 8);
+    AcpiOsReadPort(ec_context.Data, (uint32_t*)Store, 8);
 }
 
 static void acpi_ec_write(uint8_t Address, uint8_t Value)
 {
-    static uint8_t WR_EC = 0x81;
+    uint32_t sts = 0;
 
-    // Send Write (0x81) Command to EC
-    AcpiOsWritePort(ec_context.Control, &WR_EC, 8);
+    // Send Write (0x81) Command and Address to EC
+    AcpiOsWritePort(ec_context.Control, WR_EC, 8);
 
-    // Send address
-    AcpiOsWritePort(ec_context.Data, &Address, 8);
+    // Wait until ec is ready for the address
+    AcpiOsReadPort(ec_context.Control, &sts, 8);
+    while(sts & ACPI_EC_IBF)
+    {
+        busy_wait();
+        AcpiOsReadPort(ec_context.Control, &sts, 8);
+    }
 
-    // Write Data
-    AcpiOsWritePort(ec_context.Data, &Value, 8);
+    AcpiOsWritePort(ec_context.Data, Address, 8);
+
+    // Wait until ec is ready for the data
+    AcpiOsReadPort(ec_context.Control, &sts, 8);
+    while(sts & ACPI_EC_IBF)
+    {
+        busy_wait();
+        AcpiOsReadPort(ec_context.Control, &sts, 8);
+    }
+
+    AcpiOsWritePort(ec_context.Data, Value, 8);
 }
 
 static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 BitWidth, UINT64 *Value, void *HandlerContext, void *RegionContext)
 {
     ACPI_STATUS status;
 
-    /*switch (Function)
+    switch (Function)
     {
         case ACPI_READ:
-            *Value = acpi_ec_read((uint8_t)Address);
+            acpi_ec_read((uint8_t)Address, Value);
             status = AE_OK;
             break;
 
@@ -69,10 +88,10 @@ static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS 
     
         default:
             status = AE_BAD_PARAMETER;
-    }*/
+    }
 
-    klog_logln(acpi_subsys, INFO, "EC Address Space %s: %p = %x", (Function) ? "Write" : "Read", Address, *Value);
-    return AE_OK;
+    klog_logln(acpi_subsys, DEBUG, "EC %s: 0x%02.2X%s %02.2X", (Function) ? "Wr" : "Rd", Address, (Function) ? " =" : " ?", *Value);
+    return status;
 }
 
 ACPI_STATUS acpi_early_init()
@@ -200,6 +219,7 @@ ACPI_STATUS acpi_init()
         ec_context.Control = ecdt_table->Control.Address;
         ec_context.Data = ecdt_table->Data.Address;
         ec_context.IsPortSpace = ecdt_table->Control.SpaceId == ACPI_ADR_SPACE_SYSTEM_IO;
+        ec_context.GpeBit = ecdt_table->Gpe;
 
         acpi_put_table((ACPI_TABLE_HEADER*)ecdt_table);
         goto ec_resources_found;
@@ -231,6 +251,7 @@ ACPI_STATUS acpi_init()
 
         // Parse CRS
         ACPI_RESOURCE* crs_res = ec_crs.Pointer;
+        ACPI_RESOURCE addr_res;
         size_t bytes = ec_crs.Length;
         size_t port_index = 2; // Current port index
 
@@ -243,12 +264,11 @@ ACPI_STATUS acpi_init()
                     port_index--;
                     ec_context.IsPortSpace = true;
                     break;
+                case ACPI_RESOURCE_TYPE_ADDRESS16:
                 case ACPI_RESOURCE_TYPE_ADDRESS32:
-                    ((uint64_t*)&ec_context)[port_index - 1] = crs_res->Data.Address32.Address.Minimum;
-                    port_index--;
-                    break;
                 case ACPI_RESOURCE_TYPE_ADDRESS64:
-                    ((uint64_t*)&ec_context)[port_index - 1] = crs_res->Data.Address64.Address.Minimum;
+                    AcpiResourceToAddress64(crs_res, &addr_res);
+                    ((uint64_t*)&ec_context)[port_index - 1] = addr_res.Data.Address64.Address.Minimum;
                     port_index--;
                     break;
                 case ACPI_RESOURCE_TYPE_END_TAG:
@@ -263,6 +283,8 @@ ACPI_STATUS acpi_init()
             bytes -= crs_res->Length;
             crs_res = (ACPI_RESOURCE*)((uintptr_t)crs_res + crs_res->Length);
         }
+
+        // TODO: Acquire GPE from EC Device block
 
         ec_resources_found:
         // Add address space handler for Embedded Controller (EC)
