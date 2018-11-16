@@ -200,7 +200,7 @@ void klog_early_logc(enum klog_level level, const char c)
     
     struct klog_entry* entry = (struct klog_entry*)(early_klog_buffer + early_index);
     entry->level = level;
-    entry->flags = 0;
+    entry->flags = KLOG_FLAG_NO_HEADER;
     entry->timestamp = 0;
     entry->length = 1;
     entry->subsystem_id = EARLY_SUBSYSTEM;
@@ -298,5 +298,5 @@ void klog_loglnfv(uint16_t subsys_id, enum klog_level level, uint8_t flags, cons
 
 void klog_logc(uint16_t subsys_id, enum klog_level level, const char c)
 {
-    klog_log(subsys_id, level, "%c", c);
+    klog_logf(subsys_id, level, KLOG_FLAG_NO_HEADER, "%c", c);
 }
