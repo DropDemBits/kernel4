@@ -12,6 +12,7 @@ list(APPEND SOURCES
     arch/x86/pit.c
     arch/x86/syscall.c
     arch/x86/vga.c
+    arch/x86/pcspkr.c
 )
 
 list(APPEND SOURCES
