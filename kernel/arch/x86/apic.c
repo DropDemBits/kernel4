@@ -6,6 +6,7 @@
 
 #include <common/hal.h>
 #include <common/mm/mm.h>
+#include <common/sched/sched.h>
 #include <common/util/klog.h>
 
 #define APIC_EOIR       0xB0
@@ -109,6 +110,8 @@ static void apic_write(uint32_t reg, uint32_t value)
 
 static void apic_isr_handler(void* params, uint8_t int_num)
 {
+    taskswitch_disable();
+
     uint8_t irq = int_num - 32;
     struct irq_handler* node = main_ioapic.handler_list[irq];
 
@@ -119,7 +122,11 @@ static void apic_isr_handler(void* params, uint8_t int_num)
         node = node->next;
     }
 
-    apic_write(APIC_EOIR, 0);
+    if(node == NULL || (node->flags & INT_EOI_FAST) == INT_EOI_FAST)
+        apic_write(APIC_EOIR, 0);
+
+    // This is after sending the EOI to allow other interrupts to pass through once we're done with the current one
+    taskswitch_enable();
 }
 
 static uint32_t ioapic_read(void* ioapic_base, uint32_t reg)
@@ -294,7 +301,7 @@ void apic_eoi(uint8_t irq)
     apic_write(APIC_EOIR, 0);
 }
 
-struct irq_handler* ioapic_handle_irq(uint8_t irq, irq_function_t handler)
+struct irq_handler* ioapic_handle_irq(uint8_t irq, uint32_t int_flags, irq_function_t handler)
 {
     // Return null on out of range
     if(irq >= NR_IOAPIC_IRQS)
@@ -312,8 +319,7 @@ struct irq_handler* ioapic_handle_irq(uint8_t irq, irq_function_t handler)
     irq_handler->interrupt = irq;
     irq_handler->function = handler;
     irq_handler->ic = ioapic_get_dev();
-    irq_handler->handler_type = LEGACY;
-    irq_handler->trigger_type = EDGE;
+    irq_handler->flags = int_flags;
 
     cpu_flags_t flags = hal_disable_interrupts();
 

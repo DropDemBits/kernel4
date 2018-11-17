@@ -712,7 +712,7 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
         klog_logln(ata_subsys, INFO, "Setting up primary IDE channel");
         // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0001) == 0)
-            ic_irq_handle(14, LEGACY, (irq_function_t)pata_irq_handler);
+            ic_irq_handle(14, INT_EOI_FAST | INT_SRC_LEGACY, (irq_function_t)pata_irq_handler);
         else
             pci_handle_irq(dev, 0, (irq_function_t)pata_irq_handler);
         
@@ -725,7 +725,7 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
         klog_logln(ata_subsys, INFO, "Setting up secondary IDE channel");
         // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0100) == 0)
-            ic_irq_handle(15, LEGACY, (irq_function_t)pata_irq_handler);
+            ic_irq_handle(15, INT_EOI_FAST | INT_SRC_LEGACY, (irq_function_t)pata_irq_handler);
         else
             pci_handle_irq(dev, 0, (irq_function_t)pata_irq_handler);
 

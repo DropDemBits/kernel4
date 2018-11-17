@@ -320,7 +320,7 @@ void ps2_init()
 void ps2_handle_device(int device, irq_function_t handler)
 {
     if(device >= 2 || device < 0 || !devices[device].present) return;
-    ic_irq_handle(ps2_device_irqs()[device], LEGACY, handler);
+    ic_irq_handle(ps2_device_irqs()[device], INT_EOI_FAST | INT_SRC_LEGACY, handler);
 }
 
 uint8_t ps2_device_read(int device, bool wait_for)

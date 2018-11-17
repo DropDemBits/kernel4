@@ -82,9 +82,11 @@ static uint64_t flags = 0;
     }
 }*/
 
+/*
+ * Note: taskswitch_disable/enable pair must be called on the outermost handler
+ */
 static void sched_timer(struct timer_dev* dev)
 {
-    taskswitch_disable();
     uint64_t now = dev->counter;
 
     // Iterate through the sleep stack
@@ -120,8 +122,6 @@ static void sched_timer(struct timer_dev* dev)
         else
             current_timeslice -= dev->resolution;
     }
-
-    taskswitch_enable();
 }
 
 static void cleanup_task()

@@ -333,12 +333,21 @@ bool ic_check_spurious(uint16_t irq)
     return hal_get_ic()->is_spurious(irq);
 }
 
-struct irq_handler* ic_irq_handle(uint8_t irq, enum irq_type type, irq_function_t handler)
+struct irq_handler* ic_irq_handle(uint8_t irq, uint32_t flags, irq_function_t handler)
 {
     if(ic_mode == IC_MODE_PIC)
-        return hal_get_ic()->handle_irq(irq, handler);
+    {
+        return hal_get_ic()->handle_irq(irq, flags, handler);
+    }
     else
-        return hal_get_ic()->handle_irq((uint8_t)ioapic_map_irq(irq), handler);
+    {
+        uint8_t real_irqn = irq;
+
+        if((flags & INT_SRC_MASK) == INT_SRC_LEGACY)
+            real_irqn = ioapic_map_irq(irq);
+
+        return hal_get_ic()->handle_irq(real_irqn, flags, handler);
+    }
 }
 
 void ic_irq_free(struct irq_handler* handler)

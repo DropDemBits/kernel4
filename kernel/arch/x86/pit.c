@@ -116,5 +116,5 @@ void pit_init()
     pit_init_counter(0, 1000, PIT_MODE_PERIODIC);
     timer_add((struct timer_dev*) &(timer_devs[0]), PERIODIC);
     timer_set_default(timer_devs[0].raw_dev.id);
-    ic_irq_handle(0, LEGACY, pit_handler);
+    ic_irq_handle(0, INT_EOI_FAST | INT_SRC_LEGACY, pit_handler);
 }

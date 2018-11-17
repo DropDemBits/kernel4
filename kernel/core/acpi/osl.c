@@ -377,7 +377,7 @@ ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLE
     }
 
     // TODO: There must be a better way to handle this
-    struct irq_handler* irq_handle = ic_irq_handle(InterruptLevel, LEGACY, acpi_handler_wrapper);
+    struct irq_handler* irq_handle = ic_irq_handle(InterruptLevel, INT_EOI_FAST | INT_SRC_LEGACY, acpi_handler_wrapper);
 
     // Should this fail, it's most likely out of range
     if(irq_handle == NULL)

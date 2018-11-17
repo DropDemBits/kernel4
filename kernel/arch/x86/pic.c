@@ -19,6 +19,8 @@
  */
 
 #include <common/hal.h>
+#include <common/sched/sched.h>
+
 #include <arch/pic.h>
 #include <arch/idt.h>
 #include <arch/io.h>
@@ -71,12 +73,12 @@ static void irq_wrapper(void* params, uint8_t int_num)
 {
     uint8_t irq = int_num - 32;
 
+    taskswitch_disable();
     // Check if it's a spurious interrupt
     if(pic_check_spurious(irq))
         return;
 
     pic_mask(irq);
-    pic_eoi(irq);
 
     struct irq_handler* node = handler_list[irq];
     while(node != NULL)
@@ -86,7 +88,11 @@ static void irq_wrapper(void* params, uint8_t int_num)
         node = node->next;
     }
 
+    if(node == NULL || (node->flags & INT_EOI_FAST) == INT_EOI_FAST)
+        pic_eoi(irq);
+
     pic_unmask(irq);
+    taskswitch_enable();
 }
 
 uint32_t pic_read_irr()
@@ -247,7 +253,7 @@ void pic_free_irq(struct irq_handler* handler)
     hal_enable_interrupts(flags);
 }
 
-struct irq_handler* pic_handle_irq(uint8_t irq, irq_function_t handler)
+struct irq_handler* pic_handle_irq(uint8_t irq, uint32_t flags, irq_function_t handler)
 {
     // If the PIC is not enabled, don't handle IRQs
     if(!is_enabled)
@@ -265,8 +271,7 @@ struct irq_handler* pic_handle_irq(uint8_t irq, irq_function_t handler)
     irq_handler->interrupt = irq;
     irq_handler->function = handler;
     irq_handler->ic = pic_get_dev();
-    irq_handler->handler_type = LEGACY;
-    irq_handler->trigger_type = EDGE;
+    irq_handler->flags = flags;
 
     isr_add_handler(irq + IRQ_BASE, irq_wrapper, NULL);
 

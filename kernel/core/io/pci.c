@@ -187,7 +187,7 @@ void pci_handle_irq(struct pci_dev* dev, uint8_t irq_handle, irq_function_t hand
         return;
 
     if(irq_handle == IRQ_HANDLE_LEGACY && dev->irq_handler == NULL)
-        dev->irq_handler = ic_irq_handle(dev->irq_pin, LEGACY, handler);
+        dev->irq_handler = ic_irq_handle(dev->irq_pin, INT_EOI_FAST | INT_SRC_LEGACY, handler);
 }
 
 void pci_unhandle_irq(struct pci_dev* dev, uint8_t irq_handle)
