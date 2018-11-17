@@ -118,21 +118,21 @@ void vfs_close(vfs_inode_t *file_node)
 struct vfs_dirent* vfs_readdir(vfs_inode_t *root_node, size_t index)
 {
     if(root_node == KNULL)
-        return KNULL;
+        return NULL;
 
     if((root_node->type & 0x7) == VFS_TYPE_DIRECTORY && root_node->readdir != KNULL)
         return root_node->readdir(root_node, index);
     else
-        return KNULL;
+        return NULL;
 }
 
 vfs_inode_t* vfs_finddir(vfs_inode_t *root_node, const char* name)
 {
     if(root_node == KNULL)
-        return KNULL;
+        return NULL;
 
     if((root_node->type & 0x7) == VFS_TYPE_DIRECTORY && root_node->finddir != KNULL)
         return root_node->finddir(root_node, name);
     else
-        return KNULL;
+        return NULL;
 }

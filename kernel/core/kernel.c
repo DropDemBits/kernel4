@@ -343,6 +343,7 @@ void core_fini()
     mmu_map(laddr, mm_alloc(1), MMU_ACCESS_RW);
     klog_logln(core_subsystem, INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
     if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
+#endif
 
     if(initrd_start != 0xDEADBEEF)
     {
@@ -354,27 +355,34 @@ void core_fini()
         struct vfs_dirent *dirent;
         int i = 0;
 
+        klog_logln(core_subsystem, INFO, "Walking through /");
         memset(buffer, 0, 257);
-        while((dirent = vfs_readdir(root, i++)) != KNULL)
+        while((dirent = vfs_readdir(root, i++)) != NULL)
         {
             vfs_inode_t* node = vfs_finddir(root, dirent->name);
-            klog_logln(core_subsystem, INFO, "%s ", dirent->name);
+            klog_log(core_subsystem, INFO, "%s ", dirent->name);
             switch (node->type & 0x7) {
                 case VFS_TYPE_DIRECTORY:
-                    klog_logln(core_subsystem, INFO, "(Directory)");
+                    klog_loglnf(core_subsystem, INFO, KLOG_FLAG_NO_HEADER, "\n\t(Directory)");
                     break;
-                default:
+                case VFS_TYPE_FILE:
                 {
                     ssize_t len = vfs_read(node, 0, 256, buffer);
-                    if(len < 0) continue;
+                    if(len < 0)
+                    {
+                        klog_logc(core_subsystem, INFO, '\n');
+                        continue;
+                    }
                     buffer[len] = '\0';
-                    klog_logln(core_subsystem, INFO, "(Read Len %d):\n%s", len, buffer);
+                    klog_loglnf(core_subsystem, INFO, KLOG_FLAG_NO_HEADER, "(Read Len %d):\n%s", len, buffer);
+                    break;
                 }
+                default:
+                    klog_loglnf(core_subsystem, INFO, KLOG_FLAG_NO_HEADER, "Unknown type (%d)", node->type);
             }
         }
         kfree(buffer);
     }
-#endif
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
 
