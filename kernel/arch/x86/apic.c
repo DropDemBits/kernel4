@@ -211,7 +211,7 @@ void ioapic_init(uint64_t phybase, uint32_t irq_base)
         
         ioapic_set_vector(i, i + IRQ_BASE);
 
-        if(i < 15)
+        if(i < 16)
             ioapic_set_mode(i, IOAPIC_POLARITY_HIGH, IOAPIC_TRIGGER_EDGE, 0, APIC_DELMODE_FIXED);    // ISA Bus Conformant
         else
             ioapic_set_mode(i, IOAPIC_POLARITY_LOW, IOAPIC_TRIGGER_EDGE, 0, APIC_DELMODE_FIXED);    // The rest
@@ -240,6 +240,7 @@ void ioapic_route_line(uint32_t global_source, uint32_t bus_source, uint8_t pola
 
         if(mapping_head != NULL)
         {
+            klog_early_logln(DEBUG, "%p -> %p", mapping_head, mapping_tail);
             mapping_tail->next = mapping;
             mapping_tail = mapping;
         }

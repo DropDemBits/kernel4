@@ -136,7 +136,13 @@ void pf_handler(struct intr_stack *frame, uint8_t int_num)
     struct PageError *page_error = (struct PageError*)&(frame->err_code);
     uint32_t address = frame->cr2;
 
+    page_entry_t dummy_entry = {};
+    memset(&dummy_entry, 0, sizeof(page_entry_t));
+
     page_entry_t* entry = get_pte_entry(address);
+    if(!get_pde_entry(address)->p)
+        entry = &dummy_entry;
+
     kpanic_intr(frame, "Page fault at %#p (error code PWU: %d%d%d, PG PWU: %d%d%d)", address,
                 page_error->was_present, page_error->was_write, page_error->was_user,
                 entry->p, entry->rw, entry->su);
@@ -171,7 +177,7 @@ int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
         return MMU_MAPPING_INVAL;
 
     // Check PDE Presence
-    if(check_and_map_entry(get_pde_entry(address), address, flags))
+    if(check_and_map_entry(get_pde_entry(address), address, flags | MMU_ACCESS_W))
     {
         uint64_t pte_base = ((uintptr_t)address >> PTT_SHIFT) & (PTE_MASK & ~0x3FF);
         memset(&(get_lookup(pte_lookup)[pte_base]), 0x00, 0x1000);

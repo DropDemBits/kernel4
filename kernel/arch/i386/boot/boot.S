@@ -103,6 +103,7 @@ multiboot2_header_end:
 .section .bss
     .align 4096
 bootstack_bottom:
+.global bootstack_bottom
     .skip 16384 # 16KiB
 bootstack_top:
 .global bootstack_top
@@ -170,7 +171,7 @@ idtr:
 tss_begin:
     .word 0 # Previous task link
     .word 0
-    .long bootstack_bottom # ESP0
+    .long bootstack_top # ESP0
     .long 0x10 # SS0
     .skip 4*23
 tss_end:
@@ -259,7 +260,7 @@ cont:
     mov %dx, %ds
     mov %dx, %ss
     # Setup stack
-    movl $bootstack_bottom, %esp
+    movl $bootstack_top, %esp
     subl $10*4, %esp
     mov %dx, %es
     mov %dx, %fs
