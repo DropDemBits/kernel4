@@ -106,7 +106,7 @@ void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
     size_t dynamic_base = page_alloc(Length);
     size_t num_pages = (Length + 0xFFF) & ~0xFFF;
 
-    for(size_t off = 0; off < num_pages; off += 0x1000)
+    for(size_t off = 0; off <= num_pages; off += 0x1000)
         mmu_map(dynamic_base + off, (PhysicalAddress & ~0xFFF) + off, MMU_FLAGS_DEFAULT);
 
     return (void*)(dynamic_base + (PhysicalAddress & 0xFFF));

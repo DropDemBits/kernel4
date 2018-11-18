@@ -90,7 +90,6 @@ static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS 
             status = AE_BAD_PARAMETER;
     }
 
-    klog_logln(acpi_subsys, DEBUG, "EC %s: 0x%02.2X%s %02.2X", (Function) ? "Wr" : "Rd", Address, (Function) ? " =" : " ?", *Value);
     return status;
 }
 
@@ -106,8 +105,8 @@ ACPI_STATUS acpi_early_init()
         klog_early_logln(ERROR, "Early ACPI Error: %s", AcpiFormatException(status));
         return (status);
     }
-    klog_early_logln(INFO, "Gathered ACPI tables");
 
+    klog_early_logln(INFO, "Gathered ACPI tables");
     klog_early_logln(INFO, "ACPI Tables:");
 
     for(size_t i = 0; i < ACPI_MAX_EARLY_TABLES; i++)
