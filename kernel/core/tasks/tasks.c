@@ -24,6 +24,7 @@
 #include <common/mm/mm.h>
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
+#include <common/ipc/message.h>
 
 extern void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack, void* params);
 extern void cleanup_register_state(thread_t *thread);
@@ -98,6 +99,7 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
     thread->tid = tid_counter++;
     thread->priority = priority;
     thread->name = name;
+    thread->pending_msgs = kmalloc(sizeof(struct ipc_message_queue));
     // TODO: Use a dedicated aligned stack allocator (ie. buddy)
     init_register_state(thread, entry_point, NULL, params);
 
@@ -131,6 +133,9 @@ void thread_destroy(thread_t *thread)
         }
         thread->parent->child_count--;
     }
+
+    // TODO: Do something with pending messages and senders
+    kfree(thread->pending_msgs);
 
     kfree(thread);
 }

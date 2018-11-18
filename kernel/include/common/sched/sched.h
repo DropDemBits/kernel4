@@ -23,12 +23,6 @@
 #ifndef __SCHED_H__
 #define __SCHED_H__
 
-struct thread_queue
-{
-    thread_t *queue_head;
-    thread_t *queue_tail;
-};
-
 void sched_init();
 void sched_queue_thread(thread_t *thread);
 void sched_queue_thread_to(thread_t *thread, struct thread_queue *queue);

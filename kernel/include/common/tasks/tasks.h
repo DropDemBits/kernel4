@@ -6,6 +6,14 @@
 
 #define THREAD_STACK_SIZE 4096*4
 
+struct thread;
+
+struct thread_queue
+{
+    struct thread *queue_head;
+    struct thread *queue_tail;
+};
+
 enum thread_state
 {
     STATE_RUNNING,
@@ -13,6 +21,7 @@ enum thread_state
     STATE_SUSPENDED,
     STATE_SLEEPING,
     STATE_EXITED,
+    STATE_BLOCKED,
 };
 
 enum thread_priority
@@ -43,11 +52,12 @@ typedef struct thread
     process_t *parent;
     struct thread *next;
 
+    // Editing the stack pointer location requires modification of usermode_entry
     unsigned long kernel_sp;
     unsigned long user_sp;
     unsigned long kernel_stacktop;
     unsigned long user_stacktop;
-    
+
     enum thread_state current_state;
 
     unsigned int tid;
@@ -55,6 +65,10 @@ typedef struct thread
     uint64_t sleep_until;
     enum thread_priority priority;
     const char* name;
+
+    // Message Passing
+    void* pending_msgs; // Avoids circular dependency between message.h and tasks.h
+    struct thread_queue pending_senders;
 
 } thread_t;
 
