@@ -42,12 +42,9 @@ static void reshow_log()
     if(!klog_is_init())
     {
         entry = (struct klog_entry*)early_klog_buffer;
-        tty = KNULL;
     }
-    else
-    {
-        tty_init(tty, 80, 25, tbuf, 80*25*2, NULL);
-    }
+    
+    tty_init(tty, 80, 25, tbuf, 80*25*2, NULL);
 
     while(entry->level != EOL)
     {
@@ -56,17 +53,15 @@ static void reshow_log()
 
         if(!(entry->flags & KLOG_FLAG_NO_HEADER))
         {
-            sprintf(buffer, "[%3llu.%010llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
             uart_writestr(buffer, strlen(buffer));
-            if(tty != KNULL)
-                tty_puts(tty, buffer);
+            tty_puts(tty, buffer);
         }
 
         for(uint16_t i = 0; i < entry->length; i++)
         {
             uart_writec(entry->data[i]);
-            if(tty != KNULL)
-                tty_putchar(tty, entry->data[i]);
+            tty_putchar(tty, entry->data[i]);
             
             if(entry->data[i] == '\n')
                 uart_writec('\r');
@@ -76,7 +71,7 @@ static void reshow_log()
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 
-    if(tty != KNULL && mmu_check_access((uintptr_t)get_fb_address(), MMU_ACCESS_RW))
+    if(mmu_check_access((uintptr_t)get_fb_address(), MMU_ACCESS_RW))
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
 }
 
