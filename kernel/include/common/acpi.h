@@ -60,6 +60,13 @@ ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state);
 ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state);
 
 /**
+ * @brief  Reboots the system via ACPI
+ * @note   Returns if something went wrong
+ * @retval The appropriate error code
+ */
+ACPI_STATUS acpi_reboot();
+
+/**
  * @brief  Initalizes the full ACPI subsystem
  * @note   
  * @retval AE_OK if everything was initialized properly

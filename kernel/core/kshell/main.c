@@ -253,6 +253,7 @@ static bool shell_parse()
         puts("\tklog [level]:    \tShows the kernel log from the specified log level");
         puts("\t                 \tand above");
         puts("\tshutdown:        \tShuts down the computer");
+        puts("\treboot:          \tReboots the computer");
         return true;
     } else if(is_command("exit", command))
     {
@@ -337,6 +338,24 @@ static bool shell_parse()
             tty_set_colours(tty, shell_text_clr, shell_bg_clr);
             putchar('\n');
             printf("An error occurred while trying to shutdown: %s\n", AcpiFormatException(Status));
+        }
+        return true;
+    } else if(is_command("reboot", command))
+    {
+        // Print reboot message
+        tty_set_colours(tty, EGA_BRIGHT_YELLOW, EGA_BLACK);
+        printf("Goodbye");
+        request_refresh();
+        sched_sleep_ms(500);
+
+        // Reboot the system
+        ACPI_STATUS Status = acpi_reboot();
+        if(ACPI_FAILURE(Status))
+        {
+            putchar('?');
+            tty_set_colours(tty, shell_text_clr, shell_bg_clr);
+            putchar('\n');
+            printf("An error occurred while trying to reboot: %s\n", AcpiFormatException(Status));
         }
         return true;
     }

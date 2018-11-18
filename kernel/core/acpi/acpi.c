@@ -384,6 +384,11 @@ ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state)
     return AE_OK;
 }
 
+ACPI_STATUS acpi_reboot()
+{
+    return AcpiReset();
+}
+
 uint16_t acpi_subsys_id()
 {
     return acpi_subsys;
