@@ -21,6 +21,9 @@
 #include <common/mm/mm.h>
 #include <common/util/kfuncs.h>
 
+#define BASE_SHIFT 12   // 4KiB
+#define BLOCK_SHIFT 27  // 128MiB
+
 extern uintptr_t kernel_phystart;
 extern size_t kernel_physize;
 extern uintptr_t kernel_phypage_end;
@@ -36,7 +39,8 @@ struct mem_flags
 {
     uint64_t present : 1;
     uint64_t type : 2;
-    uint64_t reserved : 9;
+    uint64_t lazy_bitmap : 1;   // If the bitmap is lazily allocated
+    uint64_t reserved : 8;
 } __attribute__((__packed__));
 typedef struct mem_flags mem_flags_t;
 
@@ -86,10 +90,6 @@ static void list_insert_after(mem_region_t* list_head, mem_region_t* insert)
     // Insert between two items
     mem_region_t* next_item = list_head->next;
     list_head->next = insert;
-    /*
-     * We are trusting that the insert provided is safe. Can this
-     * assumption bring about a security flaw?
-     */
     list_get_tail(insert)->next = next_item;
 }
 
@@ -104,7 +104,7 @@ static mem_region_t* list_search_block(mem_region_t* list_head, uint64_t addr)
 
     while(block != KNULL)
     {
-        if(addr >= block->base) break;
+        if(addr >> BLOCK_SHIFT == block->base) break;
         block = block->next;
     }
 
@@ -264,19 +264,20 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
 }
 
 /*
- * Creates a region block and appends it to list_head.
+ * Creates a region block and appends it to list_tail.
  * Base to be passed should be base >> 27 (size of region coverage).
  */
-static mem_region_t* mm_create_region(mem_region_t* list_head,
+static mem_region_t* mm_create_region(mem_region_t* list_tail,
                                      uint64_t base)
 {
     mem_region_t* append = KNULL;
-    if(list_head->next == KNULL || list_head->next == (void*)~0ULL)
+    if(list_tail->next == KNULL || list_tail->next == (void*)~0ULL)
     {
-        append = (mem_region_t*)((size_t)list_head + sizeof(mem_region_t));
+        append = (mem_region_t*)((size_t)list_tail + sizeof(mem_region_t));
     } else
     {
-        append = list_head->next;
+        // We should not be overwritting an existing block, but keep here just in case?
+        append = list_tail->next;
     }
 
     append->next = KNULL;
@@ -286,8 +287,9 @@ static mem_region_t* mm_create_region(mem_region_t* list_head,
     if(base == 0x0) append->flags.type = RTYPE_LOW;
     else if(base <= 32) append->flags.type = RTYPE_32BIT;
     else append->flags.type = RTYPE_64BIT;
-    append->flags.reserved = 0xFFU;
+    append->flags.reserved = 0x0;
     append->flags.present = 0;
+    append->flags.lazy_bitmap = 0;
 
     append->bitmap = (uint64_t*)mm_alloc(1);
     for(size_t i = 0; i < 512 && append->bitmap != KNULL; i++)
@@ -296,8 +298,8 @@ static mem_region_t* mm_create_region(mem_region_t* list_head,
     }
 
     append->flags.present = 1;
-    mm_append_block(list_head, append);
-    return list_head->next;
+    mm_append_block(list_tail, append);
+    return append;
 }
 
 void mm_init()
@@ -338,12 +340,16 @@ void mm_init()
     }
 }
 
+// Base address & length in bytes
 void mm_add_region(unsigned long base, size_t length, uint32_t type)
 {
-    mem_region_t *node = list_get_tail(region_list);
+    mem_region_t *node = list_search_block(region_list, base);
     bool cover_kernel = false;
 
-    if(node == KNULL)
+    // Round up length
+    length = ((base & 0xFFF) + length + 0xFFF) & ~0xFFF;
+
+    if(region_list == KNULL)
     {
         bool base_in_bda = false;
 
@@ -375,10 +381,11 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
         if(base < 0x1000000) region_list->flags.type = RTYPE_LOW;
         else if(base <= 0xFFFFFFFF) region_list->flags.type = RTYPE_32BIT;
         else region_list->flags.type = RTYPE_64BIT;
-        region_list->flags.reserved = 0xFFU;
+        region_list->flags.reserved = 0x00U;
         region_list->flags.present = 1;
+        region_list->flags.lazy_bitmap = 0;
 
-        node = list_get_tail(region_list);
+        node = list_search_block(region_list, base);
         node->bitmap = (uint64_t*)(base - 0x1000);
 
         for(size_t i = 0; i < 512 && node->bitmap != KNULL; i++)
@@ -392,30 +399,43 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
         bm_set_bit(region_list, (base - 0x1000) >> 12);
     }
 
-    // Check if new block is outside of the last block
-    if((base >> 27) > (node->base >> 27))
-    {
-        if(type != MEM_REGION_AVAILABLE && type != MEM_REGION_RECLAIMABLE) return;
 
-        // Alloc new block & ptr
-        node = mm_create_region(node, base >> 27);
+    // Check if new block is outside of the last block
+    if(node == KNULL || (base >> 27) > (node->base >> 27))
+    {
+        // Don't make a new block entry for unreclaimable reserved pages
+        if(type != MEM_REGION_AVAILABLE && type != MEM_REGION_RECLAIMABLE)
+            return;
+
+        // Alloc new block & ptr (append to tail)
+        mem_region_t *tail = list_get_tail(region_list);
+        node = mm_create_region(tail, base >> 27);
     }
 
     // Set bits according to type
+    unsigned long block_base = base;
     for(size_t block = 0;;)
     {
-        for(size_t bit = 0; bit < ((length >> 12) & 0x7FFF); bit++)
+        if(type == MEM_REGION_AVAILABLE)
         {
-            if(type == MEM_REGION_AVAILABLE)
-                bm_clear_bit(node, bit + (base >> 12));
-            else
-                bm_set_bit(node, bit + (base >> 12));
+            for(size_t bit = 0; bit < ((length >> BASE_SHIFT) & 0x7FFF); bit++)
+                bm_clear_bit(node, bit + (block_base >> BASE_SHIFT));
+        }
+        else
+        {
+            for(size_t bit = 0; bit < ((length >> BASE_SHIFT) & 0x7FFF); bit++)
+                bm_set_bit(node, bit + (block_base >> BASE_SHIFT));
         }
 
-        if(++block >= (length >> 27)) break;
+        if(++block >= (length >> BLOCK_SHIFT)) break;
 
         // Alloc new block & ptr
-        node = mm_create_region(node, (base >> 27) + block);
+        mem_region_t *tail = list_get_tail(region_list);
+        node = mm_create_region(tail, (block_base >> BLOCK_SHIFT) + block);
+
+        // Starting from a new block, so use no page offset
+        block_base = node->base << BLOCK_SHIFT;
+        node->flags.lazy_bitmap = 1;
     }
 
     uintptr_t kern_base = &kernel_phystart;
