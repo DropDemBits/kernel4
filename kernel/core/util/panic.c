@@ -27,11 +27,15 @@
 #include <common/tty/fb.h>
 #include <common/util/kfuncs.h>
 
+#define STOP_FB_RESHOW 1
+#define STOP_STACK_DUMP 10
+
 extern void __attribute__((noreturn)) halt();
 extern char early_klog_buffer[];
 
 tty_dev_t temp_tty = {};
 static char tbuf[80*25*2];
+static size_t panic_levels = 0;
 
 static void reshow_log()
 {
@@ -44,7 +48,8 @@ static void reshow_log()
         entry = (struct klog_entry*)early_klog_buffer;
     }
     
-    tty_init(tty, 80, 25, tbuf, 80*25*2, NULL);
+    if(panic_levels < STOP_FB_RESHOW)
+        tty_init(tty, 80, 25, tbuf, 80*25*2, NULL);
 
     while(entry->level != EOL)
     {
@@ -55,13 +60,17 @@ static void reshow_log()
         {
             sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
             uart_writestr(buffer, strlen(buffer));
-            tty_puts(tty, buffer);
+
+            if(panic_levels < STOP_FB_RESHOW)
+                tty_puts(tty, buffer);
         }
 
         for(uint16_t i = 0; i < entry->length; i++)
         {
             uart_writec(entry->data[i]);
-            tty_putchar(tty, entry->data[i]);
+
+            if(panic_levels < STOP_FB_RESHOW)
+                tty_putchar(tty, entry->data[i]);
             
             if(entry->data[i] == '\n')
                 uart_writec('\r');
@@ -71,7 +80,7 @@ static void reshow_log()
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 
-    if(mmu_check_access((uintptr_t)get_fb_address(), MMU_ACCESS_RW))
+    if(panic_levels < STOP_FB_RESHOW && mmu_check_access((uintptr_t)get_fb_address(), MMU_ACCESS_RW))
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
 }
 
@@ -93,6 +102,7 @@ void __attribute__((noreturn)) kpanic_intr(struct intr_stack *stack, const char*
 
 void __attribute__((noreturn)) kvpanic(const char* message_string, va_list args)
 {
+    panic_levels++;
     if(klog_is_init())
     {
         klog_logln(0, FATAL, "Exception occured in kernel:");
@@ -110,6 +120,7 @@ void __attribute__((noreturn)) kvpanic(const char* message_string, va_list args)
 
 void __attribute__((noreturn)) kvpanic_intr(struct intr_stack *stack, const char* message_string, va_list args)
 {
+    panic_levels++;
     if(klog_is_init())
     {
         klog_logln(0, FATAL, "Exception occured in kernel:");
@@ -120,7 +131,8 @@ void __attribute__((noreturn)) kvpanic_intr(struct intr_stack *stack, const char
         klog_early_logln(FATAL, "Exception occured in kernel:");
         klog_early_loglnv(FATAL, message_string, args);
     }
-    dump_registers(stack);
+    if(panic_levels < STOP_STACK_DUMP)
+        dump_registers(stack);
 
     reshow_log();
     halt();
