@@ -153,10 +153,9 @@ BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
 
 BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length)
 {
-    // TODO: Check if the pages are writeable too
     for(size_t offset = 0; offset < (Length + 0xFFF) & ~0xFFF; offset += 0x1000)
     {
-        if(!mmu_check_access((uintptr_t)Memory + offset, MMU_ACCESS_W))
+        if(!mmu_check_access((uintptr_t)Memory + offset, MMU_ACCESS_RW))
             return FALSE;
     }
 

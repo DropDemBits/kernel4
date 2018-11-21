@@ -17,7 +17,7 @@ typedef struct
     struct thread_queue waiting_threads;
 } semaphore_t;
 
-// TODO: Eventually add an optimized version of mutexs
+// TODO: Eventually add an optimized version of mutexes
 typedef semaphore_t mutex_t;
 
 semaphore_t* semaphore_create(long max_count);

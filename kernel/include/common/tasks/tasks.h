@@ -42,8 +42,7 @@ typedef struct process
     uint64_t child_count;
     struct thread **child_threads;
 
-    // TODO: Do we want to implement separate address spaces for exploit
-    // mitigation?
+    // TODO: Do we want to implement separate address spaces for exploit mitigation?
     paging_context_t* page_context_base;
 } process_t;
 
