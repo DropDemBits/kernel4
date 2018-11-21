@@ -18,11 +18,14 @@
  * 
  */
 
+#include <string.h>
+
 #include <common/mm/mm.h>
 #include <common/util/kfuncs.h>
 
-#define BASE_SHIFT 12   // 4KiB
-#define BLOCK_SHIFT 27  // 128MiB
+#define BASE_SHIFT  12      // 4KiB
+#define BLOCK_SHIFT 27      // 128MiB
+#define LAZY_BITMAP (0xFA1E000000000000ULL)
 
 extern uintptr_t kernel_phystart;
 extern size_t kernel_physize;
@@ -177,6 +180,12 @@ static void bm_set_bit(mem_region_t* mem_block, size_t index)
         return;
     }
 
+    if(mem_block->flags.lazy_bitmap)
+    {
+        // TODO: Canabalize the mm_free zero page & use it to allocate another page
+        kpanic("GORP");
+    }
+
     bm_index_t bm_index = {.value = index};
     sbm_index_t sbm_index = {.value = index};
 
@@ -202,6 +211,10 @@ static void bm_clear_bit(mem_region_t* mem_block, size_t index)
         return;
     }
 
+    // We shouldn't be able to free from lazily allocated pages...
+    if(mem_block->flags.lazy_bitmap)
+        kpanic("Bad mm_free address (%p, %x)", mem_block, index);
+
     bm_index_t bm_index = {.value = index};
     sbm_index_t sbm_index = {.value = index};
 
@@ -217,6 +230,10 @@ static uint8_t bm_get_bit(mem_region_t* mem_block, size_t index)
         // TODO: Alert our things
         return 1;
     }
+
+    if(mem_block->flags.lazy_bitmap)
+        // Lazily allocated pages are free pages
+        return 0;
 
     bm_index_t bm_index = {.value = index};
     return (uint8_t) (mem_block->bitmap[bm_index.qword_index] >> (bm_index.bit_index)) & 0x1;
@@ -268,34 +285,33 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
  * Base to be passed should be base >> 27 (size of region coverage).
  */
 static mem_region_t* mm_create_region(mem_region_t* list_tail,
-                                     uint64_t base)
+                                      uint64_t base)
 {
     mem_region_t* append = KNULL;
     if(list_tail->next == KNULL || list_tail->next == (void*)~0ULL)
-    {
         append = (mem_region_t*)((size_t)list_tail + sizeof(mem_region_t));
-    } else
-    {
-        // We should not be overwritting an existing block, but keep here just in case?
-        append = list_tail->next;
-    }
+    else
+        kpanic("Non-NULL mm_block tail (%#p, %#p)", list_tail, base);
 
     append->next = KNULL;
     append->base = base;
-    append->super_map = 1ULL;
 
-    if(base == 0x0) append->flags.type = RTYPE_LOW;
-    else if(base <= 32) append->flags.type = RTYPE_32BIT;
-    else append->flags.type = RTYPE_64BIT;
+    if(base == 0)
+        append->super_map = 1ULL;
+    else
+        append->super_map = 0ULL;
+
+    if(base == 0x0)
+        append->flags.type = RTYPE_LOW;
+    else if(base <= 32)
+        append->flags.type = RTYPE_32BIT;
+    else
+        append->flags.type = RTYPE_64BIT;
+
     append->flags.reserved = 0x0;
     append->flags.present = 0;
-    append->flags.lazy_bitmap = 0;
-
-    append->bitmap = (uint64_t*)mm_alloc(1);
-    for(size_t i = 0; i < 512 && append->bitmap != KNULL; i++)
-    {
-        append->bitmap[i] = ~0ULL;
-    }
+    append->flags.lazy_bitmap = 1;
+    append->bitmap = LAZY_BITMAP;
 
     append->flags.present = 1;
     mm_append_block(list_tail, append);
@@ -330,10 +346,13 @@ void mm_init()
         block = region_list;
         while(block != KNULL)
         {
-            mmu_map((unsigned long)block_pointer, (unsigned long)block->bitmap, MMU_FLAGS_DEFAULT);
-            block->bitmap = block_pointer;
+            if(!block->flags.lazy_bitmap)
+            {
+                mmu_map((unsigned long)block_pointer, (unsigned long)block->bitmap, MMU_FLAGS_DEFAULT);
+                block->bitmap = block_pointer;
+                block_pointer += (0x1000 >> 3);
+            }
 
-            block_pointer += (0x1000 >> 3);
             block = block->next;
         }
 
@@ -413,32 +432,54 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
     }
 
     // Set bits according to type
-    unsigned long block_base = base;
+    unsigned long page_base = (base >> BASE_SHIFT) & 0x7FFF;
+    unsigned long block_length = length;
+
     for(size_t block = 0;;)
     {
+        size_t num_pages = (length >> BASE_SHIFT) % 0x8000;
+
+        // Exactly 8MiB? Set entire page
+        if(!num_pages)
+            num_pages = 0x8000;
+
+        if(node->flags.lazy_bitmap)
+        {
+            // Allocate a new bitmap
+            node->flags.lazy_bitmap = 0;
+            node->bitmap = (uint64_t*)mm_alloc(1);
+            memset(node->bitmap, 0, 4096);
+        }
+
         if(type == MEM_REGION_AVAILABLE)
         {
-            for(size_t bit = 0; bit < ((length >> BASE_SHIFT) & 0x7FFF); bit++)
-                bm_clear_bit(node, bit + (block_base >> BASE_SHIFT));
+            for(size_t bit = 0; bit < num_pages; bit++)
+                bm_clear_bit(node, bit + page_base);
         }
         else
         {
-            for(size_t bit = 0; bit < ((length >> BASE_SHIFT) & 0x7FFF); bit++)
-                bm_set_bit(node, bit + (block_base >> BASE_SHIFT));
+            for(size_t bit = 0; bit < num_pages; bit++)
+                bm_set_bit(node, bit + page_base);
         }
 
-        if(++block >= (length >> BLOCK_SHIFT)) break;
+    skip_bitset:
+        if(++block >= (length >> BLOCK_SHIFT))
+            break;
 
         // Alloc new block & ptr
         mem_region_t *tail = list_get_tail(region_list);
-        node = mm_create_region(tail, (block_base >> BLOCK_SHIFT) + block);
+        node = mm_create_region(tail, (base >> BLOCK_SHIFT) + block);
 
         // Starting from a new block, so use no page offset
-        block_base = node->base << BLOCK_SHIFT;
-        node->flags.lazy_bitmap = 1;
+        page_base = 0;
+        block_length -= 0x8000000;
+
+        if(block_length >= 0x8000000)
+            // It's the same type and a full block, no need to set any bits
+            goto skip_bitset;
     }
 
-    uintptr_t kern_base = &kernel_phystart;
+    uintptr_t kern_base = (uintptr_t)&kernel_phystart;
     size_t kern_size = (size_t)&kernel_physize;
 
     // Preserve find the node containing the kernel region
