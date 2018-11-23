@@ -147,7 +147,7 @@ void multiboot_parse()
  */
 void multiboot_reclaim()
 {
-    mm_add_region(    multiboot_base,
+    mm_add_region(  multiboot_base,
                     multiboot_size,
                     MULTIBOOT_MEMORY_AVAILABLE);
 }

@@ -108,6 +108,11 @@ void info_display()
     tty_dev_t* tty = kmalloc(sizeof(tty_dev_t));
     uint64_t last_swap_count = 0;
     uint64_t swap_timer = timer_read_counter(0) + 1000000000;
+    uint64_t draw_time = 0;
+    uint64_t print_time = 0;
+    uint64_t next_print_time = 0;
+    uint64_t reshow_time = 0;
+    bool show_times = false;
     bool clean_back = false;
     int thread_count = 0;
 
@@ -119,6 +124,7 @@ void info_display()
         char buf[256];
         int current_thread_count = 0;
 
+        next_print_time = timer_read_counter(0);
         tty_set_cursor(tty, 0, 0, false);
 
         // Clear background
@@ -175,12 +181,24 @@ void info_display()
             tswp_counter = 0;
         }
 
+        if(show_times)
+        {
+            sprintf(buf, "Draw times: (p:%uns r:%uns t:%uns)", print_time, reshow_time, draw_time);
+            tty_puts(tty, buf);
+        }
+
+        print_time = timer_read_counter(0) - next_print_time;
+        reshow_time = timer_read_counter(0);
+
         // Force reshow all
         tty->refresh_back = true;
         tty_reshow_fb(tty, get_fb_address(), x_off, y_off);
         tty_make_clean(tty);
         tty_clear(tty, true);
+        reshow_time = timer_read_counter(0) - reshow_time;
+        draw_time = print_time + reshow_time;
         sched_sleep_ms(10);
+        show_times = true;
     }
 }
 
@@ -296,6 +314,31 @@ void reshow_buf()
     tty_make_clean(tty);
 }
 
+static void walk_dir(vfs_inode_t* dir, int level)
+{
+    struct vfs_dirent *dirent;
+    int i = 0;
+
+    if(dir == NULL)
+        return;
+
+    while((dirent = vfs_readdir(dir, i++)) != NULL)
+    {
+        vfs_inode_t* node = vfs_finddir(dir, dirent->name);
+
+        // Don't show current or parent directory dots
+        if(!strncmp(dirent->name, ".", 1) || !strncmp(dirent->name, "..", 1))
+            continue;
+
+        for(int j = 0; j < level; j++)
+            klog_logc(1, INFO, '\t');
+        klog_loglnf(1, INFO, KLOG_FLAG_NO_HEADER, "\\_ %s ", dirent->name);
+
+        if(dir->type == VFS_TYPE_DIRECTORY)
+            walk_dir(node, level + 1);
+    }
+}
+
 void core_fini()
 {
     uint16_t core_subsystem = klog_add_subsystem("CORE");
@@ -322,6 +365,15 @@ void core_fini()
     err_code = pata_do_transfer(0, 1, (uint16_t*)transfer_buffer, 1, TRANSFER_READ, false, false);
     klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)", err_code);
 
+    vfs_inode_t *root;
+    if(initrd_start != 0xDEADBEEF)
+    {
+        klog_logln(core_subsystem, INFO, "Mounting initrd:");
+        vfs_mount(tarfs_init((void*)initrd_start, initrd_size), "/");
+        root = vfs_getrootnode("/");
+        walk_dir(root, 0);
+    }
+
     // TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS
     uint8_t* alloc_test = kmalloc(16);
@@ -343,48 +395,26 @@ void core_fini()
     mmu_map(laddr, mm_alloc(1), MMU_ACCESS_RW);
     klog_logln(core_subsystem, INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
     if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
-#endif
 
-    if(initrd_start != 0xDEADBEEF)
     {
         klog_logln(core_subsystem, INFO, "VFS-TEST");
-        vfs_mount(tarfs_init((void*)initrd_start, initrd_size), "/");
+        vfs_inode_t *blorg;
+        vfs_inode_t *blorg_aaa;
 
-        uint8_t *buffer = kmalloc(257);
-        vfs_inode_t *root = vfs_getrootnode("/");
-        struct vfs_dirent *dirent;
-        int i = 0;
-
-        klog_logln(core_subsystem, INFO, "Walking through /");
-        memset(buffer, 0, 257);
-        while((dirent = vfs_readdir(root, i++)) != NULL)
-        {
-            vfs_inode_t* node = vfs_finddir(root, dirent->name);
-            klog_log(core_subsystem, INFO, "%s ", dirent->name);
-            switch (node->type & 0x7) {
-                case VFS_TYPE_DIRECTORY:
-                    klog_loglnf(core_subsystem, INFO, KLOG_FLAG_NO_HEADER, "\n\t(Directory)");
-                    break;
-                case VFS_TYPE_FILE:
-                {
-                    ssize_t len = vfs_read(node, 0, 256, buffer);
-                    if(len < 0)
-                    {
-                        klog_logc(core_subsystem, INFO, '\n');
-                        continue;
-                    }
-                    buffer[len] = '\0';
-                    klog_loglnf(core_subsystem, INFO, KLOG_FLAG_NO_HEADER, "(Read Len %d):\n%s", len, buffer);
-                    break;
-                }
-                default:
-                    klog_loglnf(core_subsystem, INFO, KLOG_FLAG_NO_HEADER, "Unknown type (%d)", node->type);
-            }
-        }
-        kfree(buffer);
+        blorg = vfs_finddir(root, "blorg/");
+        blorg = vfs_finddir(root, "blorg");
+        vfs_finddir(blorg, "aaa/bbb");
+        vfs_finddir(blorg, "aaa/cc");
+        vfs_finddir(root, "blorg/aaa");
+        blorg_aaa = vfs_finddir(root, "/blorg/aaa");
+        vfs_finddir(root, "/bork/aaa");
+        vfs_finddir(root, "/blorg/aa");
+        klog_logln(core_subsystem, INFO, "VFS-TEST-DONE");
     }
+#endif
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
+    // reshow_buf();
 
     taskswitch_disable();
     process_t *p1 = process_create();
