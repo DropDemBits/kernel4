@@ -388,6 +388,7 @@ void dump_registers(struct intr_stack *stack)
     KLOG_FATAL("%#p %#p %#p %#p", stack->rax, stack->rbx, stack->rcx, stack->rdx);
     KLOG_FATAL("%s", "RSI RDI RSP RBP");
     KLOG_FATAL("%#p %#p %#p %#p", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
+    KLOG_FATAL("CR2: %#p", stack->cr2);
     KLOG_FATAL("RIP: %#p", stack->rip);
     KLOG_FATAL("Error code: %x", stack->err_code);
 
