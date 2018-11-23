@@ -27,7 +27,7 @@
 #include <common/tty/fb.h>
 #include <common/util/kfuncs.h>
 
-#define STOP_FB_RESHOW 1
+#define STOP_FB_RESHOW 2
 #define STOP_STACK_DUMP 10
 
 extern void __attribute__((noreturn)) halt();
