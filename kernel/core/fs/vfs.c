@@ -128,7 +128,7 @@ struct vfs_dirent* vfs_readdir(vfs_inode_t *root_node, size_t index)
 
 vfs_inode_t* vfs_finddir(vfs_inode_t *root_node, const char* name)
 {
-    if(root_node == KNULL)
+    if(root_node == NULL || root_node == KNULL)
         return NULL;
 
     if((root_node->type & 0x7) == VFS_TYPE_DIRECTORY && root_node->finddir != KNULL)

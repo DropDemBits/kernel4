@@ -92,6 +92,9 @@ static size_t num_dirs = 0;
 
 static const char* strrchr(const char* str, int chr)
 {
+    if(str == NULL)
+        return NULL;
+
     size_t len = strlen(str);
     char* index = str + len;
 
@@ -128,6 +131,16 @@ static unsigned int getsize(const char *in)
 
 static struct tar_dir* find_dir(char* path)
 {
+    if(path == NULL)
+        return NULL;
+    
+    /*if(*path == '/' && strlen(path) > 2)
+        // Skip the initial slash if it's an absolute path
+        path++;
+    else if(*path == '/')
+        // Return the root if it's just that
+        return root_node;*/
+
     for(size_t i = 0; i < num_dirs; i++)
     {
         if(strncmp(node_dirs[i].base_path, path, strlen(path)) != 0)
@@ -139,13 +152,20 @@ static struct tar_dir* find_dir(char* path)
     return NULL;
 }
 
+/**
+ * @brief  Gets the length of the parent path (excluding the null byte)
+ * @note   Also includes the path seperator (if there is any)
+ * @param  path: The path to get the parent path from
+ * @retval The length of the parent path
+ */
 static size_t get_parent_len(char* path)
 {
+    // TODO: Solve issue of traling slash (i.e /blorg/aaa*/*)
     char* current_dir = strrchr(path, '/');
     if(current_dir != NULL && strlen(current_dir) > 1)
-        return current_dir - path + 1;
+        return current_dir - path;
     else
-        return 2;   // strlen("/")
+        return 1;   // strlen("/")
 }
 
 static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, uint8_t* buffer)
@@ -187,48 +207,92 @@ static struct vfs_dirent* tarfs_readdir(vfs_inode_t *node, size_t index)
 static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
 {
     struct tar_dir* base_dir;
-    char* filename = name;
+    char* filename;
 
-    // Rebase to actual path if the path is absolute
-    if(*name == '/')
+    char* first_slash = NULL;
+    char path[strlen(name) + 1];
+    memset(path, 0, strlen(name) + 1);
+    memcpy(path, name, strlen(name));
+
+    // Remove trailing slash
+    if((first_slash = strrchr(path, '/')) != NULL && (first_slash - path + 1) >= strlen(path))
+        *first_slash = '\0';
+
+    filename = path;
+
+    if(*path == '/')
     {
-        size_t parent_len = get_parent_len(name);
+        // Rebase to actual path if the path is absolute
+        // Steps:
+        // 1: Get parent path (i.e. /blorg/aaa -> /blorg, /test -> /)
+        // 2: Find base directory (via find_dir)
+        // 3: Rebase name (name += parent_len)
+
+        size_t parent_len = get_parent_len(path) + 1;
         char parent_path[parent_len];
 
-        memcpy(parent_path, name, parent_len);
-        parent_path[parent_len - 1] = '\0';
+        // Copy parent path over (skip initial slash)
+        memset(parent_path, 0, parent_len);
+        memcpy(parent_path, path + 1, parent_len - 2);
+
+        // Rebase to actual directory
+        filename += parent_len;
         base_dir = find_dir(parent_path);
+
+        if(base_dir == NULL)
+        {
+            klog_logln(1, DEBUG, "ENOENT: (%s / %s)", parent_path, filename);
+            return NULL;
+        }
+
+        klog_logln(1, DEBUG, "Resolved %s to %s / %s (%s / %s)", name, parent_path, filename, base_dir->base_path, filename);
     }
-    else if(strrchr(name, '/') != NULL)
+    else if(strrchr(path, '/') != NULL)
     {
         // Name is relative to the node, but is in a subdirectory of the node
         char* base_path = node_dirs[node->impl_specific].base_path;
-        size_t subdir_len = get_parent_len(name);
-        size_t combined_len = strlen(base_path) + subdir_len;
+        // Plus ones are for the null bytes
+        size_t subdir_len = get_parent_len(path) + 1;
+        size_t combined_len = strlen(base_path) + subdir_len + 1;
         char real_path[combined_len];
 
         // Combine paths
         memset(real_path, 0, combined_len);
-        strcpy(real_path, base_path);
-        strncat(real_path, name, subdir_len);
 
-        filename = strrchr(name, '/');
+        if(*base_path != '/')
+        {
+            // Append base path if it's not the root directory
+            strcpy(real_path, base_path);
+            strcat(real_path, "/");
+        }
+
+        strncat(real_path, path, subdir_len);
+
+        filename = strrchr(path, '/');
         filename++;
 
-        // TODO: Test this path out
-        klog_logln(1, DEBUG, "Bp: %s, Fn: %s (%s/%s)", real_path, filename, real_path, filename);
-        return NULL;
+        // Set the base dir
+        base_dir = find_dir(real_path);
+
+        if(base_dir == NULL)
+        {
+            klog_logln(1, DEBUG, "ENOENT: (%s / %s)", real_path, filename);
+            return NULL;
+        }
     }
     else
     {
-        // Name is relative to the node and a direct child
+        // Path is relative to the node and a direct child
         base_dir = &node_dirs[node->impl_specific];
+
+        if(base_dir == NULL)
+            return NULL;
     }
 
     // Search for filename in dirents
     for(size_t i = 0; i < base_dir->num_dirents; i++)
     {
-        if(strcmp(name, base_dir->dirents[i].name) == 0)
+        if(strcmp(filename, base_dir->dirents[i].name) == 0)
         {
             if(base_dir->dirents[i].inode >= NODE_LIST_BASE)
                 return node_list[base_dir->dirents[i].inode - NODE_LIST_BASE];
@@ -236,12 +300,12 @@ static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
                 return root_node;
 
             // Unknown case, log it
-            klog_logln(1, ERROR, "Unable to resolve path: %s/%s (%d)", base_dir->dirents[i].name, name, base_dir->dirents[i].inode);
+            klog_logln(1, ERROR, "Unable to resolve path: %s/%s (%d)", base_dir->dirents[i].name, filename, base_dir->dirents[i].inode);
             return NULL;
         }
     }
 
-    klog_logln(1, DEBUG, "Oddie?: %p, %s, %s", node, name, base_dir->base_path);
+    klog_logln(1, DEBUG, "ENOENT: (%s / %s)", base_dir->base_path, filename);
     return NULL;
 }
 
@@ -312,7 +376,7 @@ static void append_dirent(vfs_inode_t* target, char* base_path, char* name)
         // . and .. dirents have not been setup yet, setup those nodes
         struct vfs_dirent* dirent = &dirnode->dirents[dirnode->num_dirents++];
         char* parent_base;
-        size_t parent_len = get_parent_len(base_path);
+        size_t parent_len = get_parent_len(base_path) + 1;
         struct tar_dir* parent = NULL;
         char parent_path[parent_len];
 
@@ -321,8 +385,8 @@ static void append_dirent(vfs_inode_t* target, char* base_path, char* name)
         else
             parent_base = base_path;
 
-        memcpy(parent_path, parent_base, parent_len);
-        parent_path[parent_len - 1] = '\0';
+        memcpy(parent_path, parent_base, parent_len - 1);
+        parent_path[parent_len] = '\0';
         parent = find_dir(parent_path);
 
         // If there's no parent, it's the root (loops back on itself)
@@ -367,7 +431,7 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
     root_node->impl_specific = 0;
 
     // Setup root dirnode
-    construct_dir_node(&node_dirs[0], root_node, "/", 0);
+    construct_dir_node(&(node_dirs[0]), root_node, "/", 0);
 
     int finode = NODE_LIST_BASE;
     int dnode = 1;
@@ -420,10 +484,11 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
         if(node->type == VFS_TYPE_DIRECTORY)
         {
             // Copy dir path to heap
-            char* base_path = kmalloc(strlen(tar_file->filename));
+            char* base_path = kmalloc(strlen(tar_file->filename) + 1);
+            memset(base_path, 0, strlen(tar_file->filename) + 1);
             memcpy(base_path, tar_file->filename, strlen(tar_file->filename));
 
-            construct_dir_node(&node_dirs[dnode], node, base_path, dnode);
+            construct_dir_node(&(node_dirs[dnode]), node, base_path, dnode);
             dnode++;
         }
 
