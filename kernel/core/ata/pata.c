@@ -167,7 +167,7 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
 static bool ata_wait(bool only_irq)
 {
     // TODO: Block current thread & awake on interrupt
-    uint64_t timeout = timer_read_counter(0) + (5000000000); // Timeout of 5s
+    uint64_t timeout = timer_read_counter(0) + (10 * 1000000); // Timeout of 10 ms
 
     while(!irq_fired)
     {

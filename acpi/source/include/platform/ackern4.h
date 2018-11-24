@@ -157,8 +157,6 @@
 #include <common/util/locks.h>
 #include <arch/cpufuncs.h>
 
-#define ACPI_DEBUG_OUTPUT 1
-
 // Lock definitions
 #define ACPI_SPINLOCK   spinlock_t*
 #define ACPI_SEMAPHORE  semaphore_t*
