@@ -163,13 +163,17 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
 }
 
 // Returns true if it timed out
-static bool ata_wait()
+// With only_irq true, ata_wait will only wait for an interrupt
+static bool ata_wait(bool only_irq)
 {
     // TODO: Block current thread & awake on interrupt
-    uint64_t timeout = timer_read_counter(0) + (5000000000); // Delay of 5ms
+    uint64_t timeout = timer_read_counter(0) + (5000000000); // Timeout of 5s
 
-    while(!irq_fired && (inb(current_device->control_base + ATA_ALT_STATUS) & (STATUS_BSY | STATUS_DRQ)) == STATUS_BSY)
+    while(!irq_fired)
     {
+        if(!only_irq && (inb(current_device->control_base + ATA_ALT_STATUS) & (STATUS_BSY | STATUS_DRQ)) != STATUS_BSY)
+            break;
+
         busy_wait();
         sched_sleep_ms(1);
         if(timeout <= timer_read_counter(0))
@@ -259,7 +263,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
         goto write_wait;
 
     // Wait until busy bit clears
-    bool timeout = ata_wait();
+    bool timeout = ata_wait(false);
 
     if(!timeout)
         goto normal_exit;
@@ -364,7 +368,7 @@ int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint3
         goto normal_exit;
 
     // Writes, on the other hand
-    ata_wait();
+    ata_wait(true);
     goto resume_tranfer;
 
     normal_exit:
@@ -426,7 +430,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
         outw(command_base, command[i]);
 
     // Wait for an IRQ indicating the device is ready to begin the transfer
-    ata_wait();
+    ata_wait(true);
 
     // Check current status
     if((inb(control_base + ATA_ALT_STATUS) & (STATUS_BSY | STATUS_DRQ)) == 0)
@@ -467,7 +471,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
             outw(command_base + ATA_DATA, transfer_buffer[buffer_index++]);
     }
 
-    ata_wait();
+    ata_wait(true);
 
     if(inb(control_base + ATA_ALT_STATUS) & STATUS_DRQ)
     {
