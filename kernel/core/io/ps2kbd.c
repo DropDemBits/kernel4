@@ -81,25 +81,16 @@ static irq_ret_t ps2_keyboard_isr(struct irq_handler* handler)
 {
     taskswitch_disable();
     uint8_t data = ps2_device_read(kbd_device, false);
-    
-    if(data < 0xF0)
+
+    switch(data)
     {
-        insert_data:
-        keycode_push(data);
-        sched_unblock_thread(decoder_thread);
-    } else
-    {
-        switch(data)
-        {
-            case 0xF0:
-                goto insert_data;
-                break;
-            case 0xFA:
-                command_successful = true;
-                break;
-            default:
-                break;
-        }
+        case 0xFA:
+            command_successful = true;
+            break;
+        default:
+            keycode_push(data);
+            sched_unblock_thread(decoder_thread);
+            break;
     }
     
     taskswitch_enable();

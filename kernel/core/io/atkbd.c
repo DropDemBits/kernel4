@@ -82,22 +82,15 @@ static irq_ret_t at_keyboard_isr(struct irq_handler* handler)
     taskswitch_disable();
     uint8_t data = ps2_device_read(kbd_device, false);
     
-    if(data < 0xF0)
+    switch(data)
     {
-        insert_data:
-        keycode_push(data);
-        sched_unblock_thread(decoder_thread);
-    } else
-    {
-        switch(data)
-        {
-            case 0xFA:
-                command_successful = true;
-                break;
-            default:
-                goto insert_data;
-                break;
-        }
+        case 0xFA:
+            command_successful = true;
+            break;
+        default:
+            keycode_push(data);
+            sched_unblock_thread(decoder_thread);
+            break;
     }
     
     taskswitch_enable();
@@ -195,7 +188,12 @@ void atkbd_init(int device)
     memset(keycode_buffer, 0x00, 4096);
 
     ps2_handle_device(kbd_device, at_keyboard_isr);
-    send_command(0xF0, 0x01);
+    if(ps2_device_get_type(device) == TYPE_MF2_KBD_TRANS)
+        // Force the keyboard into scancode set 2 (preventing double xlation)
+        send_command(0xF0, 0x02);
+    else
+        // Normal AT keyboard
+        send_command(0xF0, 0x01);
     send_command(0xF3, 0x20);
     send_command(0xED, 0x00);
 
