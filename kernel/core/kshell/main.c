@@ -240,24 +240,19 @@ static bool shell_parse()
         return true;
     } else if(is_command("help", command) || is_command("?", command))
     {
-        puts("Kshell version 0.6\n");
+        puts("Kshell version 0.6.1\n");
         puts("Available commands (slashes = aliases, square brackets = arguments):");
         puts("\thelp/?:          \tShows this information");
         puts("\thelloworld/hw:   \tShows an example string");
         puts("\tclear/cls:       \tClears the screen");
         puts("\techo [thistext]: \tShows [thistext]");
-        puts("\texit:            \tExits the console (reboot to bring back shell)");
         puts("\tfonttest:        \tShows all charachters supported by the current font");
         puts("\twakeup:          \tWake up a test thread to show a string");
         puts("\tsleep [time]:    \tSleeps the shell for [time] milliseconds");
         puts("\tklog [level]:    \tShows the kernel log from the specified log level");
         puts("\t                 \tand above");
-        puts("\tshutdown:        \tShuts down the computer");
+        puts("\tshutdown [exit]: \tShuts down the computer");
         puts("\treboot:          \tReboots the computer");
-        return true;
-    } else if(is_command("exit", command))
-    {
-        should_run = false;
         return true;
     } else if(is_command("fonttest", command))
     {
@@ -322,7 +317,7 @@ static bool shell_parse()
 
         print_log(log_level);
         return true;
-    } else if(is_command("shutdown", command))
+    } else if(is_command("shutdown", command) || is_command("exit", command))
     {
         // Print shutdown message
         tty_set_colours(tty, EGA_BRIGHT_YELLOW, EGA_BLACK);
