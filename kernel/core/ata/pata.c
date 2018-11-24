@@ -92,6 +92,7 @@ static uint16_t current_id = ~0;
 static struct pata_dev* current_device;
 static struct ata_dev** device_list = NULL;
 static bool volatile irq_fired = false;
+static size_t num_irqs = 0;
 static uint16_t ata_subsys = 0;
 
 static irq_ret_t pata_irq_handler(struct irq_handler* handler)
@@ -108,6 +109,7 @@ static irq_ret_t pata_irq_handler(struct irq_handler* handler)
         klog_logln(ata_subsys, WARN, "IRQ fired outside of command");
     }
 
+    num_irqs++;
     return IRQ_HANDLED;
 }
 
@@ -141,7 +143,7 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
         return false;
     else if(!device_list[id]->is_active)
         return false;
-    else if(current_id == id)
+    else if(current_id == id && inb(current_device->command_base + ATA_DRV_SEL) & 0xF == lba_bits & 0xF)
         return true;
 
     current_id = id;
@@ -164,18 +166,20 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
 static bool ata_wait()
 {
     // TODO: Block current thread & awake on interrupt
-    uint64_t timeout = timer_read_counter(0) + (5000000); // Delay of 5ms
+    uint64_t timeout = timer_read_counter(0) + (5000000000); // Delay of 5ms
 
-    while(!irq_fired && (inb(current_device->control_base + ATA_ALT_STATUS) & STATUS_DRQ) == 0)
+    while(!irq_fired && (inb(current_device->control_base + ATA_ALT_STATUS) & (STATUS_BSY | STATUS_DRQ)) == STATUS_BSY)
     {
         busy_wait();
         sched_sleep_ms(1);
         if(timeout <= timer_read_counter(0))
         {
-            klog_logln(ata_subsys, DEBUG, "ata_dev%d timeout %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
+            klog_logln(ata_subsys, DEBUG, "ata_dev%d timeout %x (nirqs: %d, %d)", current_id, inb(current_device->control_base + ATA_ALT_STATUS), num_irqs, timeout - timer_read_counter(0));
             return true;
         }
     }
+
+    klog_logln(ata_subsys, DEBUG, "ata_dev%d nt %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
 
     return false;
 }
@@ -205,7 +209,10 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     }
 
     if(loop_counter <= 0)
+    {
+        klog_logln(ata_subsys, DEBUG, "ata_dev%d wait sts %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
         return EABSENT;
+    }
 
     if(current_device->dev.has_lba48 && is48bit)
     {
@@ -340,7 +347,7 @@ int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint3
         goto normal_exit;
 
     // We are in data transfer mode, do it
-    klog_logln(ata_subsys, DEBUG, "(ata_dev%lld) Beginning PIO Data Transfer (%lld bytes)", id, word_count << 1);
+    klog_logln(ata_subsys, DEBUG, "(ata_dev%d) Beginning PIO Data Transfer (%lld bytes)", id, (uint64_t)(word_count << 1));
     if(transfer_dir == TRANSFER_READ)
     {
         while(word_count--)
@@ -558,6 +565,9 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     // Reset device
     outb(control_base + ATA_DEV_CTRL, 0x04);
     outb(control_base + ATA_DEV_CTRL, 0x00);
+
+    // Wait until reset is done (at least 2ms from spec)
+    sched_sleep_ms(2);
 
     struct pata_dev* controller = kmalloc(sizeof(struct pata_dev));
     memset(controller, 0, sizeof(struct pata_dev));

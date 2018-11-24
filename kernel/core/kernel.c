@@ -361,15 +361,36 @@ void core_fini()
 
     uint8_t eject_command[] = {0x1B /* START STOP UNIT */, 0x00, 0x00, 0x00, /* LoEJ */ 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     uint8_t read_command[]  = {0xA8 /* READ(12) */, 0x00, /* LBA */ 0x00, 0x00, 0x00, 0x01, /* Sector Count */ 0x00, 0x00, 0x00, 0x01, /**/ 0x00, 0x00};
-    uint16_t* transfer_buffer = kmalloc(4096);
+    uint8_t* transfer_buffer = kmalloc(4096);
     int err_code = 0;
 
-    err_code = atapi_send_command(2, (uint16_t*)read_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "Command: ATAPI READ(12) (%d)", err_code);
+    klog_logln(core_subsystem, INFO, "Command: ATAPI READ(12):", err_code);
+    err_code = atapi_send_command(2, (uint16_t*)read_command, (uint16_t*)transfer_buffer, 4096, TRANSFER_READ, false, false);
+    klog_logln(core_subsystem, INFO, "ErrCode (%d)", err_code);
+
+    // Dump contents
+    for(size_t i = 0; i < 2048 && !err_code; i++)
+    {
+        klog_logf(core_subsystem, INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
+        if(i % 16 == 15)
+            klog_logc(core_subsystem, INFO, '\n');
+    }
+
+    klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ):");
     err_code = atapi_send_command(2, (uint16_t*)eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ) (%d)", err_code);
+    klog_logln(core_subsystem, INFO, "ErrCode (%d)", err_code);
+
+    klog_logln(core_subsystem, INFO, "Command: ATA READ");
     err_code = pata_do_transfer(0, 1, (uint16_t*)transfer_buffer, 1, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "Command: ATA READ (%d)", err_code);
+    klog_logln(core_subsystem, INFO, "ErrCode (%d)", err_code);
+
+    // Dump contents
+    for(size_t i = 0; i < 512 && !err_code; i++)
+    {
+        klog_logf(core_subsystem, INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
+        if(i % 16 == 15)
+            klog_logc(core_subsystem, INFO, '\n');
+    }
 
     vfs_inode_t *root;
     if(initrd_start != 0xDEADBEEF)
