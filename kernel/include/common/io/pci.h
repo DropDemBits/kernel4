@@ -72,6 +72,10 @@ struct pci_dev
     uint16_t bus;
     uint8_t device : 5;
     uint8_t function : 3;
+
+    uint8_t class_code;
+    uint8_t subclass_code;
+    uint8_t prog_if;
     
     uint8_t irq_pin;         // Interrupt Pin (corresponds to IRQ0-15)
     uint8_t intr_line;       // Interupt Line (corresponds to INTA-D)

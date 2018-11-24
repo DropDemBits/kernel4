@@ -34,7 +34,8 @@ list(APPEND SOURCES
     core/kshell/main.c
     core/acpi/osl.c
     core/acpi/acpi.c
-    core/ipc/message.c)
+    core/ipc/message.c
+    core/usb/usbcore.c)
 
 if(TARGET_ARCH STREQUAL "i386" OR TARGET_ARCH STREQUAL "x86_64")
     include(arch/x86/CMakeLists.txt)

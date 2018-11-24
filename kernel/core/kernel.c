@@ -42,6 +42,7 @@
 #include <common/fs/vfs.h>
 #include <common/tty/fb.h>
 #include <common/tty/tty.h>
+#include <common/usb/usb.h>
 
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
@@ -54,7 +55,7 @@ void core_fini();
 
 void idle_loop()
 {
-    const int x_off = 0;
+    /*const int x_off = 0;
     const int y_off = 25 << 4;
     const int buffer_size = 80*5*2;
 
@@ -78,7 +79,9 @@ void idle_loop()
         tty_make_clean(tty);
         tty_clear(tty, true);
         intr_wait();
-    }
+    }*/
+    while(1)
+        intr_wait();
 }
 
 void usermode_entry()
@@ -349,9 +352,12 @@ void core_fini()
     acpi_init();
 
     kbd_init();
-    ps2_init();
+    // usb_init();
     ata_init();
     pci_init();
+
+    // Needs to be after (usb emulation must be disabled)
+    ps2_init();
 
     uint8_t eject_command[] = {0x1B /* START STOP UNIT */, 0x00, 0x00, 0x00, /* LoEJ */ 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     uint8_t read_command[]  = {0xA8 /* READ(12) */, 0x00, /* LBA */ 0x00, 0x00, 0x00, 0x01, /* Sector Count */ 0x00, 0x00, 0x00, 0x01, /**/ 0x00, 0x00};

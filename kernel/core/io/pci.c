@@ -13,10 +13,6 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     uint16_t device_id =    pci_read_raw(bus, device, function, PCI_DEVICE, 2);
     // uint8_t header_type =   pci_read_raw(bus, device, function, PCI_HEADER, 1);
 
-    uint8_t class_code =    pci_read_raw(bus, device, function, PCI_CLASS_CODE, 1);
-    uint8_t subclass_code = pci_read_raw(bus, device, function, PCI_SUBCLASS_CODE, 1);
-    uint8_t prog_if =       pci_read_raw(bus, device, function, PCI_PROG_IF, 1);
-
     char* device_name = "[unknown]";
 
     // TODO: Just replace below with an array of pointers to pci device name structs
@@ -67,7 +63,7 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
         }
         else if(node->vendor_id == PCI_MATCH_ANY && node->device_id == PCI_MATCH_ANY)
         {
-            if(node->class_code == class_code && node->subclass_code == subclass_code && (node->prog_if == prog_if || node->prog_if == PCI_ANY_PROG_IF))
+            if(node->class_code == dev->class_code && node->subclass_code == dev->subclass_code && (node->prog_if == dev->prog_if || node->prog_if == PCI_ANY_PROG_IF))
             {
                 if(node->found(dev) == PCI_DEV_HANDLED)
                     break;
@@ -145,9 +141,18 @@ struct pci_dev* pci_get_dev(uint8_t bus, uint8_t device, uint8_t function)
     uint8_t intr_line =     pci_read_raw(bus, device, function, PCI_INTR_LINE, 1);
     uint8_t irq_pin =       pci_read_raw(bus, device, function, PCI_IRQ_PIN, 1);
 
+    uint8_t class_code =    pci_read_raw(bus, device, function, PCI_CLASS_CODE, 1);
+    uint8_t subclass_code = pci_read_raw(bus, device, function, PCI_SUBCLASS_CODE, 1);
+    uint8_t prog_if =       pci_read_raw(bus, device, function, PCI_PROG_IF, 1);
+
     dev->bus = bus;
     dev->device = device;
     dev->function = function;
+
+    dev->class_code = class_code;
+    dev->subclass_code = subclass_code;
+    dev->prog_if = prog_if;
+
     dev->num_irqs = 0;
     dev->intr_line = intr_line;
     dev->irq_pin = irq_pin;
