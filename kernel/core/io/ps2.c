@@ -307,7 +307,10 @@ void ps2_init()
         } else if(devices[active_device].type == TYPE_MF2_KBD_TRANS ||
                 devices[active_device].type == TYPE_AT_KBD)
         {
-            klog_logln(ps2_subsys, DEBUG, "Initialising AT/Translated MF2 keyboard");
+            if(devices[active_device].type == TYPE_MF2_KBD_TRANS)
+                klog_logln(ps2_subsys, DEBUG, "Initialising AT Translated MF2 keyboard Scan Set 2");
+            else
+                klog_logln(ps2_subsys, DEBUG, "Initialising AT keyboard Scan Set 1");
             atkbd_init(active_device);
         }
         else
