@@ -199,6 +199,8 @@ static bool is_command(const char* str, char* buffer)
     return strcmp(str,buffer) == 0;
 }
 
+extern void arch_reboot();
+
 static bool shell_parse()
 {
     if(!index) return true; // Nothing to parse
@@ -352,6 +354,9 @@ static bool shell_parse()
             putchar('\n');
             printf("An error occurred while trying to reboot: %s\n", AcpiFormatException(Status));
         }
+
+        // Specialty
+        arch_reboot();
         return true;
     }
 

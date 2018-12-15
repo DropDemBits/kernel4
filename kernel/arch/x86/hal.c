@@ -30,6 +30,7 @@
 #include <arch/pic.h>
 #include <arch/pit.h>
 #include <arch/idt.h>
+#include <arch/io.h>
 #include <stack_state.h>
 
 #define MAX_TIMERS 64
@@ -37,6 +38,8 @@
 #define KLOG_FATAL(msg, ...) \
     if(klog_is_init()) {klog_logln(0, FATAL, msg, __VA_ARGS__);} \
     else {klog_early_logln(FATAL, msg, __VA_ARGS__);}
+
+extern void halt();
 
 static bool use_apic = false;
 static size_t native_flags = 0;
@@ -368,6 +371,14 @@ uint8_t hal_get_ic_mode()
 struct heap_info* get_heap_info()
 {
     return &heap_context;
+}
+
+void arch_reboot()
+{
+    // Pulse the reset line
+    outb(0x64, 0xFE);
+
+    halt();
 }
 
 #if defined(__x86_64__)
