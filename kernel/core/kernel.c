@@ -395,8 +395,10 @@ void core_fini()
     vfs_inode_t *root;
     if(initrd_start != 0xDEADBEEF)
     {
+        klog_logln(core_subsystem, INFO, "Setting up initrd");
+        vfs_inode_t* tarfs = tarfs_init((void*)initrd_start, initrd_size);
         klog_logln(core_subsystem, INFO, "Mounting initrd:");
-        vfs_mount(tarfs_init((void*)initrd_start, initrd_size), "/");
+        vfs_mount(tarfs, "/");
         root = vfs_getrootnode("/");
         walk_dir(root, 0);
     }
