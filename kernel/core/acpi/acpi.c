@@ -10,8 +10,8 @@
 
 struct ECDT_CONTEXT
 {
-    uint64_t Control;
-    uint64_t Data;
+    unsigned long Control;
+    unsigned long Data;
     bool IsPortSpace;
     uint8_t GpeBit;
 };
@@ -72,7 +72,7 @@ static void acpi_ec_write(uint8_t Address, uint8_t Value)
 
 static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 BitWidth, UINT64 *Value, void *HandlerContext, void *RegionContext)
 {
-    ACPI_STATUS status;
+    ACPI_STATUS status = AE_OK;
 
     switch (Function)
     {
@@ -89,6 +89,8 @@ static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS 
         default:
             status = AE_BAD_PARAMETER;
     }
+
+    klog_logln(acpi_subsys, DEBUG, "ECACC %s: %02x = %02x (%02x, %02x)", Function ? "WR" : "RD", Address, *Value, (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
 
     return status;
 }
@@ -259,10 +261,18 @@ ACPI_STATUS acpi_init()
             switch(crs_res->Type)
             {
                 case ACPI_RESOURCE_TYPE_IO:
-                    ((uint64_t*)&ec_context)[port_index - 1] = crs_res->Data.Io.Minimum;
+                {
+                    uint16_t* ptr = (uint16_t*)((uintptr_t)&ec_context + (port_index - 1) * 8);
+                    *ptr = crs_res->Data.Io.Minimum;
+                    if(port_index == 2)
+                        ec_context.Data = (unsigned long)crs_res->Data.Io.Minimum;
+                    else if(port_index == 1)
+                        ec_context.Control = (unsigned long)crs_res->Data.Io.Minimum;
+                    klog_logln(acpi_subsys, DEBUG, "ECIsO: %p -> %p (%x), %ld", &ec_context.Data, ptr, *ptr, (uint32_t)port_index);
                     port_index--;
                     ec_context.IsPortSpace = true;
                     break;
+                }
                 case ACPI_RESOURCE_TYPE_ADDRESS16:
                 case ACPI_RESOURCE_TYPE_ADDRESS32:
                 case ACPI_RESOURCE_TYPE_ADDRESS64:
@@ -275,6 +285,7 @@ ACPI_STATUS acpi_init()
                     break;
             }
 
+            klog_logln(acpi_subsys, DEBUG, "ECIO: %x, %x", (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
             if(!port_index)
                 break;
 
