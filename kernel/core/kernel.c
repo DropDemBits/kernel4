@@ -220,11 +220,12 @@ void kmain()
     klog_early_logln(INFO, "Parsing Multiboot info");
     multiboot_parse();
     klog_early_logln(INFO, "Initialising MM");
-    mm_init();
+    mm_early_init();
     mmu_init();
+    mm_init();
+
     klog_early_logln(INFO, "Initialising Framebuffer");
     fb_init();
-    multiboot_reclaim();
     main_fb_init();
     acpi_early_init();
 

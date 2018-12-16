@@ -142,16 +142,6 @@ void multiboot_parse()
 
 }
 
-/*
- * Reclaims memory occupied by multiboot info structures
- */
-void multiboot_reclaim()
-{
-    mm_add_region(  multiboot_base,
-                    multiboot_size,
-                    MULTIBOOT_MEMORY_AVAILABLE);
-}
-
 /**
  * Parsing the Multiboot info structure is easy, just copy values over.
  */
@@ -224,22 +214,7 @@ void parse_mb1()
             if(actual->type == 0)
                 goto next_entry;
 
-            mm_add_region(actual->addr, actual->len, actual->type);
-            if(actual->addr + actual->len >= multiboot_base && actual->addr <= multiboot_base + multiboot_size)
-            {
-                // Reserve multboot info
-                mm_add_region(  multiboot_base,
-                                multiboot_size,
-                                MULTIBOOT_MEMORY_RESERVED);
-            }
-
-            if(actual->addr + actual->len >= initrd_start && actual->addr <= initrd_start + initrd_size)
-            {
-                // Reserve initrd
-                mm_add_region(  initrd_start,
-                                initrd_size,
-                                MULTIBOOT_MEMORY_RESERVED);
-            }
+            mm_add_area(actual->addr, actual->len, actual->type);
 
             next_entry:
             mmap = (mb_mmap_t*) ((uintptr_t)mmap + mmap->size + sizeof(mmap->size));
@@ -367,8 +342,6 @@ void parse_mb2()
     // 4KiB align info size
     info_size = (info_size + 0xFFF) & ~0xFFF;
 
-    bool first_iter = true;
-
     klog_early_logln(INFO, "Memory Regions:");
     for (mmap = mmap_tag->entries;
         (uint8_t *) mmap < ((uint8_t *) mmap_tag + mmap_tag->size);
@@ -377,27 +350,11 @@ void parse_mb2()
         if(mmap->type == 0)
             continue;
 
-        klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type: %s", mmap->addr, mmap->len, region_names[mmap->type-1]);
-        mm_add_region(mmap->addr, mmap->len, mmap->type);
+        //klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type: %s", mmap->addr, mmap->len, region_names[mmap->type-1]);
+        mm_add_area(mmap->addr, mmap->len, mmap->type);
 
         // Reserve multiboot info region
         multiboot_base = (unsigned long)multiboot_ptr & ~0xFFF;
         multiboot_size = info_size;
-
-        if(mmap->addr + mmap->len >= multiboot_base && mmap->addr <= multiboot_base + multiboot_size)
-        {
-            // Reserve multboot info
-            mm_add_region(  multiboot_base,
-                            multiboot_size,
-                            MULTIBOOT_MEMORY_RESERVED);
-        }
-
-        if(mmap->addr + mmap->len >= initrd_start && mmap->addr <= initrd_start + initrd_size)
-        {
-            // Reserve initrd
-            mm_add_region(  initrd_start,
-                            initrd_size,
-                            MULTIBOOT_MEMORY_RESERVED);
-        }
     }
 }

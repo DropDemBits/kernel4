@@ -66,6 +66,7 @@ typedef struct paging_context
 } paging_context_t;
 
 void mmu_init();
+
 /**
  * @brief  Creates a mapping between the linear and physical address
  * @note   
@@ -122,7 +123,18 @@ void mmu_set_temp_context(paging_context_t* addr_context);
 void mmu_exit_temp_context();
 
 // Physical Memory Manager
+void mm_early_init();
 void mm_init();
+
+/**
+ * @brief  Adds a memory area to be considered during memory map building
+ * @note   
+ * @param  base: 
+ * @param  length: 
+ * @param  type: 
+ * @retval None
+ */
+void mm_add_area(unsigned long base, unsigned long length, uint32_t type);
 void mm_add_region(unsigned long base, size_t length, uint32_t type);
 unsigned long mm_alloc(size_t size);
 void mm_free(unsigned long addr, size_t size);

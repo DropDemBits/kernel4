@@ -30,7 +30,25 @@
 extern uintptr_t kernel_phystart;
 extern size_t kernel_physize;
 extern uintptr_t kernel_phypage_end;
+extern uint32_t initrd_start;
+extern uint32_t initrd_size;
 extern void* mm_get_base();
+
+enum {
+    TYPE_IGNORE = 0,    // Not a real type, just used to ignore overlapped regions
+    TYPE_AVAILABLE,
+    TYPE_RESERVED,
+    TYPE_ACPI_RECLAIMABLE,
+    TYPE_NVS,
+    TYPE_BADRAM,
+};
+
+struct mem_area
+{
+    uint64_t base;
+    uint64_t length;
+    uint32_t type;
+};
 
 enum {
     RTYPE_LOW,
@@ -58,9 +76,16 @@ struct mem_block
 } __attribute__((__packed__));
 typedef struct mem_block mem_region_t;
 
-static mem_region_t* region_list = KNULL;
-static size_t total_blocks = 1;
-static size_t frame_blocks = 1;
+static uint8_t __attribute__((aligned (4096))) init_region_list[4096];
+static uint8_t __attribute__((aligned (4096))) init_region_bitmap[4096];
+
+static struct mem_area area_list[64];
+static unsigned int next_free_area = 0;
+
+static mem_region_t* region_list = &init_region_bitmap;
+static size_t frame_blocks = 0;
+
+static void* mm_base_ptr = NULL;
 
 // List utilities (TODO: Abstract away into a new file)
 /*
@@ -141,12 +166,6 @@ static mem_region_t* list_search_free(mem_region_t* list_head)
 static bool mm_append_block(mem_region_t* list_head, mem_region_t* block)
 {
     list_insert_after(list_head, block);
-    total_blocks++;
-    if(++frame_blocks >= 64)
-    {
-        block->next = (struct mem_block*)mm_alloc(1);
-        return true;
-    }
     return false;
 }
 
@@ -288,18 +307,25 @@ static mem_region_t* mm_create_region(mem_region_t* list_tail,
                                       uint64_t base)
 {
     mem_region_t* append = KNULL;
-    if(list_tail->next == KNULL || list_tail->next == (void*)~0ULL)
-        append = (mem_region_t*)((size_t)list_tail + sizeof(mem_region_t));
+    if(++frame_blocks >= 128)
+    {
+        // Map a new structure if need be
+        if(frame_blocks % 128 == 0)
+            mmu_map(mm_base_ptr, mm_alloc(1), MMU_FLAGS_DEFAULT);
+        frame_blocks = 0;
+
+        append = mm_base_ptr;
+        mm_base_ptr += (uintptr_t)((void*)sizeof(mem_region_t)) * 128;
+    }
     else
-        kpanic("Non-NULL mm_block tail (%#p, %#p)", list_tail, base);
+    {
+        // Keep on using the current structure
+        append = (mem_region_t*)((size_t)list_tail + sizeof(mem_region_t));
+    }
 
     append->next = KNULL;
     append->base = base;
-
-    if(base == 0)
-        append->super_map = 1ULL;
-    else
-        append->super_map = 0ULL;
+    append->super_map = ~0ULL;
 
     if(base == 0x0)
         append->flags.type = RTYPE_LOW;
@@ -318,106 +344,131 @@ static mem_region_t* mm_create_region(mem_region_t* list_tail,
     return append;
 }
 
+/**
+ * @brief  Finds memory area containg the address
+ * @note   
+ * @param  address: The address to find the containing area
+ * @retval The containing area, or NULL if none was found
+ */
+static struct mem_area* find_area(unsigned long address)
+{
+    for(size_t i = 0; i < next_free_area; i++)
+    {
+        struct mem_area* check = &(area_list[i]);
+
+        if(address >= check->base && address < (check->base + check->length))
+            return check;
+    }
+
+    return NULL;
+}
+
+void mm_early_init()
+{
+    // Reserve appropriate regions
+    // Null page
+    mm_add_area(0, 0x1000, TYPE_RESERVED);
+
+    // Kernel region
+    mm_add_area((uintptr_t)&kernel_phystart, (size_t)&kernel_physize, TYPE_RESERVED);
+
+    // Initrd area
+    mm_add_area(initrd_start, initrd_size, TYPE_RESERVED);
+
+    // Setup the bitmap
+    mem_region_t* node = &init_region_list;
+    region_list = node;
+
+    memset(init_region_list, 0, sizeof(init_region_list));
+    memset(init_region_bitmap, 0xFF, sizeof(init_region_bitmap));
+
+    node->next = KNULL;
+    node->base = 0;
+    node->super_map = 0xFFFFFFFFFFFFFFFFULL;
+    node->flags.type = RTYPE_LOW;
+    node->flags.reserved = 0x00U;
+    node->flags.present = 1;
+    node->flags.lazy_bitmap = 0;
+    node->bitmap = (uint64_t*)&init_region_bitmap;
+
+    mm_base_ptr = mm_get_base();
+
+    klog_early_logln(INFO, "Complete list:");
+    for(size_t i = 0; i < next_free_area; i++)
+    {
+        struct mem_area* area = &(area_list[i]);
+
+        if(!area->type)
+            continue;
+        klog_early_logln(INFO, "    %08.8p | %08.8p | %01d", area->base, area->length, area->type);
+        mm_add_region(area->base, area->length, area->type);
+    }
+}
+
 void mm_init()
 {
     heap_init();
+}
 
-    // Now that we have our regions defined, map our region list to virt-mem
-    if(region_list != KNULL)
+static void add_area(unsigned long base, unsigned long length, uint32_t type)
+{
+    if(next_free_area >= 64)
+        return;
+
+    struct mem_area* area = &(area_list[next_free_area++]);
+    area->base = base;
+    area->length = length;
+    area->type = type;
+
+    klog_early_logln(INFO, "      : %08.8p | %08.8p | %01d", base, length, type);
+}
+
+void mm_add_area(unsigned long base, unsigned long length, uint32_t type)
+{
+    klog_early_logln(INFO, "Create: %08.8p | %08.8p | %01d", base, length, type);
+
+    // Cut out overlapping regiojn
+    struct mem_area* base_overlap = find_area(base);
+    struct mem_area* limit_overlap = find_area(base + length);
+
+    if(limit_overlap != NULL)
     {
-        // Pass1: Next pointers
+        // A new region will have to be created to deal with the overlap
 
-        mem_region_t* block = region_list;
-        mem_region_t* next_pointer = mm_get_base();
+        // New base at the end of the current region
+        uint64_t new_base = base + length;
+        uint64_t new_len = limit_overlap->length - (new_base - limit_overlap->base);
 
-        mmu_map((unsigned long)next_pointer, (unsigned long)region_list, MMU_FLAGS_DEFAULT);
-        region_list = mm_get_base();
-        next_pointer++;
+        // Add the area and clone the type
+        add_area(new_base, new_len, limit_overlap->type);
 
-        while(block->next != KNULL)
-        {
-            mmu_map((unsigned long)next_pointer, (unsigned long)block->next, MMU_FLAGS_DEFAULT);
-            block->next = next_pointer++;
-            block = block->next;
-        }
+        // Change the limit_overlap length to the appropriate length
+        limit_overlap->length = (new_base - limit_overlap->base);
 
-        // Pass2: Bitmaps
-        uint64_t *block_pointer = (uint64_t*) (((uintptr_t)next_pointer + 0xFFF) & ~0xFFF);
-        block = region_list;
-        while(block != KNULL)
-        {
-            if(!block->flags.lazy_bitmap)
-            {
-                mmu_map((unsigned long)block_pointer, (unsigned long)block->bitmap, MMU_FLAGS_DEFAULT);
-                block->bitmap = block_pointer;
-                block_pointer += (0x1000 >> 3);
-            }
-
-            block = block->next;
-        }
-
+        if(limit_overlap->length == 0)
+            limit_overlap->type = 0;
     }
+
+    if(base_overlap != NULL)
+    {
+        // Adjust the base side length accordingly
+        base_overlap->length = base - base_overlap->base;
+
+        if(base_overlap->length == 0)
+            base_overlap->type = 0;
+    }
+
+    // Add the actual region last (prevent over-overlapping)
+    add_area(base, length, type);
 }
 
 // Base address & length in bytes
 void mm_add_region(unsigned long base, size_t length, uint32_t type)
 {
     mem_region_t *node = list_search_block(region_list, base);
-    bool cover_kernel = false;
 
     // Round up length
     length = ((base & 0xFFF) + length + 0xFFF) & ~0xFFF;
-
-    if(region_list == KNULL)
-    {
-        bool base_in_bda = false;
-
-        // Set first 8K block in region for region tracking
-        if(base < 0x1000)
-        {
-            // On PC-BIOS systems, the low 512B contains information we still
-            // need, so we don't overwrite the memory yet.
-            base += 0x1000;
-            length -= 0x1000;
-            base_in_bda = true;
-        }
-        region_list = (mem_region_t*)base;
-
-        base += 0x2000;
-        length -= 0x2000;
-
-        //Set region to 0xFF
-        for(size_t i = 0; i < 2048; i++)
-        {
-            ((uint32_t*)region_list)[i] = 0xFFFFFFFF;
-        }
-
-        region_list->next = KNULL;
-        region_list->base = base >> 27;
-        region_list->super_map = 0xFFFFFFFFFFFFFFFFULL;
-
-        // Flags
-        if(base < 0x1000000) region_list->flags.type = RTYPE_LOW;
-        else if(base <= 0xFFFFFFFF) region_list->flags.type = RTYPE_32BIT;
-        else region_list->flags.type = RTYPE_64BIT;
-        region_list->flags.reserved = 0x00U;
-        region_list->flags.present = 1;
-        region_list->flags.lazy_bitmap = 0;
-
-        node = list_search_block(region_list, base);
-        node->bitmap = (uint64_t*)(base - 0x1000);
-
-        for(size_t i = 0; i < 512 && node->bitmap != KNULL; i++)
-        {
-            node->bitmap[i] = 0xFFFFFFFFFFFFFFFFULL;
-        }
-
-        // Set bits for allocated blocks
-        if(base_in_bda) bm_set_bit(region_list, (base - 0x3000) >> 12);
-        bm_set_bit(region_list, (base - 0x2000) >> 12);
-        bm_set_bit(region_list, (base - 0x1000) >> 12);
-    }
-
 
     // Check if new block is outside of the last block
     if(node == KNULL || (base >> 27) > (node->base >> 27))
@@ -448,18 +499,13 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
             // Allocate a new bitmap
             node->flags.lazy_bitmap = 0;
             node->bitmap = (uint64_t*)mm_alloc(1);
-            memset(node->bitmap, 0, 4096);
+            memset(node->bitmap, 0xFF, 4096);
         }
 
         if(type == MEM_REGION_AVAILABLE)
         {
             for(size_t bit = 0; bit < num_pages; bit++)
                 bm_clear_bit(node, bit + page_base);
-        }
-        else
-        {
-            for(size_t bit = 0; bit < num_pages; bit++)
-                bm_set_bit(node, bit + page_base);
         }
 
     skip_bitset:
@@ -477,19 +523,6 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
         if(block_length >= 0x8000000)
             // It's the same type and a full block, no need to set any bits
             goto skip_bitset;
-    }
-
-    uintptr_t kern_base = (uintptr_t)&kernel_phystart;
-    size_t kern_size = (size_t)&kernel_physize;
-
-    // Preserve find the node containing the kernel region
-    node = list_search_block(region_list, kern_base);
-
-    if(node != KNULL && (base + length) >= (uintptr_t)&kernel_phystart && base <= (uintptr_t)&kernel_phypage_end && type == MEM_REGION_AVAILABLE)
-    {
-        // If the current region overlaps with the kernel image and the new region was availabe, reserve that range
-        for(size_t bit = 0; bit < ((kern_size >> 12) & 0x7FFF); bit++)
-            bm_set_bit(node, bit + (kern_base >> 12));
     }
 }
 
