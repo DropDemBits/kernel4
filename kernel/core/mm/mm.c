@@ -299,6 +299,13 @@ static size_t bm_find_free_bits(mem_region_t* mem_block, size_t size)
     return (size_t)index.value;
 }
 
+static void* get_next_address()
+{
+    void * addr = mm_base_ptr;
+    mm_base_ptr += (uintptr_t)((void*)4096);
+    return addr;
+}
+
 /*
  * Creates a region block and appends it to list_tail.
  * Base to be passed should be base >> 27 (size of region coverage).
@@ -309,13 +316,12 @@ static mem_region_t* mm_create_region(mem_region_t* list_tail,
     mem_region_t* append = KNULL;
     if(++frame_blocks >= 128)
     {
-        // Map a new structure if need be
-        if(frame_blocks % 128 == 0)
-            mmu_map(mm_base_ptr, mm_alloc(1), MMU_FLAGS_DEFAULT);
-        frame_blocks = 0;
+        // Map a new pointer list
+        append = get_next_address();
 
-        append = mm_base_ptr;
-        mm_base_ptr += (uintptr_t)((void*)sizeof(mem_region_t)) * 128;
+        if(frame_blocks % 128 == 0)
+            mmu_map(append, mm_alloc(1), MMU_FLAGS_DEFAULT);
+        frame_blocks = 0;
     }
     else
     {
@@ -498,7 +504,8 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
         {
             // Allocate a new bitmap
             node->flags.lazy_bitmap = 0;
-            node->bitmap = (uint64_t*)mm_alloc(1);
+            node->bitmap = get_next_address();
+            mmu_map(node->bitmap, mm_alloc(1), MMU_FLAGS_DEFAULT);
             memset(node->bitmap, 0xFF, 4096);
         }
 
