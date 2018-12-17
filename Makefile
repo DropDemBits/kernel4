@@ -26,7 +26,7 @@ clean-kernel:
 clean: clean-libk clean-kernel
 	@$(foreach TARGET,$(TARGETS),rm -f k4-$(TARGET).iso;)
 	rm -rf isodir
-	rm -rf sysroot
+	rm -rf sysroot/usr/lib
 	rm -rf pxedest
 
 initrd/initrd/initrd.tar: $(INITRD_FILES)

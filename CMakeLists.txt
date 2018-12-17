@@ -16,7 +16,7 @@ add_definitions(-D__${TARGET_ARCH}__=1)
 include_directories("${PROJECT_SOURCE_DIR}/acpi/source/include")
 include_directories("${PROJECT_SOURCE_DIR}/kernel/include")
 include_directories("${PROJECT_SOURCE_DIR}/kernel/arch/${TARGET_ARCH}/include")
-include_directories("${PROJECT_SOURCE_DIR}/sysroot/usr/local/include")
+include_directories("${PROJECT_SOURCE_DIR}/sysroot/usr/include")
 
 if(TARGET_ARCH STREQUAL "i386" OR TARGET_ARCH STREQUAL "x86_64")
     include_directories("${PROJECT_SOURCE_DIR}/kernel/arch/x86/include")
@@ -36,7 +36,7 @@ set_target_properties(
     set_target_properties(
         libk
         PROPERTIES IMPORTED_LOCATION
-        "${CMAKE_SOURCE_DIR}/sysroot/usr/local/lib/${TARGET_ARCH}/libk.a"
+        "${CMAKE_SOURCE_DIR}/sysroot/usr/lib/${TARGET_ARCH}/libk.a"
 )
 
 # ACPICA Driver

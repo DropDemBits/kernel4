@@ -2,7 +2,7 @@ TARGET_ARCH?=
 CC?=
 AR?=
 SYSROOT?=
-PREFIX?=/usr/local
+PREFIX?=/usr
 
 ARCH_INCLUDE_DIR?=
 ARCH_CFLAGS?=
