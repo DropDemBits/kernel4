@@ -494,28 +494,31 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
 
     for(size_t block = 0;;)
     {
-        size_t num_pages = (length >> BASE_SHIFT) % 0x8000;
-
-        // Exactly 8MiB? Set entire page
-        if(!num_pages)
-            num_pages = 0x8000;
-
-        if(node->flags.lazy_bitmap)
+        if(block_length < 0x8000000)
         {
-            // Allocate a new bitmap
-            node->flags.lazy_bitmap = 0;
-            node->bitmap = get_next_address();
-            mmu_map(node->bitmap, mm_alloc(1), MMU_FLAGS_DEFAULT);
-            memset(node->bitmap, 0xFF, 4096);
+            // If less than a full block size, set bits
+            size_t num_pages = (length >> BASE_SHIFT) % 0x8000;
+
+            // Exactly 8MiB? Set entire page
+            if(!num_pages)
+                num_pages = 0x8000;
+
+            if(node->flags.lazy_bitmap)
+            {
+                // Allocate a new bitmap
+                node->flags.lazy_bitmap = 0;
+                node->bitmap = get_next_address();
+                mmu_map(node->bitmap, mm_alloc(1), MMU_FLAGS_DEFAULT);
+                memset(node->bitmap, 0xFF, 4096);
+            }
+
+            if(type == MEM_REGION_AVAILABLE)
+            {
+                for(size_t bit = 0; bit < num_pages; bit++)
+                    bm_clear_bit(node, bit + page_base);
+            }
         }
 
-        if(type == MEM_REGION_AVAILABLE)
-        {
-            for(size_t bit = 0; bit < num_pages; bit++)
-                bm_clear_bit(node, bit + page_base);
-        }
-
-    skip_bitset:
         if(++block >= (length >> BLOCK_SHIFT))
             break;
 
@@ -526,10 +529,6 @@ void mm_add_region(unsigned long base, size_t length, uint32_t type)
         // Starting from a new block, so use no page offset
         page_base = 0;
         block_length -= 0x8000000;
-
-        if(block_length >= 0x8000000)
-            // It's the same type and a full block, no need to set any bits
-            goto skip_bitset;
     }
 }
 

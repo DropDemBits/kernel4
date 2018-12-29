@@ -211,12 +211,9 @@ void parse_mb1()
 
             klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type(%lx): %s", actual->addr, actual->len, actual->type, region_names[(actual->type-1) % 5]);
 
-            if(actual->type == 0)
-                goto next_entry;
+            if(actual->type != 0)
+                mm_add_area(actual->addr, actual->len, actual->type);
 
-            mm_add_area(actual->addr, actual->len, actual->type);
-
-            next_entry:
             mmap = (mb_mmap_t*) ((uintptr_t)mmap + mmap->size + sizeof(mmap->size));
         }
     }

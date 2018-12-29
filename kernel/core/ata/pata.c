@@ -258,19 +258,18 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     if((last_status & STATUS_ERR) == STATUS_ERR)
         return 1;
 
+    if(transfer_dir != TRANSFER_WRITE)
+    {
+        // Wait until busy bit clears
+        bool timeout = ata_wait(false);
+
+        if(!timeout)
+            goto normal_exit;
+        else
+            return EABSENT;
+    }
+
     // NOTE: Writes don't raise interrupts upon data ready, so we can't wait for them and have to use a busy loop
-    if(transfer_dir == TRANSFER_WRITE)
-        goto write_wait;
-
-    // Wait until busy bit clears
-    bool timeout = ata_wait(false);
-
-    if(!timeout)
-        goto normal_exit;
-    else
-        return EABSENT;
-
-    write_wait:
     last_status = inb(control_base + ATA_ALT_STATUS);
     while((last_status & STATUS_BSY) && (last_status & (STATUS_ERR | STATUS_DRDY)) == 0)
     {
@@ -446,38 +445,37 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
     uint32_t buffer_index = 0;
 
     next_transfer:
-    irq_fired = false;
-
-    byte_count = inb(command_base + ATA_LBAHI) << 8 | inb(command_base + ATA_LBAMID);
-    word_count = byte_count >> 1;
-    klog_logln(ata_subsys, DEBUG, "(ata_dev%d) Begining Packet PIO Data Transfer (%d bytes)", id, byte_count);
-
-    if(transfer_dir == 1)
+    do
     {
-        if(transfer_buffer == NULL || transfer_buffer == KNULL)
+        irq_fired = false;
+
+        byte_count = inb(command_base + ATA_LBAHI) << 8 | inb(command_base + ATA_LBAMID);
+        word_count = byte_count >> 1;
+        klog_logln(ata_subsys, DEBUG, "(ata_dev%d) Begining Packet PIO Data Transfer (%d bytes)", id, byte_count);
+
+        if(transfer_dir == 1)
         {
-            while(word_count--)
-                inw(command_base + ATA_DATA);
+            if(transfer_buffer == NULL || transfer_buffer == KNULL)
+            {
+                while(word_count--)
+                    inw(command_base + ATA_DATA);
+            }
+            else
+            {
+                while(word_count--)
+                    transfer_buffer[buffer_index++] = inw(command_base + ATA_DATA);
+            }
         }
         else
         {
             while(word_count--)
-                transfer_buffer[buffer_index++] = inw(command_base + ATA_DATA);
+                outw(command_base + ATA_DATA, transfer_buffer[buffer_index++]);
         }
-    }
-    else
-    {
-        while(word_count--)
-            outw(command_base + ATA_DATA, transfer_buffer[buffer_index++]);
-    }
 
-    ata_wait(true);
+        ata_wait(true);
 
-    if(inb(control_base + ATA_ALT_STATUS) & STATUS_DRQ)
-    {
         // Transfer not complete, wait for IRQ & go
-        goto next_transfer;
-    }
+    } while(inb(control_base + ATA_ALT_STATUS) & STATUS_DRQ);
 
     ata_end_command(id);
     return 0;

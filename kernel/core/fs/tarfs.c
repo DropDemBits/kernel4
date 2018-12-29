@@ -468,13 +468,14 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
             // Node is at root
             parent_path = "/";
             parent_len = 2;
-            goto node_at_root;
         }
-
-        // Node has a parent path, copy it
-        parent_path = path_buf;
-        memcpy(path_buf, tar_file->filename, parent_len);
-        path_buf[parent_len - 1] = '\0';
+        else
+        {
+            // Node has a parent path, copy it
+            parent_path = path_buf;
+            memcpy(path_buf, tar_file->filename, parent_len);
+            path_buf[parent_len - 1] = '\0';
+        }
 
     node_at_root:
         // Append node to respective dirent list

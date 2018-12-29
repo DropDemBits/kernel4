@@ -108,7 +108,7 @@ static void keycode_decoder()
         if(data == 0x00)
         {
             sched_block_thread(STATE_SUSPENDED);
-            goto keep_consume;
+            continue;
         }
 
         switch(data)
@@ -147,30 +147,33 @@ static void keycode_decoder()
                 break;
         }
 
-        if((key_state_machine & 0b1000) == 0) goto keep_consume;
+        if((key_state_machine & 0b1000) != 0)
+        {
+            // Get the final keycode
+            uint8_t keycode = KEY_RESERVED;
 
-        uint8_t keycode = KEY_RESERVED;
-        if(key_state_machine == 0xa)
-        {
-            keycode = ps2set1_translation[(data & 0x7F) + 0x50];
-        }
-        else if(key_state_machine == 0xf)
-        {
-            keycode = ps2set1_translation[data];
-        }
-        else if(key_state_machine == 0xb)
-        {
-            if(data == 0xAA) data = 0xB7;
-            keycode = ps2set1_translation[(data & 0x7F) + 0x90];
-        }
-        else
-        {
-            keycode = ps2set1_translation[(data & 0x7F) + 0x00];
-        }
+            if(key_state_machine == 0xa)
+            {
+                keycode = ps2set1_translation[(data & 0x7F) + 0x50];
+            }
+            else if(key_state_machine == 0xf)
+            {
+                keycode = ps2set1_translation[data];
+            }
+            else if(key_state_machine == 0xb)
+            {
+                if(data == 0xAA) data = 0xB7;
+                keycode = ps2set1_translation[(data & 0x7F) + 0x90];
+            }
+            else
+            {
+                keycode = ps2set1_translation[(data & 0x7F) + 0x00];
+            }
 
-        if(kbd_handle_key(keycode, data & 0x80))
-            send_command(0xED, kbd_getmods() & 0xf);
-        key_state_machine = 0;
+            if(kbd_handle_key(keycode, data & 0x80))
+                send_command(0xED, kbd_getmods() & 0xf);
+            key_state_machine = 0;
+        }
     }
 }
 

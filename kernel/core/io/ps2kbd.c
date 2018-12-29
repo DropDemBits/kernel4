@@ -109,7 +109,7 @@ static void keycode_decoder()
         if(data == 0x00)
         {
             sched_block_thread(STATE_SUSPENDED);
-            goto keep_consume;
+            continue;
         }
 
         switch(data)
@@ -150,17 +150,21 @@ static void keycode_decoder()
                     key_state_machine |= 0b1000;
                 break;
         }
-        if((key_state_machine & 0b1000) == 0) goto keep_consume;
 
-        uint8_t keycode = KEY_RESERVED;
-        if(key_state_machine & 0b0110)
-            keycode = ps2set2_translation[data + 0x80];
-        else
-            keycode = ps2set2_translation[data + 0x00];
+        if((key_state_machine & 0b1000) != 0)
+        {
+            // Get the final key code
+            uint8_t keycode = KEY_RESERVED;
 
-        if(kbd_handle_key(keycode, key_state_machine & 0x1))
-            send_command(0xED, kbd_getmods() & 0x7);
-        key_state_machine = 0;
+            if(key_state_machine & 0b0110)
+                keycode = ps2set2_translation[data + 0x80];
+            else
+                keycode = ps2set2_translation[data + 0x00];
+
+            if(kbd_handle_key(keycode, key_state_machine & 0x1))
+                send_command(0xED, kbd_getmods() & 0x7);
+            key_state_machine = 0;
+        }
     }
 }
 

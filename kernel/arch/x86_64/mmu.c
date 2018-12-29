@@ -392,14 +392,16 @@ void mmu_set_temp_context(paging_context_t* addr_context)
         return;
     }
 
-    if(temp_context == addr_context) goto start_temp; // No point in overwritting it.
-    temp_context = addr_context;
-    
-    // Overwrite the temporary mapping entry
-    pml4e_lookup[510].frame = temp_context->phybase >> 12ULL;
-    invlpg((uintptr_t)&(pml4e_lookup[510]));
-    
-start_temp:
+    if(temp_context != addr_context)
+    {
+        // Change the context to the new one
+        temp_context = addr_context;
+
+        // Overwrite the temporary mapping entry
+        pml4e_lookup[510].frame = temp_context->phybase >> 12ULL;
+        invlpg((uintptr_t)&(pml4e_lookup[510]));
+    }
+
     using_temp_map = true;
 }
 

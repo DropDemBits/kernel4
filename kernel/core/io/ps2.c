@@ -147,13 +147,13 @@ static void controller_init()
     if(cfg_byte & 0x20) usable_bitmask |= 0b10;
 
     // Check for poor PS/2 controller emulation
-    send_controller_command(0x20);
+    /*send_controller_command(0x20);
     if(wait_read_data() != cfg_byte)
     {
         klog_logln(ps2_subsys, INFO, "Unable to change config byte");
         modify_cfg = false;
         goto device_init;
-    }
+    }*/
 
     // Perform self test
     send_controller_command(0xAA);
