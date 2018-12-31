@@ -1,15 +1,28 @@
+
+# Build related paths
 *.o
 *.a
 *.sw*
 k4*.kern
-isodir/
-bochsrc
-k4*.iso
-sysroot
-pxedest
-initrd/initrd/*.tar
-com*.txt
 *.sym
-build/
 */bin/
+build/
+*.bin
+
+# Distrobution related paths
+isodir/
+pxedest/
+k4*.iso
+
+# Only include the initrd files
+initrd/*
+!initrd/files/
+
+# Bochs things
+bochsrc
+com*.txt
 bochslog.txt
+
+# Only include the sysroot sources
+sysroot/usr/*
+!sysroot/usr/src/
