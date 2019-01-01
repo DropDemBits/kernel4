@@ -298,7 +298,7 @@
 #if defined(_AED_EFI) || defined(_GNU_EFI) || defined(_EDK2_EFI)
 #include "acefi.h"
 
-#elif defined(__K4OS__)
+#elif defined(__k4os__)
 #include "ackern4.h"
 
 #else

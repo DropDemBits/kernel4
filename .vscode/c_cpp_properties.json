@@ -35,7 +35,7 @@
                 "${workspaceFolder}/acpi/source/include"
             ],
             "defines": [
-                "__K4OS__"
+                "__k4os__"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {

@@ -1,6 +1,6 @@
 PROJECTS := libk kernel
 TARGETS := i386 x86_64
-COMPILERS := i686-elf-gcc x86_64-elf-gcc
+COMPILERS := i686-k4os-gcc x86_64-k4os-gcc
 INITRD_FILES := $(addprefix initrd/files/,$(shell /bin/bash scripts/list_initrd.sh))
 
 .PHONY: all clean geniso build-libk build-kernel clean-libk clean-kernel sysroot pxeboot

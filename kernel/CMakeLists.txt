@@ -50,5 +50,5 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 add_executable(${TARGET_NAME} ${SOURCES})
 
 set_target_properties(${TARGET_NAME} PROPERTIES OUTPUT_NAME k4-${TARGET_ARCH}.kern)
-set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS "-T ${LINKER_FILE} ${LINKER_FLAGS}")
+set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS "-T ${LINKER_FILE}")# ${LINKER_FLAGS}")
 target_link_libraries(${TARGET_NAME} acpi libk "-lgcc")

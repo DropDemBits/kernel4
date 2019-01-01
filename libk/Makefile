@@ -14,9 +14,9 @@ CPPFLAGS= -I$(SYSROOT)$(PREFIX)/include
 
 include ./arch/$(TARGET_ARCH)/make.config
 
-CFLAGS += $(ARCH_CFLAGS)
+CFLAGS += $(ARCH_CFLAGS) -ffreestanding -fbuiltin
 CPPFLAGS += $(ARCH_CPPFLAGS) -I$(ARCH_INCLUDE_DIR)
-LIBK_CFLAGS=$(CFLAGS) -ffreestanding -fbuiltin
+LIBK_CFLAGS=$(CFLAGS)
 LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
 
 BUILD_OBJ:= $(BUILD_OBJ) \
@@ -58,7 +58,7 @@ OBJ := $(addprefix $(BIN_PREFIX), $(BUILD_OBJ))
 
 LIBK_OBJ:=$(OBJ:.o=.libk.o)
 
-BINARIES=$(BIN_PREFIX)libk.a #$(BIN_PREFIX)libc-$(TARGET_ARCH).a
+BINARIES=$(BIN_PREFIX)libk.a $(BIN_PREFIX)libc.a
 
 all: $(BINARIES)
 

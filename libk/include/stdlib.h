@@ -1,7 +1,7 @@
 #include <__commons.h>
 
 #if __STDC_HOSTED__ == 1
-#error Hosted libc not available
+//#error Hosted libc not available
 #endif
 
 #ifndef STDLIB_H
@@ -24,6 +24,12 @@ __EXPORT_SPEC__ unsigned long int strtoul (const char* str, char** endptr, int b
 
 __EXPORT_SPEC__ int atoi (const char * str);
 __EXPORT_SPEC__ long int atol (const char * str);
+
+__EXPORT_SPEC__ void* malloc(size_t size);
+__EXPORT_SPEC__ void free(void *ptr);
+
+__EXPORT_SPEC__ char *getenv(const char *name);
+__EXPORT_SPEC__ int atexit(void (*function)(void));
 
 #ifdef __cplusplus
 }

@@ -115,10 +115,11 @@ err_not_lm:
 _start:
     cli
 
-    # Check for LM
+    # Preserve Multiboot parameters
     movl %eax, %esi
     movl %ebx, %edi
 
+    # Check for LM
     movl $0x80000001, %eax
     cpuid
     testl $0x20000000, %edx

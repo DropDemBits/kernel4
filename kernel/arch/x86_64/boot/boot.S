@@ -131,6 +131,7 @@ bootstrap_pdpt0:
 bootstrap_pd0:
     .quad 0x0000000000000000 + 0x083
     .quad 0x0000000000200000 + 0x083
+    .quad 0x0000000000400000 + 0x083
     .skip 4096 - 16
     # Bootstrap GDT
 gdt32_begin:
