@@ -450,32 +450,35 @@ void core_fini()
     struct elf_data* elf_data;
     int errno = 0;
 
-    // LEAK
     vfs_open(test_bin, VFSO_RDONLY);
     errno = elf_parse(test_bin, &elf_data);
     if(errno)
-        klog_logln(core_subsystem, ERROR, "Error parsing elf file (ec %d)", errno);
-
-    klog_logln(core_subsystem, INFO, "Details:");
-
-    klog_logln(core_subsystem, INFO, "\tVersion: %x",  elf_data->version);
-    klog_logln(core_subsystem, INFO, "\t   Type: %x",  elf_data->type);
-    klog_logln(core_subsystem, INFO, "\t  Flags: %lx", elf_data->flags);
-    klog_logln(core_subsystem, INFO, "\t  Entry: %#p",  elf_data->entry_point);
-
-    klog_logln(core_subsystem, INFO, "Program Segments:");
-    klog_logln(core_subsystem, INFO, "\tTYPE      ADDR      SIZE      FLAGS");
-    klog_logln(core_subsystem, INFO, "\t          OFFSET    FSIZE     ALIGN");
-
-    struct elf_proghead* proghead = elf_data->prog_heads;
-    while(proghead != NULL)
     {
-        klog_logln(core_subsystem, INFO, "\t%08lx  %08p  %08p  % .3s", proghead->type, proghead->vaddr, proghead->vsize, "R___W_RW___XR_X_WXRWX" + (proghead->flags & 7) * 3 - 3);
-        klog_logln(core_subsystem, INFO, "\t\t\t  %08p  %08p  %08p", proghead->file_offset, proghead->file_size, proghead->align);
-        proghead = proghead->next;
+        klog_logln(core_subsystem, ERROR, "Error parsing elf file (ec %d)", errno);
+        vfs_close(test_bin);
     }
+    else
+    {
+        klog_logln(core_subsystem, INFO, "Details:");
 
-    elf_put(elf_data);
+        klog_logln(core_subsystem, INFO, "\tVersion: %x",  elf_data->version);
+        klog_logln(core_subsystem, INFO, "\t   Type: %x",  elf_data->type);
+        klog_logln(core_subsystem, INFO, "\t  Flags: %lx", elf_data->flags);
+        klog_logln(core_subsystem, INFO, "\t  Entry: %#p",  elf_data->entry_point);
+
+        klog_logln(core_subsystem, INFO, "Program Segments:");
+        klog_logln(core_subsystem, INFO, "\tTYPE      ADDR      SIZE      FLAGS");
+        klog_logln(core_subsystem, INFO, "\t          OFFSET    FSIZE     ALIGN");
+
+        for(size_t i = 0; i < elf_data->phnum; i++)
+        {
+            struct elf_phdr* proghead = &elf_data->phdrs[i];
+            klog_logln(core_subsystem, INFO, "\t%08lx  %08p  %08p  % .3s", proghead->p_type, proghead->p_vaddr, proghead->p_memsz, "R___W_RW___XR_X_WXRWX" + (proghead->p_flags & 7) * 3 - 3);
+            klog_logln(core_subsystem, INFO, "\t\t\t  %08p  %08p  %08p", proghead->p_offset, proghead->p_filesz, proghead->p_align);
+        }
+
+        elf_put(elf_data);
+    }
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
     // reshow_buf();

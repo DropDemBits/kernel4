@@ -1,6 +1,8 @@
 #include <common/types.h>
 #include <common/fs/vfs.h>
 
+#include <arch/elf.h>
+
 #ifndef __ELF_H__
 #define __ELF_H__ 1
 
@@ -133,18 +135,27 @@
      (file)[EI_MAG3] == ELFMAG3    \
     )
 
-struct elf_header_common
+#if ELF_CLASS == ELFCLASS32
+
+#define elf_header elf32_header
+#define elf_phdr elf32_proghead
+#define elf_shdr elf32_secthead
+
+#else
+
+#define elf_header  elf64_header
+#define elf_phdr    elf64_proghead
+#define elf_shdr    elf64_secthead
+
+#endif
+
+/** ELF32 Structures **/
+struct elf32_header
 {
     uint8_t e_ident[EI_NIDENT];
     uint16_t e_type;
     uint16_t e_machine;
     uint32_t e_version;
-};
-
-/** ELF32 Structures **/
-struct elf32_header
-{
-    struct elf_header_common header;
 
     uint32_t e_entry;   // Entry Point
     uint32_t e_phoff;   // Program Header pointer
@@ -198,7 +209,10 @@ struct elf32_secthead
 /** ELF64 Structures **/
 struct elf64_header
 {
-    struct elf_header_common header;
+    uint8_t e_ident[EI_NIDENT];
+    uint16_t e_type;
+    uint16_t e_machine;
+    uint32_t e_version;
 
     uint64_t e_entry;   // Entry Point
     uint64_t e_phoff;   // Program Header pointer
@@ -250,37 +264,6 @@ struct elf64_secthead
 };
 
 /** Generic Representations **/
-union elf_header
-{
-    struct elf_header_common elf;
-    struct elf32_header elf32;
-    struct elf64_header elf64;
-};
-
-union elf_common_proghead
-{
-    struct elf32_proghead elf32;
-    struct elf64_proghead elf64;
-};
-
-struct elf_proghead
-{
-    struct elf_proghead* next;
-
-    uint32_t type;
-    uint32_t flags;
-
-    // File position
-    size_t file_offset;
-    size_t file_size;
-
-    // Memory location
-    size_t vaddr;
-    size_t vsize;
-
-    size_t align;
-};
-
 struct elf_data
 {
     uint8_t version;   // ELF Version, usually 1
@@ -289,8 +272,9 @@ struct elf_data
     uint32_t flags;     // Architechture-specific flags
 
     size_t entry_point;
-    struct elf_proghead* prog_heads;
-    struct elf_proghead* prog_tail;
+    size_t phnum;
+
+    struct elf_phdr* phdrs;
     vfs_inode_t* file;  // File associated with the elf data
 };
 
