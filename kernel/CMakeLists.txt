@@ -9,6 +9,7 @@ list(APPEND SOURCES
     core/kernel.c
     core/syscall.c
     core/multiboot.c
+    core/elf.c
     core/mm/mm.c
     core/mm/liballoc.c
     core/mm/allochooks.c

@@ -43,6 +43,7 @@
 #include <common/tty/fb.h>
 #include <common/tty/tty.h>
 #include <common/usb/usb.h>
+#include <common/elf.h>
 
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
@@ -442,6 +443,39 @@ void core_fini()
         klog_logln(core_subsystem, INFO, "VFS-TEST-DONE");
     }
 #endif
+
+    klog_logln(core_subsystem, INFO, "Testing ELF parser:");
+
+    vfs_inode_t* test_bin = vfs_finddir(root, "usr/bin/test.bin");
+    struct elf_data* elf_data;
+    int errno = 0;
+
+    // LEAK
+    vfs_open(test_bin, VFSO_RDONLY);
+    errno = elf_parse(test_bin, &elf_data);
+    if(errno)
+        klog_logln(core_subsystem, ERROR, "Error parsing elf file (ec %d)", errno);
+
+    klog_logln(core_subsystem, INFO, "Details:");
+
+    klog_logln(core_subsystem, INFO, "\tVersion: %x",  elf_data->version);
+    klog_logln(core_subsystem, INFO, "\t   Type: %x",  elf_data->type);
+    klog_logln(core_subsystem, INFO, "\t  Flags: %lx", elf_data->flags);
+    klog_logln(core_subsystem, INFO, "\t  Entry: %#p",  elf_data->entry_point);
+
+    klog_logln(core_subsystem, INFO, "Program Segments:");
+    klog_logln(core_subsystem, INFO, "\tTYPE      ADDR      SIZE      FLAGS");
+    klog_logln(core_subsystem, INFO, "\t          OFFSET    FSIZE     ALIGN");
+
+    struct elf_proghead* proghead = elf_data->prog_heads;
+    while(proghead != NULL)
+    {
+        klog_logln(core_subsystem, INFO, "\t%08lx  %08p  %08p  % .3s", proghead->type, proghead->vaddr, proghead->vsize, "R___W_RW___XR_X_WXRWX" + (proghead->flags & 7) * 3 - 3);
+        klog_logln(core_subsystem, INFO, "\t\t\t  %08p  %08p  %08p", proghead->file_offset, proghead->file_size, proghead->align);
+        proghead = proghead->next;
+    }
+
+    elf_put(elf_data);
 
     klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
     // reshow_buf();
