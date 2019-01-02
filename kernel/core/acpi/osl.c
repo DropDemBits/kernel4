@@ -5,6 +5,7 @@
 #include <common/mb2parse.h>
 #include <common/io/pci.h>
 #include <common/mm/mm.h>
+#include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
 #include <common/util/kfuncs.h>
@@ -107,9 +108,9 @@ void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
     size_t dynamic_base = page_alloc(num_pages);
 
     for(size_t off = 0; off < num_pages; off += 0x1000)
-        mmu_map(dynamic_base + off, (PhysicalAddress & ~0xFFF) + off, MMU_FLAGS_DEFAULT);
+        mmu_map((void*)dynamic_base + off, (PhysicalAddress & ~0xFFF) + off, MMU_FLAGS_DEFAULT);
 
-    return (void*)(dynamic_base + (PhysicalAddress & 0xFFF));
+    return (void*)(dynamic_base + ((size_t)PhysicalAddress & 0xFFF));
 }
 
 void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
@@ -123,10 +124,12 @@ ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS
     if(LogicalAddress == NULL || PhysicalAddress == NULL)
         return AE_BAD_PARAMETER;
 
-    if(!mmu_check_access((uintptr_t)LogicalAddress, MMU_ACCESS_R))
+    if(!mmu_check_access(LogicalAddress, MMU_ACCESS_R))
         return AE_ERROR;
 
-    *PhysicalAddress = mmu_get_mapping((uintptr_t)LogicalAddress);
+    *PhysicalAddress = mmu_get_mapping(LogicalAddress);
+
+    return AE_OK;
 }
 
 // Heap allocations
@@ -144,7 +147,7 @@ BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
 {
     for(size_t offset = 0; offset < (Length + 0xFFF) & ~0xFFF; offset += 0x1000)
     {
-        if(!mmu_check_access((uintptr_t)Memory + offset, MMU_ACCESS_R))
+        if(!mmu_check_access(Memory + offset, MMU_ACCESS_R))
             return FALSE;
     }
 
@@ -155,7 +158,7 @@ BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length)
 {
     for(size_t offset = 0; offset < (Length + 0xFFF) & ~0xFFF; offset += 0x1000)
     {
-        if(!mmu_check_access((uintptr_t)Memory + offset, MMU_ACCESS_RW))
+        if(!mmu_check_access(Memory + offset, MMU_ACCESS_RW))
             return FALSE;
     }
 
@@ -438,7 +441,7 @@ ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLE
 // TODO: Put MMIO accesses behind io abstraction
 ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width)
 {
-    mmu_map((uintptr_t)mmio_mapping, (Address & ~0xFFF), MMU_ACCESS_RW | MMU_CACHE_UC);
+    mmu_map(mmio_mapping, (Address & ~0xFFF), MMU_ACCESS_RW | MMU_CACHE_UC);
     uint8_t* mmio_address = mmio_mapping + (Address & 0xFFF);
 
     switch(Width >> 3)
@@ -458,13 +461,13 @@ ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT3
     default:
         break;
     }
-    mmu_unmap((uintptr_t)mmio_mapping, true);
+    mmu_unmap(mmio_mapping, true);
     return (AE_OK);
 }
 
 ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT32 Width)
 {
-    mmu_map((uintptr_t)mmio_mapping, (Address & ~0xFFF), MMU_ACCESS_RW | MMU_CACHE_UC);
+    mmu_map(mmio_mapping, (Address & ~0xFFF), MMU_ACCESS_RW | MMU_CACHE_UC);
     uint8_t* mmio_address = mmio_mapping + (Address & 0xFFF);
 
     switch(Width >> 3)
@@ -484,7 +487,7 @@ ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT3
         default:
             break;
     }
-    mmu_unmap((uintptr_t)mmio_mapping, true);
+    mmu_unmap(mmio_mapping, true);
     return (AE_OK);
 }
 

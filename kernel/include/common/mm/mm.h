@@ -75,7 +75,7 @@ void mmu_init();
  * @param  flags: The flags used in the mapping. Default access flags is RW, Supervisor and caching is WB
  * @retval See MMU_MAPPING_xxx error codes
  */
-int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags);
+int mmu_map(void* address, unsigned long mapping, uint32_t flags);
 
 /**
  * @brief  Sets up a new mapping attribute for the mapping specified
@@ -84,7 +84,7 @@ int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags);
  * @param  flags: The new attributes to set to
  * @retval See MMU_MAPPING_xxx error codes
  */
-int mmu_change_attr(unsigned long address, uint32_t flags);
+int mmu_change_attr(void* address, uint32_t flags);
 
 /**
  * @brief  Unmaps the specified addres
@@ -93,7 +93,7 @@ int mmu_change_attr(unsigned long address, uint32_t flags);
  * @param  erase_entry: If true, the entry should be completely erased
  * @retval True if unmapping was done successfully, false otherwise
  */
-bool mmu_unmap(unsigned long address, bool erase_entry);
+bool mmu_unmap(void* address, bool erase_entry);
 
 /**
  * @brief  Gets the mapping address from the linear address
@@ -101,7 +101,7 @@ bool mmu_unmap(unsigned long address, bool erase_entry);
  * @param  address: The linear address
  * @retval The mapped physical address, or 0 if an error occured
  */
-unsigned long mmu_get_mapping(unsigned long address);
+unsigned long mmu_get_mapping(void* address);
 
 /**
  * @brief  Checks whether the specifed address can be accessed
@@ -110,7 +110,7 @@ unsigned long mmu_get_mapping(unsigned long address);
  * @param  flags: The access types to check (R/Present,W,X,U)
  * @retval True if it can, false otherwise
  */
-bool mmu_check_access(unsigned long address, uint32_t flags);
+bool mmu_check_access(void* address, uint32_t flags);
 
 // MMU Context
 void mmu_switch_address_space(uint64_t page_context_base);

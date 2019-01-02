@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include <common/elf.h>
+#include <common/mm/liballoc.h>
 
 #define EINVAL 1
 

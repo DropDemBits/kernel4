@@ -61,7 +61,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
 
         // Map stack pages
         for(int i = 0; i < (THREAD_STACK_SIZE >> 12); i++)
-            mmu_map(thread->kernel_stacktop - (i << 12), mm_alloc(1), MMU_FLAGS_DEFAULT);
+            mmu_map((void*)(thread->kernel_stacktop - (i << 12)), mm_alloc(1), MMU_FLAGS_DEFAULT);
     }
 
     volatile uint64_t * thread_stack = (uint64_t*)thread->kernel_sp;
@@ -83,7 +83,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
     *(--thread_stack) = (uint64_t)thread;
 
     // Parameters passed to entry point
-    *(--thread_stack) = params; // RBX
+    *(--thread_stack) = (uint64_t)params; // RBX
     thread_stack -= 4; // Remaining preserved registers
 
     thread->kernel_sp = (uint64_t)thread_stack;

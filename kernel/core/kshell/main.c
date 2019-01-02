@@ -29,6 +29,7 @@
 #include <common/io/kbd.h>
 #include <common/kshell/kshell.h>
 #include <common/mm/mm.h>
+#include <common/mm/liballoc.h>
 #include <common/tty/tty.h>
 #include <common/tty/fb.h>
 #include <common/sched/sched.h>

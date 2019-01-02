@@ -1,4 +1,5 @@
 #include <common/ipc/message.h>
+#include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 
 static void msg_enqueue(struct ipc_message_queue* queue, struct ipc_message* msg)

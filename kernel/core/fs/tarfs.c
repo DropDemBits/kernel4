@@ -23,6 +23,7 @@
 
 #include <common/fs/tarfs.h>
 #include <common/mm/mm.h>
+#include <common/mm/liballoc.h>
 #include <common/util/klog.h>
 
 #define ROOT_INODE 1
@@ -96,7 +97,7 @@ static const char* strrchr(const char* str, int chr)
         return NULL;
 
     size_t len = strlen(str);
-    char* index = str + len;
+    const char* index = str + len;
 
     if(!chr)
         return index;
@@ -161,14 +162,14 @@ static struct tar_dir* find_dir(char* path)
 static size_t get_parent_len(char* path)
 {
     // TODO: Solve issue of traling slash (i.e /blorg/aaa*/*)
-    char* current_dir = strrchr(path, '/');
+    const char* current_dir = strrchr(path, '/');
     if(current_dir != NULL && strlen(current_dir) > 1)
         return current_dir - path;
     else
         return 1;   // strlen("/")
 }
 
-static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, uint8_t* buffer)
+static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, void* buffer)
 {
     uint8_t* data = (uint8_t*)(node_data[node->fs_inode - NODE_LIST_BASE] + 1);
     size_t size = getsize(node_data[node->fs_inode - NODE_LIST_BASE]->size);
@@ -180,7 +181,7 @@ static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, uint8_t* bu
     size_t read_len = 0;
     for(read_len = 0; read_len < len && read_len < size; read_len++)
     {
-        buffer[read_len] = data[off+read_len];
+        ((uint8_t*)buffer)[read_len] = data[off+read_len];
     }
 
     return read_len;
@@ -207,7 +208,7 @@ static struct vfs_dirent* tarfs_readdir(vfs_inode_t *node, size_t index)
 static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
 {
     struct tar_dir* base_dir;
-    char* filename;
+    const char* filename;
 
     char* first_slash = NULL;
     char path[strlen(name) + 1];
@@ -215,7 +216,7 @@ static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
     memcpy(path, name, strlen(name));
 
     // Remove trailing slash
-    if((first_slash = strrchr(path, '/')) != NULL && (first_slash - path + 1) >= strlen(path))
+    if((first_slash = (char*)strrchr(path, '/')) != NULL && (first_slash - path + 1) >= strlen(path))
         *first_slash = '\0';
 
     filename = path;
@@ -358,7 +359,7 @@ static void construct_dir_node(struct tar_dir* dnode, vfs_inode_t* inode, char* 
 /*
  * All base_path's must be absolute paths (excluding the initial /)
  */
-static void append_dirent(vfs_inode_t* target, char* base_path, char* name)
+static void append_dirent(vfs_inode_t* target, char* base_path, const char* name)
 {
     struct tar_dir* dirnode = find_dir(base_path);
     if(!dirnode)
@@ -416,7 +417,7 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
     // Identity map tarfs into address space (Temporary)
     for(size_t pages = 0; pages < ((tar_len + 0xFFF) >> 12); pages++)
     {
-        mmu_map((uintptr_t)address + (pages << 12), (uintptr_t)address + (pages << 12), MMU_FLAGS_DEFAULT);
+        mmu_map((void*)(address + (pages << 12)), (uintptr_t)address + (pages << 12), MMU_FLAGS_DEFAULT);
     }
 
     struct tar_header *tar_file = (struct tar_header*) address;
@@ -438,7 +439,7 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
     while(tar_file->filename[0])
     {
         unsigned int size = getsize(tar_file->size);
-        char* filename = strrchr(tar_file->filename, '/');
+        const char* filename = strrchr(tar_file->filename, '/');
         vfs_inode_t* node = kmalloc(sizeof(vfs_inode_t));
 
         // Setup vfs_node

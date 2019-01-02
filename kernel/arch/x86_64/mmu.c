@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include <common/util/kfuncs.h>
+#include <common/mm/liballoc.h>
 #include <common/mm/mm.h>
 #include <common/tty/fb.h>
 #include <common/tty/tty.h>
@@ -87,7 +88,7 @@ static page_entry_t* const pdpe_lookup  = (page_entry_t*)    0xFFFFFFFFFFE00000;
 static page_entry_t* const pde_lookup   = (page_entry_t*)    0xFFFFFFFFC0000000;
 static page_entry_t* const pte_lookup   = (page_entry_t*)    0xFFFFFF8000000000;
 
-static void invlpg(unsigned long address)
+static void invlpg(void* address)
 {
     asm volatile("invlpg (%%rax)" :: "a"(address));
 }
@@ -98,28 +99,28 @@ static page_entry_t* get_lookup(page_entry_t* base)
     else return base;
 }
 
-static page_entry_t* get_pml4e_entry(unsigned long address)
+static page_entry_t* get_pml4e_entry(void* address)
 {
-    uint64_t pml4e_off = (address >> PML4_SHIFT) & PML4E_MASK;
+    uint64_t pml4e_off = ((uintptr_t)address >> PML4_SHIFT) & PML4E_MASK;
 
     return &(get_lookup(pml4e_lookup)[pml4e_off]);
 }
 
-static page_entry_t* get_pdpe_entry(unsigned long address)
+static page_entry_t* get_pdpe_entry(void* address)
 {
     uint64_t pdpe_off = ((uintptr_t)address >> PDPT_SHIFT) & PDPE_MASK;
 
     return &(get_lookup(pdpe_lookup)[pdpe_off]);
 }
 
-static page_entry_t* get_pde_entry(unsigned long address)
+static page_entry_t* get_pde_entry(void* address)
 {
     uint64_t pde_off = ((uintptr_t)address >> PDT_SHIFT) & PDE_MASK;
 
     return &(get_lookup(pde_lookup)[pde_off]);
 }
 
-static page_entry_t* get_pte_entry(unsigned long address)
+static page_entry_t* get_pte_entry(void* address)
 {
     uint64_t pte_off = ((uintptr_t)address >> PTT_SHIFT) & PTE_MASK;
 
@@ -127,7 +128,7 @@ static page_entry_t* get_pte_entry(unsigned long address)
 }
 
 // Returns true if a new structure was allocated, false otherwise.
-static bool check_and_map_entry(page_entry_t* entry, unsigned long address, uint32_t flags)
+static bool check_and_map_entry(page_entry_t* entry, void* address, uint32_t flags)
 {
     if(!entry->p)
     {
@@ -163,7 +164,7 @@ static bool check_and_map_entry(page_entry_t* entry, unsigned long address, uint
     return false;
 }
 
-void pf_handler(struct intr_stack *frame, uint8_t int_num)
+void pf_handler(struct intr_stack *frame, void* params)
 {
     struct PageError *page_error = (struct PageError*)&(frame->err_code);
     uint64_t address = frame->cr2;
@@ -179,7 +180,7 @@ void pf_handler(struct intr_stack *frame, uint8_t int_num)
         }
     } else
     {
-        page_entry_t* entry = get_pte_entry(address);
+        page_entry_t* entry = get_pte_entry((void*)address);
         kpanic_intr(frame, "Page fault at %p (error code PWUF: %d%d%d%d, PG PWUX: %d%d%d%d)", address,
                     page_error->was_present, page_error->was_write, page_error->was_user, page_error->was_instruction_fetch,
                     entry->p, entry->rw, entry->su, entry->xd);
@@ -210,11 +211,11 @@ void mmu_init()
     msr_write(MSR_IA32_PAT, pat);
 }
 
-int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
+int mmu_map(void* address, unsigned long mapping, uint32_t flags)
 {
     int status = 0;
 
-    if(mapping == (uintptr_t)KNULL || address == (uintptr_t)KNULL)
+    if(mapping == (uintptr_t)KNULL || address == KNULL)
         return MMU_MAPPING_INVAL;
 
     // TODO: Add PML5 support
@@ -256,7 +257,7 @@ int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
     return status;
 }
 
-int mmu_change_attr(unsigned long address, uint32_t flags)
+int mmu_change_attr(void* address, uint32_t flags)
 {
     uint8_t pat_index = 0;
 
@@ -292,7 +293,7 @@ int mmu_change_attr(unsigned long address, uint32_t flags)
     return 0;
 }
 
-bool mmu_unmap(unsigned long address, bool erase)
+bool mmu_unmap(void* address, bool erase)
 {
     if( get_pml4e_entry(address)->p == 0 ||
         get_pdpe_entry(address)->p == 0 ||
@@ -309,7 +310,7 @@ bool mmu_unmap(unsigned long address, bool erase)
     return true;
 }
 
-unsigned long mmu_get_mapping(unsigned long address)
+unsigned long mmu_get_mapping(void* address)
 {
     if( get_pml4e_entry(address)->p == 0 ||
         get_pdpe_entry(address)->p == 0 ||
@@ -319,7 +320,7 @@ unsigned long mmu_get_mapping(unsigned long address)
     return get_pte_entry(address)->frame << 12;
 }
 
-bool mmu_check_access(unsigned long address, uint32_t flags)
+bool mmu_check_access(void* address, uint32_t flags)
 {
     if( get_pml4e_entry(address)->p == 0 ||
         get_pdpe_entry(address)->p == 0 ||
@@ -346,7 +347,7 @@ paging_context_t* mmu_create_context()
     unsigned long pml4_context = mm_alloc(1);
 
     // Map context to temporary address
-    mmu_map(temp_map_base, pml4_context, MMU_ACCESS_RW | MMU_CACHE_WB);
+    mmu_map((void*)temp_map_base, pml4_context, MMU_ACCESS_RW | MMU_CACHE_WB);
     memset((void*)temp_map_base, 0x00, 0x1000);
 
     // Copy relavent mappings to address space (Excluding temporary and recursive mapping)
@@ -362,7 +363,7 @@ paging_context_t* mmu_create_context()
     paging_context_t *context = kmalloc(sizeof(paging_context_t));
     context->phybase = pml4_context;
 
-    mmu_unmap(temp_map_base, true);
+    mmu_unmap((void*)temp_map_base, true);
     return context;
 }
 
@@ -399,7 +400,7 @@ void mmu_set_temp_context(paging_context_t* addr_context)
 
         // Overwrite the temporary mapping entry
         pml4e_lookup[510].frame = temp_context->phybase >> 12ULL;
-        invlpg((uintptr_t)&(pml4e_lookup[510]));
+        invlpg(&(pml4e_lookup[510]));
     }
 
     using_temp_map = true;

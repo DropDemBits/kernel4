@@ -19,6 +19,7 @@
  */
 
 #include <common/hal.h>
+#include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 
 #include <arch/pic.h>
@@ -273,7 +274,7 @@ struct irq_handler* pic_handle_irq(uint8_t irq, uint32_t flags, irq_function_t h
     irq_handler->ic = pic_get_dev();
     irq_handler->flags = flags;
 
-    isr_add_handler(irq + IRQ_BASE, irq_wrapper, NULL);
+    isr_add_handler(irq + IRQ_BASE, (isr_t)irq_wrapper, NULL);
 
     if(handler_list[irq] == NULL)
     {

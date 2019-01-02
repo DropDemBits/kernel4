@@ -20,6 +20,7 @@
 
 #include <string.h>
 
+#include <common/mm/liballoc.h>
 #include <common/mm/mm.h>
 #include <common/tty/tty.h>
 #include <common/util/kfuncs.h>
@@ -74,7 +75,7 @@ static uint32_t temp_remap_offset     =                 0x00400000;
 static page_entry_t* const pde_lookup = (page_entry_t*) 0xFFFFF000;
 static page_entry_t* const pte_lookup = (page_entry_t*) 0xFFC00000;
 
-static void invlpg(unsigned long address)
+static void invlpg(void* address)
 {
     asm volatile("invlpg (%%eax)" : "=a"(address));
 }
@@ -85,14 +86,14 @@ static page_entry_t* get_lookup(page_entry_t* base)
     else return base;
 }
 
-static page_entry_t* get_pde_entry(unsigned long address)
+static page_entry_t* get_pde_entry(void* address)
 {
     uint32_t pde_off = ((uintptr_t)address >> PDT_SHIFT) & PDE_MASK;
 
     return &(get_lookup(pde_lookup)[pde_off]);
 }
 
-static page_entry_t* get_pte_entry(unsigned long address)
+static page_entry_t* get_pte_entry(void* address)
 {
     uint32_t pte_off = ((uintptr_t)address >> PTT_SHIFT) & PTE_MASK;
 
@@ -100,7 +101,7 @@ static page_entry_t* get_pte_entry(unsigned long address)
 }
 
 // Returns true if a new structure was allocated, false otherwise.
-static bool check_and_map_entry(page_entry_t* entry, unsigned long address, uint32_t flags)
+static bool check_and_map_entry(page_entry_t* entry, void* address, uint32_t flags)
 {
     if(!entry->p)
     {
@@ -131,10 +132,10 @@ static bool check_and_map_entry(page_entry_t* entry, unsigned long address, uint
     return false;
 }
 
-void pf_handler(struct intr_stack *frame, uint8_t int_num)
+void pf_handler(struct intr_stack *frame, void* args)
 {
     struct PageError *page_error = (struct PageError*)&(frame->err_code);
-    uint32_t address = frame->cr2;
+    void* address = (void*)frame->cr2;
 
     page_entry_t dummy_entry = {};
     memset(&dummy_entry, 0, sizeof(page_entry_t));
@@ -163,17 +164,17 @@ void mmu_init()
     for(int i = 0; i < 0x8; i++)
     {
         ((uint32_t*)pde_lookup)[i] = 0;
-        invlpg(i << PDT_SHIFT);
+        invlpg((void*)(i << PDT_SHIFT));
     }
 
     isr_add_handler(14, pf_handler, NULL);
 }
 
-int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
+int mmu_map(void* address, unsigned long mapping, uint32_t flags)
 {
     int status = 0;
 
-    if(mapping == (unsigned long)KNULL || address == (unsigned long)KNULL)
+    if(mapping == (unsigned long)KNULL || address == KNULL)
         return MMU_MAPPING_INVAL;
 
     // Check PDE Presence
@@ -197,7 +198,7 @@ int mmu_map(unsigned long address, unsigned long mapping, uint32_t flags)
     return status;
 }
 
-int mmu_change_attr(unsigned long address, uint32_t flags)
+int mmu_change_attr(void* address, uint32_t flags)
 {
     // TODO: Check for PAT support
     uint8_t pat_index = 0;
@@ -229,7 +230,7 @@ int mmu_change_attr(unsigned long address, uint32_t flags)
     return 0;
 }
 
-bool mmu_unmap(unsigned long address, bool erase)
+bool mmu_unmap(void* address, bool erase)
 {
     if( get_pde_entry(address)->p == 0 ||
         get_pte_entry(address)->p == 0) return false;
@@ -242,10 +243,11 @@ bool mmu_unmap(unsigned long address, bool erase)
         get_pte_entry(address)->frame = KMEM_POISON >> 12;
     }
 
+    invlpg(address);
     return true;
 }
 
-unsigned long mmu_get_mapping(unsigned long address)
+unsigned long mmu_get_mapping(void* address)
 {
     if( get_pde_entry(address)->p == 0)
         return 0;
@@ -253,7 +255,7 @@ unsigned long mmu_get_mapping(unsigned long address)
     return get_pte_entry(address)->frame << 12;
 }
 
-bool mmu_check_access(unsigned long address, uint32_t flags)
+bool mmu_check_access(void* address, uint32_t flags)
 {
     if( get_pde_entry(address)->p == 0)
         return false;
@@ -278,7 +280,7 @@ paging_context_t* mmu_create_context()
     unsigned long pdt_context = mm_alloc(1);
 
     // Map context to temporary address
-    mmu_map(temp_map_base, pdt_context, MMU_ACCESS_RW | MMU_CACHE_WB);
+    mmu_map((void*)temp_map_base, pdt_context, MMU_ACCESS_RW | MMU_CACHE_WB);
     memset((void*)temp_map_base, 0x00, 0x1000);
 
     // Copy relavent mappings to address space (Excluding temporary and recursive mapping)
@@ -293,7 +295,7 @@ paging_context_t* mmu_create_context()
     paging_context_t *context = kmalloc(sizeof(paging_context_t));
     context->phybase = pdt_context;
 
-    mmu_unmap(temp_map_base, true);
+    mmu_unmap((void*)temp_map_base, true);
     return context;
 }
 
@@ -330,7 +332,7 @@ void mmu_set_temp_context(paging_context_t* addr_context)
 
         // Overwrite the temporary mapping entry
         pde_lookup[510].frame = temp_context->phybase >> 12ULL;
-        invlpg((uintptr_t)&(pde_lookup[510]));
+        invlpg(&(pde_lookup[510]));
     }
 
     using_temp_map = true;

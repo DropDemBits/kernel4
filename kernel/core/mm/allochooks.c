@@ -38,7 +38,7 @@ static size_t alloc_memblocks(size_t length)
     for(; length > 0; length--)
     {
         size_t phy_address = mm_alloc(1);
-        int status = mmu_map(free_base, phy_address, MMU_FLAGS_DEFAULT);
+        int status = mmu_map((void*)free_base, phy_address, MMU_FLAGS_DEFAULT);
 
         if(status != 0)
         {
@@ -63,8 +63,8 @@ static void free_memblocks(size_t length)
     for(; length > 0 && free_base - (length << 12) > heap_base; length--)
     {
         free_base -= 0x1000;
-        mm_free(mmu_get_mapping(free_base), 1);
-        mmu_unmap(free_base, true);
+        mm_free(mmu_get_mapping((void*)free_base), 1);
+        mmu_unmap((void*)free_base, true);
     }
 }
 

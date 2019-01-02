@@ -35,6 +35,7 @@
 #include <common/io/ps2.h>
 #include <common/io/uart.h>
 #include <common/kshell/kshell.h>
+#include <common/mm/liballoc.h>
 #include <common/mm/mm.h>
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
@@ -49,7 +50,7 @@ extern uint32_t initrd_start;
 extern uint32_t initrd_size;
 extern unsigned long long tswp_counter;
 extern struct thread_queue run_queue;
-extern void enter_usermode(void* thread, unsigned long entry_addr);
+extern void enter_usermode(thread_t* thread, void* entry_addr);
 extern void usermode_code();
 
 void core_fini();
@@ -88,17 +89,17 @@ void idle_loop()
 void usermode_entry()
 {
     klog_logln(1, INFO, "Starting up Usermode thread");
-    unsigned long retaddr = 0x400000;
+    void* retaddr = (void*)0x400000;
 
     klog_logln(1, DEBUG, "Beginning code mapping");
     mmu_map(retaddr, mm_alloc(1), MMU_ACCESS_RWX | MMU_ACCESS_USER);
 
     klog_logln(1, DEBUG, "Beginning code copy");
-    memcpy((void*)retaddr, &usermode_code, 4096);
+    memcpy(retaddr, &usermode_code, 4096);
     mmu_change_attr(retaddr, MMU_ACCESS_RX | MMU_ACCESS_USER);
 
     klog_logln(1, DEBUG, "Done code copy");
-    enter_usermode((void*)(sched_active_thread()), retaddr);
+    enter_usermode(sched_active_thread(), retaddr);
     while(1) intr_wait();
 }
 
@@ -211,6 +212,43 @@ void hallo_entry(char* string)
     klog_logln(0, INFO, string);
 }
 
+void main_fb_init()
+{
+    void* framebuffer = get_fb_address();
+
+    // Map framebuffer (and any extra bits of it)
+    unsigned long fb_size = (fb_info.width * fb_info.height * fb_info.bytes_pp + 0xFFF) & ~0xFFF;
+
+    int status = 0;
+
+    for(unsigned long off = 0; off <= fb_size; off += 0x1000)
+    {
+        status = mmu_map(framebuffer + off, fb_info.base_addr + off, MMU_ACCESS_RW | MMU_CACHE_WC);
+
+        // Retry using WB caching if mapping failed
+        if(status != 0 && status == MMU_MAPPING_NOT_CAPABLE)
+            status = mmu_map(framebuffer + off, fb_info.base_addr + off, MMU_ACCESS_RW | MMU_CACHE_WB);
+
+        if(status != 0)
+            break;
+    }
+
+    if(status != 0 || !mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
+        return;
+
+    if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
+    {
+        // Clear screen
+        fb_clear();
+    }
+    else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
+    {
+        // Clear screen
+        for(uint32_t i = 0; i < fb_info.width * fb_info.height; i++)
+            ((uint16_t*)framebuffer)[i] = 0x0700;
+    }
+}
+
 extern process_t init_process;
 static tty_dev_t* tty = NULL;
 void kmain()
@@ -252,43 +290,6 @@ void kmain()
         sched_lock();
         sched_switch_thread();
         sched_unlock();
-    }
-}
-
-void main_fb_init()
-{
-    unsigned long framebuffer = (unsigned long)get_fb_address();
-
-    // Map framebuffer (and any extra bits of it)
-    unsigned long fb_size = (fb_info.width * fb_info.height * fb_info.bytes_pp + 0xFFF) & ~0xFFF;
-
-    int status = 0;
-
-    for(unsigned long off = 0; off <= fb_size; off += 0x1000)
-    {
-        status = mmu_map(framebuffer + off, fb_info.base_addr + off, MMU_ACCESS_RW | MMU_CACHE_WC);
-
-        // Retry using WB caching if mapping failed
-        if(status != 0 && status == MMU_MAPPING_NOT_CAPABLE)
-            status = mmu_map(framebuffer + off, fb_info.base_addr + off, MMU_ACCESS_RW | MMU_CACHE_WB);
-
-        if(status != 0)
-            break;
-    }
-
-    if(status != 0 || !mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
-        return;
-
-    if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
-    {
-        // Clear screen
-        fb_clear();
-    }
-    else if(fb_info.type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
-    {
-        // Clear screen
-        for(uint32_t i = 0; i < fb_info.width * fb_info.height; i++)
-            ((uint16_t*)framebuffer)[i] = 0x0700;
     }
 }
 

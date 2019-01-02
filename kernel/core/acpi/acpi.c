@@ -1,5 +1,6 @@
 
 #include <common/acpi.h>
+#include <common/mm/liballoc.h>
 #include <common/util/klog.h>
 #include <common/util/kfuncs.h>
 
@@ -252,7 +253,7 @@ ACPI_STATUS acpi_init()
 
         // Parse CRS
         ACPI_RESOURCE* crs_res = ec_crs.Pointer;
-        ACPI_RESOURCE addr_res;
+        ACPI_RESOURCE_ADDRESS64 addr_res;
         size_t bytes = ec_crs.Length;
         size_t port_index = 2; // Current port index
 
@@ -277,7 +278,7 @@ ACPI_STATUS acpi_init()
                 case ACPI_RESOURCE_TYPE_ADDRESS32:
                 case ACPI_RESOURCE_TYPE_ADDRESS64:
                     AcpiResourceToAddress64(crs_res, &addr_res);
-                    ((uint64_t*)&ec_context)[port_index - 1] = addr_res.Data.Address64.Address.Minimum;
+                    ((uint64_t*)&ec_context)[port_index - 1] = addr_res.Address.Minimum;
                     port_index--;
                     break;
                 case ACPI_RESOURCE_TYPE_END_TAG:

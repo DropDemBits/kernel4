@@ -22,6 +22,7 @@
 
 #include <common/fs/vfs.h>
 #include <common/mm/mm.h>
+#include <common/mm/liballoc.h>
 
 struct vfs_mount
 {
@@ -75,7 +76,7 @@ vfs_inode_t* vfs_getroot()
     return root_node;
 }
 
-ssize_t vfs_read(vfs_inode_t *file_node, size_t off, size_t len, uint8_t* buffer)
+ssize_t vfs_read(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
 {
     if(file_node == KNULL)
         return -1;
@@ -86,7 +87,7 @@ ssize_t vfs_read(vfs_inode_t *file_node, size_t off, size_t len, uint8_t* buffer
         return -1;
 }
 
-ssize_t vfs_write(vfs_inode_t *file_node, size_t off, size_t len, uint8_t* buffer)
+ssize_t vfs_write(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
 {
     if(file_node == KNULL)
         return -1;

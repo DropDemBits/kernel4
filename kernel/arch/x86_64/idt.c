@@ -156,7 +156,7 @@ static void create_descriptor(uint8_t index,
     (&idt_table)[index].present = 1;
 }
 
-static void default_exception(struct intr_stack *frame)
+static void default_exception(struct intr_stack *frame, void* params)
 {
     kpanic_intr(frame, fault_names[frame->int_num]);
 }

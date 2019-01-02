@@ -1,3 +1,4 @@
+#include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 #include <common/util/locks.h>
 #include <arch/cpufuncs.h>

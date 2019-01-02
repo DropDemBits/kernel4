@@ -325,6 +325,33 @@ static void switch_to_thread(thread_t* next_thread)
     switch_stack(next_thread, old_thread, next_thread->parent->page_context_base);
 }
 
+// Debugs start
+void sched_print_queues()
+{
+    thread_t* node = run_queue.queue_head;
+    printf("Run Queue: ");
+
+    if(active_thread != KNULL)
+        printf("[%s] -> ", active_thread->name);
+    
+    while(node != KNULL)
+    {
+        printf("%s -> ", node->name);
+        node = node->next;
+    }
+    
+    if(run_queue.queue_tail != KNULL)
+        printf("<%s>\n", run_queue.queue_tail->name);
+}
+
+unsigned long long tswp_counter = 0;
+void sched_track_swaps()
+{
+    tswp_counter++;
+}
+
+// Debugs end
+
 /**
  * NOTE: This must be surrounded using a sched_lock/unlock pair for sync reasons,
  *          or a taskswitch_disable/enable pair when unblocking threads (ie. during interrupts)
@@ -378,31 +405,6 @@ void sched_switch_thread()
 
         switch_to_thread(next_thread);
     }
-}
-
-// Debugs below
-void sched_print_queues()
-{
-    thread_t* node = run_queue.queue_head;
-    printf("Run Queue: ");
-
-    if(active_thread != KNULL)
-        printf("[%s] -> ", active_thread->name);
-    
-    while(node != KNULL)
-    {
-        printf("%s -> ", node->name);
-        node = node->next;
-    }
-    
-    if(run_queue.queue_tail != KNULL)
-        printf("<%s>\n", run_queue.queue_tail->name);
-}
-
-unsigned long long tswp_counter = 0;
-void sched_track_swaps()
-{
-    tswp_counter++;
 }
 
 void sched_block_thread(enum thread_state new_state)

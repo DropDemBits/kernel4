@@ -82,7 +82,7 @@ static uint8_t __attribute__((aligned (4096))) init_region_bitmap[4096];
 static struct mem_area area_list[64];
 static unsigned int next_free_area = 0;
 
-static mem_region_t* region_list = &init_region_bitmap;
+static mem_region_t* region_list = (mem_region_t*)&init_region_bitmap;
 static size_t frame_blocks = 0;
 
 static void* mm_base_ptr = NULL;
@@ -343,7 +343,7 @@ static mem_region_t* mm_create_region(mem_region_t* list_tail,
     append->flags.reserved = 0x0;
     append->flags.present = 0;
     append->flags.lazy_bitmap = 1;
-    append->bitmap = LAZY_BITMAP;
+    append->bitmap = (uint64_t*)LAZY_BITMAP;
 
     append->flags.present = 1;
     mm_append_block(list_tail, append);
@@ -382,7 +382,7 @@ void mm_early_init()
     mm_add_area(initrd_start, initrd_size, TYPE_RESERVED);
 
     // Setup the bitmap
-    mem_region_t* node = &init_region_list;
+    mem_region_t* node = (mem_region_t*)&init_region_list;
     region_list = node;
 
     memset(init_region_list, 0, sizeof(init_region_list));

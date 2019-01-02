@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <common/mm/liballoc.h>
 #include <common/mm/mm.h>
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>

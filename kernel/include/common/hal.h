@@ -151,6 +151,6 @@ struct irq_handler* ic_irq_handle(uint8_t irq, uint32_t flags, irq_function_t ha
 void ic_irq_free(struct irq_handler* handler);
 
 struct heap_info* get_heap_info();
-uint64_t get_klog_base();
+void* get_klog_base();
 
 #endif /* __HAL_H__ */

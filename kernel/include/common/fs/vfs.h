@@ -20,9 +20,9 @@ struct vfs_inode;
 struct vfs_dirent;
 
 // Reads bytes from the node
-typedef ssize_t (*vfs_read_func_t)(struct vfs_inode *file_node, size_t off, size_t len, uint8_t* buffer);
+typedef ssize_t (*vfs_read_func_t)(struct vfs_inode *file_node, size_t off, size_t len, void* buffer);
 // Writes bytes to the node
-typedef ssize_t (*vfs_write_func_t)(struct vfs_inode *file_node, size_t off, size_t len, uint8_t* buffer);
+typedef ssize_t (*vfs_write_func_t)(struct vfs_inode *file_node, size_t off, size_t len, void* buffer);
 // Opens a node for use
 typedef void (*vfs_open_func_t)(struct vfs_inode *file_node, int oflags);
 // Closes a node
@@ -60,15 +60,15 @@ typedef struct vfs_inode {
 
 struct vfs_dirent {
     ino_t inode; // Associated vfs_inode
-    char* name;
+    const char* name;
 };
 
 void vfs_mount(vfs_inode_t* root_node, const char* path);
 vfs_inode_t* vfs_getrootnode(const char* path);
 void vfs_setroot(vfs_inode_t* root_node, const char* path);
 vfs_inode_t* vfs_getroot();
-ssize_t vfs_read(vfs_inode_t *root_node, size_t off, size_t len, uint8_t* buffer);
-ssize_t vfs_write(vfs_inode_t *root_node, size_t off, size_t len, uint8_t* buffer);
+ssize_t vfs_read(vfs_inode_t *root_node, size_t off, size_t len, void* buffer);
+ssize_t vfs_write(vfs_inode_t *root_node, size_t off, size_t len, void* buffer);
 void vfs_open(vfs_inode_t *file_node, int oflags);
 void vfs_close(vfs_inode_t *file_node);
 struct vfs_dirent* vfs_readdir(vfs_inode_t *root_node, size_t index);

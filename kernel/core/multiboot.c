@@ -87,10 +87,10 @@ const char* region_names[] = {
     "Bad RAM",
 };
 
-static uint32_t find_rsdp(uint32_t search_base, uint32_t search_limit)
+static uint64_t find_rsdp(uint32_t search_base, uint32_t search_limit)
 {
-#ifdef __X86__
-    uint32_t address = search_base & ~0xF;
+#ifndef __X86__
+    void* address = (void*)((uintptr_t)search_base & ~0xF);
 
     while(address < search_limit)
     {
@@ -112,7 +112,7 @@ static uint32_t find_rsdp(uint32_t search_base, uint32_t search_limit)
             }
 
             if(!csum)
-                return address;
+                return (uint64_t)address;
         }
         
         // Address will always be 16 byte aligned
@@ -323,9 +323,9 @@ void parse_mb2()
                     break;
             case MULTIBOOT_TAG_TYPE_ACPI_NEW:
                 // Copy address of the RSDP copy
-                mb_rsdp_addr = (uint64_t)(tag+1);
+                mb_rsdp_addr = (uint64_t)((size_t)(tag+1));
                 klog_early_logln(INFO, "Found RSDP @ %p", mb_rsdp_addr);
-                klog_early_logln(INFO, "%.8s v%d", ((struct acpi_xsdp*)(mb_rsdp_addr))->RSDP.Sig, ((struct acpi_xsdp*)(mb_rsdp_addr))->RSDP.Version);
+                klog_early_logln(INFO, "%.8s v%d", ((struct acpi_xsdp*)((uintptr_t)mb_rsdp_addr))->RSDP.Sig, ((struct acpi_xsdp*)((uintptr_t)mb_rsdp_addr))->RSDP.Version);
 
                 break;
             default:

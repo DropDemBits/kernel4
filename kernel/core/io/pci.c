@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <common/io/pci.h>
+#include <common/mm/liballoc.h>
 #include <common/util/kfuncs.h>
 
 struct pci_dev_handler* driver_head = KNULL;

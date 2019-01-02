@@ -81,7 +81,7 @@ void klog_init()
     
     for(size_t i = 0; i < allocated_limit; i+= 0x1000)
     {
-        mmu_map((uintptr_t)log_buffer + i, mm_alloc(1), MMU_FLAGS_DEFAULT);
+        mmu_map(log_buffer + i, mm_alloc(1), MMU_FLAGS_DEFAULT);
     }
 
     // Clear buffer of old data
@@ -215,7 +215,7 @@ static void check_alloc()
 {
     if((allocated_limit - log_index) <= 4096)
     {
-        mmu_map((uintptr_t)log_buffer + allocated_limit, mm_alloc(1), MMU_FLAGS_DEFAULT);
+        mmu_map(log_buffer + allocated_limit, mm_alloc(1), MMU_FLAGS_DEFAULT);
         memset(log_buffer + allocated_limit, 0, 4096);
         allocated_limit += 4096;
     }

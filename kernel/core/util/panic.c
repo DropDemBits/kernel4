@@ -30,6 +30,7 @@
 #define STOP_FB_RESHOW 2
 #define STOP_STACK_DUMP 10
 
+extern void dump_registers(struct intr_stack* stack);
 extern void __attribute__((noreturn)) halt();
 extern char early_klog_buffer[];
 
@@ -80,7 +81,7 @@ static void reshow_log()
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 
-    if(panic_levels < STOP_FB_RESHOW && mmu_check_access((uintptr_t)get_fb_address(), MMU_ACCESS_RW))
+    if(panic_levels < STOP_FB_RESHOW && mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
 }
 

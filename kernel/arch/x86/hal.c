@@ -22,6 +22,7 @@
 
 #include <common/hal.h>
 #include <common/acpi.h>
+#include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 #include <common/util/kfuncs.h>
 
@@ -31,6 +32,7 @@
 #include <arch/pit.h>
 #include <arch/idt.h>
 #include <arch/io.h>
+#include <arch/iobase.h>
 #include <stack_state.h>
 
 #define MAX_TIMERS 64
@@ -205,7 +207,7 @@ void hal_init()
         default_ic = pic_get_dev();
         ic_mode = IC_MODE_PIC;
     }
-    acpi_put_table(madt);
+    acpi_put_table((ACPI_TABLE_HEADER*)madt);
     // acpi_set_pic_mode(ic_mode);
 
     for(int i = 0; i < MAX_TIMERS; i++)
@@ -373,6 +375,11 @@ struct heap_info* get_heap_info()
     return &heap_context;
 }
 
+void* get_klog_base()
+{
+    return (void*)KLOG_BASE;
+}
+
 void arch_reboot()
 {
     // Pulse the reset line
@@ -381,19 +388,9 @@ void arch_reboot()
     halt();
 }
 
-#if defined(__x86_64__)
-uint64_t get_klog_base()
-{
-    return 0xFFFF8C0000000000;
-}
-
-uint64_t get_driver_mmio_base()
-{
-    return 0xFFFFF00000000000;
-}
-
 void dump_registers(struct intr_stack *stack)
 {
+#if defined(__x86_64__)
     KLOG_FATAL("%s", "***BEGIN REGISTER DUMP***");
     KLOG_FATAL("%s", "RAX RBX RCX RDX");
     KLOG_FATAL("%#p %#p %#p %#p", stack->rax, stack->rbx, stack->rcx, stack->rdx);
@@ -403,37 +400,16 @@ void dump_registers(struct intr_stack *stack)
     KLOG_FATAL("RIP: %#p", stack->rip);
     KLOG_FATAL("Error code: %x", stack->err_code);
 
-    thread_t* at = sched_active_thread();
-    KLOG_FATAL("Current Thread: %#p", at);
-    if(((uintptr_t)at & ~0xFFF) != (uintptr_t)KNULL && ((uintptr_t)at & ~0xFFF) != (uintptr_t)NULL)
-    {
-        KLOG_FATAL("\tID: %d (%s)", at->tid, at->name);
-        KLOG_FATAL("\tPriority: %d", at->priority);
-        KLOG_FATAL("\tKSP: %#p, SP: %#p", at->kernel_sp, at->user_sp);
-    } else
-    {
-        KLOG_FATAL("%s", "\t(Pre-scheduler)");
-    }
-}
 #elif defined(__i386__)
-uint64_t get_klog_base()
-{
-    return 0x8C000000;
-}
-
-uint64_t get_driver_mmio_base()
-{
-    return 0xF0000000;
-}
-
-void dump_registers(struct intr_stack *stack)
-{
     KLOG_FATAL("%s", "***BEGIN REGISTER DUMP***");
     KLOG_FATAL("EAX: %#p, EBX: %#p, ECX: %#p, EDX: %#p", stack->eax, stack->ebx, stack->ecx, stack->edx);
     KLOG_FATAL("ESI: %#p, EDI: %#p, ESP: %#p, EBP: %#p", stack->esi, stack->edi, stack->esp, stack->ebp);
     KLOG_FATAL("EIP: %#p", stack->eip);
     KLOG_FATAL("Error code: %x", stack->err_code);
     KLOG_FATAL("CR2: %p", stack->cr2);
+
+#endif
+
     thread_t* at = sched_active_thread();
     KLOG_FATAL("Current Thread: %#p", at);
     if(at != KNULL)
@@ -446,4 +422,3 @@ void dump_registers(struct intr_stack *stack)
         KLOG_FATAL("%s", "\t(Pre-scheduler)");
     }
 }
-#endif

@@ -290,7 +290,7 @@ int ata_end_command(uint16_t id)
     return 0;
 }
 
-int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint32_t sector_count, int transfer_dir, bool is_dma, bool is_48bit)
+int pata_do_transfer(uint16_t id, uint64_t lba, void* transfer_buffer, uint32_t sector_count, int transfer_dir, bool is_dma, bool is_48bit)
 {
     // Initial checks
     if((transfer_buffer == NULL || transfer_buffer == KNULL))
@@ -354,12 +354,12 @@ int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint3
     if(transfer_dir == TRANSFER_READ)
     {
         while(word_count--)
-            transfer_buffer[buffer_index++] = inw(command_base + ATA_DATA);
+            ((uint16_t*)transfer_buffer)[buffer_index++] = inw(command_base + ATA_DATA);
     }
     else
     {
         while(word_count--)
-            outw(command_base + ATA_DATA, transfer_buffer[buffer_index++]);
+            outw(command_base + ATA_DATA, ((uint16_t*)transfer_buffer)[buffer_index++]);
     }
 
     // Nothing else needs to be done for read
@@ -392,7 +392,7 @@ int pata_do_transfer(uint16_t id, uint64_t lba, uint16_t* transfer_buffer, uint3
  *         EABSENT if the device doesn't exist
  *         0 if the command was sent successfully or the buffer was null
  */
-int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer, uint16_t transfer_size, int transfer_dir, bool is_dma, bool is_16b)
+int atapi_send_command(uint16_t id, uint16_t* command, void* transfer_buffer, uint16_t transfer_size, int transfer_dir, bool is_dma, bool is_16b)
 {
     // Initial checks
     if((transfer_buffer == NULL || transfer_buffer == KNULL) && transfer_dir == TRANSFER_WRITE)
@@ -463,13 +463,13 @@ int atapi_send_command(uint16_t id, uint16_t* command, uint16_t* transfer_buffer
             else
             {
                 while(word_count--)
-                    transfer_buffer[buffer_index++] = inw(command_base + ATA_DATA);
+                    ((uint16_t*)transfer_buffer)[buffer_index++] = inw(command_base + ATA_DATA);
             }
         }
         else
         {
             while(word_count--)
-                outw(command_base + ATA_DATA, transfer_buffer[buffer_index++]);
+                outw(command_base + ATA_DATA, ((uint16_t*)transfer_buffer)[buffer_index++]);
         }
 
         ata_wait(true);

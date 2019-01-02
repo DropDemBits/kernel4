@@ -6,6 +6,7 @@
 
 #include <common/hal.h>
 #include <common/mm/mm.h>
+#include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 #include <common/util/klog.h>
 
@@ -90,8 +91,8 @@ static const char* apic_delmode_names[] =
 };
 
 // TODO: Replace with a real IO Space virtual mem allocator
-uint64_t apic_map = MMIO_MAP_BASE + 0x08000000;
-uint64_t ioapic_map = MMIO_MAP_BASE + 0x08001000;
+void* apic_map = (void*)(MMIO_MAP_BASE + 0x08000000);
+void* ioapic_map = (void*)(MMIO_MAP_BASE + 0x08001000);
 static struct ioapic_dev main_ioapic = {};
 static struct irq_mapping* mapping_head = NULL;
 static struct irq_mapping* mapping_tail = NULL;
@@ -198,7 +199,7 @@ void ioapic_init(uint64_t phybase, uint32_t irq_base)
     memset(&main_ioapic, 0, sizeof(struct ioapic_dev));
 
     mmu_map(ioapic_map, phybase, MMU_ACCESS_RW | MMU_CACHE_UC);
-    main_ioapic.address = (void*)ioapic_map;
+    main_ioapic.address = ioapic_map;
     main_ioapic.irq_base = irq_base;
     main_ioapic.redirect_len = ((ioapic_read(ioapic_map, 1) >> 16) & IOAPIC_REDIR_VEC) + 1;
 
@@ -217,7 +218,7 @@ void ioapic_init(uint64_t phybase, uint32_t irq_base)
             ioapic_set_mode(i, IOAPIC_POLARITY_LOW, IOAPIC_TRIGGER_EDGE, 0, APIC_DELMODE_FIXED);    // The rest
         ioapic_set_mask(i, true);
 
-        isr_add_handler(i + IRQ_BASE, apic_isr_handler, NULL);
+        isr_add_handler(i + IRQ_BASE, (void*)apic_isr_handler, NULL);
     }
 }
 
@@ -324,7 +325,7 @@ struct irq_handler* ioapic_handle_irq(uint8_t irq, uint32_t int_flags, irq_funct
 
     cpu_flags_t flags = hal_disable_interrupts();
 
-    isr_add_handler(irq + IRQ_BASE, apic_isr_handler, NULL);
+    isr_add_handler(irq + IRQ_BASE, (void*)apic_isr_handler, NULL);
 
     if(main_ioapic.handler_list[irq] == NULL)
     {
