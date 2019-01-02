@@ -7,8 +7,6 @@
 #define PROG_IF_EHCI 0x20
 #define PROG_IF_XHCI 0x30
 
-static uint16_t usb_subsys;
-
 static void uhci_disable_emu(struct pci_dev* dev)
 {
     // UHCI's emulation disabling is simple, clear all the emulation bits in LEGSUP
@@ -22,7 +20,7 @@ static void ohci_disable_emu(struct pci_dev* dev)
 
 static pci_handle_ret_t hci_disable_emu(struct pci_dev* dev)
 {
-    klog_logln(usb_subsys, DEBUG, "Disabling USB emulation for %02x:%02x.%01x", dev->bus, dev->device, dev->function);
+    klog_logln(DEBUG, "Disabling USB emulation for %02x:%02x.%01x", dev->bus, dev->device, dev->function);
 
     switch(dev->prog_if)
     {
@@ -55,5 +53,4 @@ void usb_init()
 {
     // Add (x)HCI PCI handlers
     pci_handle_dev(&usb_hci_handler);
-    usb_subsys = klog_add_subsystem("USB");
 }

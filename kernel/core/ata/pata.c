@@ -69,7 +69,7 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev);
 #define FLUSH_CACHE_EXT     0xEA
 
 #define FIXUP_BAR(x, val) \
-    if(!(x & 0xFE)) { klog_logln(ata_subsys, DEBUG, "PATA: Fixing up IDE quirk (%#lx -> %#lx)", x, val); (x) = (val); }
+    if(!(x & 0xFE)) { klog_logln(DEBUG, "PATA: Fixing up IDE quirk (%#lx -> %#lx)", x, val); (x) = (val); }
 
 struct pci_dev_handler pata_driver = 
 {
@@ -93,7 +93,6 @@ static struct pata_dev* current_device;
 static struct ata_dev** device_list = NULL;
 static bool volatile irq_fired = false;
 static size_t num_irqs = 0;
-static uint16_t ata_subsys = 0;
 
 static irq_ret_t pata_irq_handler(struct irq_handler* handler)
 {
@@ -106,7 +105,7 @@ static irq_ret_t pata_irq_handler(struct irq_handler* handler)
     }
     else
     {
-        klog_logln(ata_subsys, WARN, "IRQ fired outside of command");
+        klog_logln(WARN, "IRQ fired outside of command");
     }
 
     num_irqs++;
@@ -178,12 +177,12 @@ static bool ata_wait(bool only_irq)
         sched_sleep_ms(1);
         if(timeout <= timer_read_counter(0))
         {
-            klog_logln(ata_subsys, DEBUG, "ata_dev%d timeout %x (nirqs: %d, %d)", current_id, inb(current_device->control_base + ATA_ALT_STATUS), num_irqs, timeout - timer_read_counter(0));
+            klog_logln(DEBUG, "ata_dev%d timeout %x (nirqs: %d, %d)", current_id, inb(current_device->control_base + ATA_ALT_STATUS), num_irqs, timeout - timer_read_counter(0));
             return true;
         }
     }
 
-    klog_logln(ata_subsys, DEBUG, "ata_dev%d nt %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
+    klog_logln(DEBUG, "ata_dev%d nt %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
 
     return false;
 }
@@ -214,7 +213,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
 
     if(loop_counter <= 0)
     {
-        klog_logln(ata_subsys, DEBUG, "ata_dev%d wait sts %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
+        klog_logln(DEBUG, "ata_dev%d wait sts %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
         return EABSENT;
     }
 
@@ -246,7 +245,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     if(inb(control_base + ATA_ALT_STATUS) == 0)
         return EABSENT;
 
-    klog_logln(ata_subsys, DEBUG, "ata_dev%d status: %x (%d, %x)", id, last_status, loop_counter, command);
+    klog_logln(DEBUG, "ata_dev%d status: %x (%d, %x)", id, last_status, loop_counter, command);
 
     last_status = inb(control_base + ATA_ALT_STATUS);
 
@@ -350,7 +349,7 @@ int pata_do_transfer(uint16_t id, uint64_t lba, void* transfer_buffer, uint32_t 
         goto normal_exit;
 
     // We are in data transfer mode, do it
-    klog_logln(ata_subsys, DEBUG, "(ata_dev%d) Beginning PIO Data Transfer (%lld bytes)", id, (uint64_t)(word_count << 1));
+    klog_logln(DEBUG, "(ata_dev%d) Beginning PIO Data Transfer (%lld bytes)", id, (uint64_t)(word_count << 1));
     if(transfer_dir == TRANSFER_READ)
     {
         while(word_count--)
@@ -451,7 +450,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, void* transfer_buffer, ui
 
         byte_count = inb(command_base + ATA_LBAHI) << 8 | inb(command_base + ATA_LBAMID);
         word_count = byte_count >> 1;
-        klog_logln(ata_subsys, DEBUG, "(ata_dev%d) Begining Packet PIO Data Transfer (%d bytes)", id, byte_count);
+        klog_logln(DEBUG, "(ata_dev%d) Begining Packet PIO Data Transfer (%d bytes)", id, byte_count);
 
         if(transfer_dir == 1)
         {
@@ -588,7 +587,7 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     int err = ata_send_command(controller->dev.id, IDENTIFY, 0x0000, 0, 0, TRANSFER_READ, false);
     if(err == EABSENT)
     {
-        klog_logln(ata_subsys, DEBUG, "ata_dev%d is absent, disabling", controller->dev.id);
+        klog_logln(DEBUG, "ata_dev%d is absent, disabling", controller->dev.id);
         controller->dev.is_active = false;
         controller->dev.processing_command = false;
         current_id = ATA_INVALID_ID;
@@ -600,12 +599,12 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     uint8_t id_hi = inb(command_base + ATA_LBAHI);
 
          if(id_low == 0x14 && id_hi == 0xEB) init_atapi_device();
-    else if(id_low == 0x3C && id_hi == 0xC3) klog_logln(ata_subsys, DEBUG, "Detected SATA Enclosure Management Bridge");
-    else if(id_low == 0x69 && id_hi == 0x96) klog_logln(ata_subsys, DEBUG, "Detected SATA Port Multiplier");
+    else if(id_low == 0x3C && id_hi == 0xC3) klog_logln(DEBUG, "Detected SATA Enclosure Management Bridge");
+    else if(id_low == 0x69 && id_hi == 0x96) klog_logln(DEBUG, "Detected SATA Port Multiplier");
     else if(id_low == 0x00 && id_hi == 0x00) controller->dev.device_type = TYPE_ATA;
     else
     {
-        klog_logln(ata_subsys, ERROR, "ata_dev%d: Unknown Device Sig: %x %x", controller->dev.id, id_low, id_hi);
+        klog_logln(ERROR, "ata_dev%d: Unknown Device Sig: %x %x", controller->dev.id, id_low, id_hi);
         controller->dev.is_active = false;
         controller->dev.processing_command = false;
         current_id = ATA_INVALID_ID;
@@ -614,7 +613,7 @@ struct pata_dev* init_ide_controller(uint32_t command_base, uint32_t control_bas
     }
 
     char* type_names[] = {"PATA", "ATAPI", "SATA", "SATAPI"};
-    klog_logln(ata_subsys, DEBUG, "ATA Device Present (%d, %s)", controller->dev.id, type_names[controller->dev.device_type]);
+    klog_logln(DEBUG, "ATA Device Present (%d, %s)", controller->dev.id, type_names[controller->dev.device_type]);
 
     // The dedicated init methods take care of the job
     if(id_low != 0x00 && id_hi != 0x00)
@@ -653,7 +652,7 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
     bool init_primary = true;
     bool init_secondary = true;
 
-    klog_logln(ata_subsys, INFO, "Initializing IDE controller at %x:%x.%x", dev->bus, dev->device, dev->function);
+    klog_logln(INFO, "Initializing IDE controller at %x:%x.%x", dev->bus, dev->device, dev->function);
     
     if((pci_read(dev, PCI_PROG_IF, 1) & 0b1010) != 0)
     {
@@ -664,7 +663,7 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
             // Try and force the IDE channels into both compatibility
             pci_write(dev, PCI_PROG_IF, 1, 0x00);
         }
-        klog_logln(ata_subsys, DEBUG, "NewOpMode: %x", pci_read(dev, PCI_PROG_IF, 1));
+        klog_logln(DEBUG, "NewOpMode: %x", pci_read(dev, PCI_PROG_IF, 1));
     }
 
     uint8_t operating_mode = pci_read(dev, PCI_PROG_IF, 1);
@@ -675,7 +674,7 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
 
     if((operating_mode & 0b0001) != (operating_mode & 0b0100) && (operating_mode & 0b1010) == 0)
     {
-        klog_logln(ata_subsys, ERROR, "Operating mode mismatch (%d != %d)", (operating_mode & 0b0001), (operating_mode & 0b0100));
+        klog_logln(ERROR, "Operating mode mismatch (%d != %d)", (operating_mode & 0b0001), (operating_mode & 0b0100));
         return PCI_DEV_NOT_HANDLED;
     }
 
@@ -692,21 +691,21 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
     // Write BARs back if we can change them
     if((operating_mode & 0b0010))
     {
-        klog_logln(ata_subsys, DEBUG, "Fixing up secondary channel");
+        klog_logln(DEBUG, "Fixing up secondary channel");
         pci_write(dev, PCI_BAR0, 4, command0_base);
         pci_write(dev, PCI_BAR1, 4, control0_base);
     }
 
     if((operating_mode & 0b1000))
     {
-        klog_logln(ata_subsys, DEBUG, "Fixing up secondary channel");
+        klog_logln(DEBUG, "Fixing up secondary channel");
         pci_write(dev, PCI_BAR2, 4, command0_base);
         pci_write(dev, PCI_BAR3, 4, control0_base);
     }
 
-    klog_logln(ata_subsys, DEBUG, "Primary channel at %#lx-%#lx, %#lx", command0_base, command0_base+7, control0_base);
-    klog_logln(ata_subsys, DEBUG, "Secondary channel at %#lx-%#lx, %#lx", command1_base, command1_base+7, control1_base);
-    klog_logln(ata_subsys, DEBUG, "OpMode: %x", operating_mode);
+    klog_logln(DEBUG, "Primary channel at %#lx-%#lx, %#lx", command0_base, command0_base+7, control0_base);
+    klog_logln(DEBUG, "Secondary channel at %#lx-%#lx, %#lx", command1_base, command1_base+7, control1_base);
+    klog_logln(DEBUG, "OpMode: %x", operating_mode);
 
     if(inb(control0_base + ATA_ALT_STATUS) == 0xFF)
         init_primary = false;
@@ -715,13 +714,13 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
     
     if(!init_primary && !init_secondary)
     {
-        klog_logln(ata_subsys, ERROR, "No IDE channels exist");
+        klog_logln(ERROR, "No IDE channels exist");
         return PCI_DEV_NOT_HANDLED;
     }
 
     if(init_primary)
     {
-        klog_logln(ata_subsys, INFO, "Setting up primary IDE channel");
+        klog_logln(INFO, "Setting up primary IDE channel");
         // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0001) == 0)
             ic_irq_handle(14, INT_EOI_FAST | INT_SRC_LEGACY, (irq_function_t)pata_irq_handler);
@@ -734,7 +733,7 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
 
     if(init_secondary)
     {
-        klog_logln(ata_subsys, INFO, "Setting up secondary IDE channel");
+        klog_logln(INFO, "Setting up secondary IDE channel");
         // Use legacy interrupt if channel is in compatibility mode
         if((operating_mode & 0b0100) == 0)
             ic_irq_handle(15, INT_EOI_FAST | INT_SRC_LEGACY, (irq_function_t)pata_irq_handler);
@@ -754,11 +753,9 @@ pci_handle_ret_t ata_init_controller(struct pci_dev* dev)
 /**
  * @brief  Initializes the PATA side of the ATA driver
  * @note   
- * @param       id: ID of the ATA subsystem
  * @retval None
  */
-void pata_init(uint16_t id)
+void pata_init()
 {
-    ata_subsys = id;
     pci_handle_dev(&pata_driver);
 }

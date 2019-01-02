@@ -242,11 +242,11 @@ static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
 
         if(base_dir == NULL)
         {
-            klog_logln(1, DEBUG, "ENOENT: (%s / %s)", parent_path, filename);
+            klog_logln(DEBUG, "ENOENT: (%s / %s)", parent_path, filename);
             return NULL;
         }
 
-        klog_logln(1, DEBUG, "Resolved %s to %s / %s (%s / %s)", name, parent_path, filename, base_dir->base_path, filename);
+        klog_logln(DEBUG, "Resolved %s to %s / %s (%s / %s)", name, parent_path, filename, base_dir->base_path, filename);
     }
     else if(strrchr(path, '/') != NULL)
     {
@@ -277,7 +277,7 @@ static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
 
         if(base_dir == NULL)
         {
-            klog_logln(1, DEBUG, "ENOENT: (%s / %s)", real_path, filename);
+            klog_logln(DEBUG, "ENOENT: (%s / %s)", real_path, filename);
             return NULL;
         }
     }
@@ -301,12 +301,12 @@ static vfs_inode_t* tarfs_finddir(vfs_inode_t *node, const char* name)
                 return root_node;
 
             // Unknown case, log it
-            klog_logln(1, ERROR, "Unable to resolve path: %s/%s (%d)", base_dir->dirents[i].name, filename, base_dir->dirents[i].inode);
+            klog_logln(ERROR, "Unable to resolve path: %s/%s (%d)", base_dir->dirents[i].name, filename, base_dir->dirents[i].inode);
             return NULL;
         }
     }
 
-    klog_logln(1, DEBUG, "ENOENT: (%s / %s)", base_dir->base_path, filename);
+    klog_logln(DEBUG, "ENOENT: (%s / %s)", base_dir->base_path, filename);
     return NULL;
 }
 
@@ -364,7 +364,7 @@ static void append_dirent(vfs_inode_t* target, char* base_path, const char* name
     struct tar_dir* dirnode = find_dir(base_path);
     if(!dirnode)
     {
-        klog_logln(1, ERROR, "initrd dirnode %s does not exist (yet?)", base_path);
+        klog_logln(ERROR, "initrd dirnode %s does not exist (yet?)", base_path);
         return;
     }
 
@@ -498,7 +498,7 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
         // Too many nodes? Stop parsing
         if(finode >= NUM_NODES + NODE_LIST_BASE)
         {
-            klog_logln(1, WARN, "Too many entries in initrd");
+            klog_logln(WARN, "Too many entries in initrd");
             break;
         }
 

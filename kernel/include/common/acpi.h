@@ -73,6 +73,4 @@ ACPI_STATUS acpi_reboot();
  */
 ACPI_STATUS acpi_init();
 
-uint16_t acpi_subsys_id();
-
 #endif /* __ACPI_OSL_H__ */

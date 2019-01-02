@@ -1,4 +1,5 @@
 #include <common/types.h>
+#include <common/util/klog.h>
 
 #include <arch/pit.h>
 #include <arch/io.h>
@@ -10,11 +11,11 @@
 
 void pcspkr_set_enable(bool enabled)
 {
-    klog_logln(1, 1, "PGATE: %x", inb(KBD_SPKRGATE));
+    klog_logln(DEBUG, "PGATE: %x", inb(KBD_SPKRGATE));
     uint8_t temp = inb(KBD_SPKRGATE) & 0xFC;
     temp |= 0x3 * (enabled & 1);
     outb(KBD_SPKRGATE, temp);
-    klog_logln(1, 1, "SGATE: %x", inb(KBD_SPKRGATE));
+    klog_logln(DEBUG, "SGATE: %x", inb(KBD_SPKRGATE));
 }
 
 void pcspkr_write_freq(uint16_t freq)

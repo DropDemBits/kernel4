@@ -34,8 +34,6 @@
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
 
-extern uint16_t kbd_subsytem_id();
-
 static uint8_t keycode_buffer[4096];
 static uint16_t read_head = 0;
 static uint16_t write_head = 0;
@@ -175,9 +173,9 @@ void ps2kbd_init(int device)
     decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2", NULL);
 
     if(!send_command(0xF4, 0x00))
-        klog_logln(kbd_subsytem_id(), INFO, "MF2 Scanning enable failed");
+        klog_logln(INFO, "MF2 Scanning enable failed");
 
-    klog_logln(kbd_subsytem_id(), DEBUG, "MF2: Clearing buffer");
+    klog_logln(DEBUG, "MF2: Clearing buffer");
     memset(keycode_buffer, 0x00, 4096);
 
     ps2_handle_device(kbd_device, ps2_keyboard_isr);

@@ -59,7 +59,7 @@ static void reshow_log()
 
         if(!(entry->flags & KLOG_FLAG_NO_HEADER))
         {
-            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            sprintf(buffer, "[%3llu.%05llu]: ", timestamp_secs, timestamp_ms);
             uart_writestr(buffer, strlen(buffer));
 
             if(panic_levels < STOP_FB_RESHOW)
@@ -106,8 +106,8 @@ void __attribute__((noreturn)) kvpanic(const char* message_string, va_list args)
     panic_levels++;
     if(klog_is_init())
     {
-        klog_logln(0, FATAL, "Exception occured in kernel:");
-        klog_loglnv(0, FATAL, message_string, args);
+        klog_logln(FATAL, "Exception occured in kernel:");
+        klog_loglnv(FATAL, message_string, args);
     }
     else
     {
@@ -124,8 +124,8 @@ void __attribute__((noreturn)) kvpanic_intr(struct intr_stack *stack, const char
     panic_levels++;
     if(klog_is_init())
     {
-        klog_logln(0, FATAL, "Exception occured in kernel:");
-        klog_loglnv(0, FATAL, message_string, args);
+        klog_logln(FATAL, "Exception occured in kernel:");
+        klog_loglnv(FATAL, message_string, args);
     }
     else
     {

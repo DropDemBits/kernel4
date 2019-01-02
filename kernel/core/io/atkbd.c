@@ -34,8 +34,6 @@
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
 
-extern uint16_t kbd_subsytem_id();
-
 static uint8_t keycode_buffer[4096];
 static uint16_t read_head = 0;
 static uint16_t write_head = 0;
@@ -185,9 +183,9 @@ void atkbd_init(int device)
 
     ps2_device_write(kbd_device, true, 0xF4);
     if(ps2_device_read(kbd_device, true) != 0xFA)
-        klog_logln(kbd_subsytem_id(), INFO, "AT: Scanning enable failed");
+        klog_logln(INFO, "AT: Scanning enable failed");
 
-    klog_logln(kbd_subsytem_id(), DEBUG, "AT: Clearing buffer");
+    klog_logln(DEBUG, "AT: Clearing buffer");
     memset(keycode_buffer, 0x00, 4096);
 
     ps2_handle_device(kbd_device, at_keyboard_isr);

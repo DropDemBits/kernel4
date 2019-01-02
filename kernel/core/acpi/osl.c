@@ -210,7 +210,7 @@ void AcpiOsWaitEventsComplete(void)
 {
     // TODO: Wait until all pending GPE threads have executed
     if(klog_is_init())
-        klog_logln(acpi_subsys_id(), ERROR, "Can't wait for GPE thread execution");
+        klog_logln(ERROR, "Can't wait for GPE thread execution");
 }
 
 /**** Mutual Exclusion & Synchronization ****/
@@ -581,7 +581,7 @@ void ACPI_INTERNAL_VAR_XFACE AcpiOsVprintf(const char* format, va_list args)
     if(!klog_is_init())
         klog_early_logfv(DEBUG, KLOG_FLAG_NO_HEADER, format, args);
     else
-        klog_logfv(acpi_subsys_id(), DEBUG, KLOG_FLAG_NO_HEADER, format, args);
+        klog_logfv(DEBUG, KLOG_FLAG_NO_HEADER, format, args);
 }
 
 void AcpiOsRedirectOutput(void* Destination) {}

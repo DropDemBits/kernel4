@@ -38,7 +38,7 @@
 #define MAX_TIMERS 64
 
 #define KLOG_FATAL(msg, ...) \
-    if(klog_is_init()) {klog_logln(0, FATAL, msg, __VA_ARGS__);} \
+    if(klog_is_init()) {klog_logln(FATAL, msg, __VA_ARGS__);} \
     else {klog_early_logln(FATAL, msg, __VA_ARGS__);}
 
 extern void halt();

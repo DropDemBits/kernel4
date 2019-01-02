@@ -19,8 +19,6 @@ struct ECDT_CONTEXT
 
 static ACPI_TABLE_DESC early_tables[ACPI_MAX_EARLY_TABLES];
 
-// ACPI KLOG subsystem ID
-static uint16_t acpi_subsys = 0;
 static bool acpi_initalized = false;
 static struct ECDT_CONTEXT ec_context = {};
 
@@ -91,7 +89,7 @@ static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS 
             status = AE_BAD_PARAMETER;
     }
 
-    klog_logln(acpi_subsys, DEBUG, "ECACC %s: %02x = %02x (%02x, %02x)", Function ? "WR" : "RD", Address, *Value, (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
+    klog_logln(DEBUG, "ECACC %s: %02x = %02x (%02x, %02x)", Function ? "WR" : "RD", Address, *Value, (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
 
     return status;
 }
@@ -154,13 +152,12 @@ ACPI_STATUS acpi_init()
     ACPI_TABLE_ECDT* ecdt_table;
     ACPI_BUFFER ec_crs;
 
-    acpi_subsys = klog_add_subsystem("ACPI");
-    klog_logln(acpi_subsys, INFO, "Initializing ACPI subsystem");
+    klog_logln(INFO, "Initializing ACPI subsystem");
 
     status = AcpiInitializeSubsystem();
     if(ACPI_FAILURE(status))
     {
-        klog_logln(acpi_subsys, ERROR, "Failed to initialize ACPICA subsystem (%s)", AcpiFormatException(status));
+        klog_logln(ERROR, "Failed to initialize ACPICA subsystem (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -168,7 +165,7 @@ ACPI_STATUS acpi_init()
     status = AcpiReallocateRootTable();
     if(ACPI_FAILURE(status))
     {
-        klog_logln(acpi_subsys, ERROR, "Failed to move root table (%s)", AcpiFormatException(status));
+        klog_logln(ERROR, "Failed to move root table (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -176,7 +173,7 @@ ACPI_STATUS acpi_init()
     status = AcpiLoadTables();
     if(ACPI_FAILURE(status))
     {
-        klog_logln(acpi_subsys, ERROR, "Failed to load tables / build namespace (%s)", AcpiFormatException(status));
+        klog_logln(ERROR, "Failed to load tables / build namespace (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -186,7 +183,7 @@ ACPI_STATUS acpi_init()
     status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
     if(ACPI_FAILURE(status))
     {
-        klog_logln(acpi_subsys, ERROR, "Failed to enable ACPI hardware (%s)", AcpiFormatException(status));
+        klog_logln(ERROR, "Failed to enable ACPI hardware (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -194,11 +191,11 @@ ACPI_STATUS acpi_init()
     status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
     if(ACPI_FAILURE(status))
     {
-        klog_logln(acpi_subsys, ERROR, "Failed to finalize namespace objects (%s)", AcpiFormatException(status));
+        klog_logln(ERROR, "Failed to finalize namespace objects (%s)", AcpiFormatException(status));
         return (status);
     }
 
-    klog_logln(acpi_subsys, DEBUG, "Initializing ACPI EC");
+    klog_logln(DEBUG, "Initializing ACPI EC");
 
     // Procedure for finding embedded controller:
     // 1 - Use ECDT if it exists
@@ -213,7 +210,7 @@ ACPI_STATUS acpi_init()
         status = AcpiGetHandle(NULL, (ACPI_STRING)ecdt_table->Id, &ec_handle);
         if(ACPI_FAILURE(status))
         {
-            klog_logln(acpi_subsys, ERROR, "Failed to get EC handle (%s)", AcpiFormatException(status));
+            klog_logln(ERROR, "Failed to get EC handle (%s)", AcpiFormatException(status));
             goto walk_namespace;
         }
 
@@ -247,7 +244,7 @@ ACPI_STATUS acpi_init()
         }
         else if(ACPI_FAILURE(status))
         {
-            klog_logln(acpi_subsys, ERROR, "Failed to acquire the CRS for the ACPI EC (%s)", AcpiFormatException(status));
+            klog_logln(ERROR, "Failed to acquire the CRS for the ACPI EC (%s)", AcpiFormatException(status));
             goto ec_handle_failed;
         }
 
@@ -269,7 +266,7 @@ ACPI_STATUS acpi_init()
                         ec_context.Data = (unsigned long)crs_res->Data.Io.Minimum;
                     else if(port_index == 1)
                         ec_context.Control = (unsigned long)crs_res->Data.Io.Minimum;
-                    klog_logln(acpi_subsys, DEBUG, "ECIsO: %p -> %p (%x), %ld", &ec_context.Data, ptr, *ptr, (uint32_t)port_index);
+                    klog_logln(DEBUG, "ECIsO: %p -> %p (%x), %ld", &ec_context.Data, ptr, *ptr, (uint32_t)port_index);
                     port_index--;
                     ec_context.IsPortSpace = true;
                     break;
@@ -286,7 +283,7 @@ ACPI_STATUS acpi_init()
                     break;
             }
 
-            klog_logln(acpi_subsys, DEBUG, "ECIO: %x, %x", (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
+            klog_logln(DEBUG, "ECIO: %x, %x", (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
             if(!port_index)
                 break;
 
@@ -302,11 +299,11 @@ ACPI_STATUS acpi_init()
         status = AcpiInstallAddressSpaceHandler(ec_handle, ACPI_ADR_SPACE_EC, acpi_ec_space_handler, NULL, NULL);
         if(ACPI_FAILURE(status))
         {
-            klog_logln(acpi_subsys, ERROR, "Failed to install EC Address Space Handler (%s)", AcpiFormatException(status));
+            klog_logln(ERROR, "Failed to install EC Address Space Handler (%s)", AcpiFormatException(status));
             goto ec_handle_failed;
         }
 
-        klog_logln(acpi_subsys, INFO, "EC AS Handler Initialized (CMD/STS: 0x%02x, DAT: 0x%02x)", ec_context.Control, ec_context.Data);
+        klog_logln(INFO, "EC AS Handler Initialized (CMD/STS: 0x%02x, DAT: 0x%02x)", ec_context.Control, ec_context.Data);
 
         // TODO: Handle EC GPE Event (Last step preventing us from actually handling the EC)
 
@@ -353,7 +350,7 @@ ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)
     Status = AcpiEnterSleepStatePrep(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(acpi_subsys, ERROR, "Error in preparing to enter S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(ERROR, "Error in preparing to enter S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 
@@ -363,7 +360,7 @@ ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)
     Status = AcpiEnterSleepState(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(acpi_subsys, FATAL, "Failed to enter sleep state S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(FATAL, "Failed to enter sleep state S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 
@@ -381,14 +378,14 @@ ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state)
     Status = AcpiLeaveSleepStatePrep(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(acpi_subsys, ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 
     Status = AcpiLeaveSleepState(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(acpi_subsys, ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 
@@ -398,9 +395,4 @@ ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state)
 ACPI_STATUS acpi_reboot()
 {
     return AcpiReset();
-}
-
-uint16_t acpi_subsys_id()
-{
-    return acpi_subsys;
 }

@@ -316,7 +316,7 @@ struct irq_handler* ioapic_handle_irq(uint8_t irq, uint32_t int_flags, irq_funct
     if(!klog_is_init())
         klog_early_logln(INFO, "Handling INT%d using %p", irq, handler);
     else
-        klog_logln(1, INFO, "Handling INT%d using %p", irq, handler);
+        klog_logln(INFO, "Handling INT%d using %p", irq, handler);
     irq_handler->next = NULL;
     irq_handler->interrupt = irq;
     irq_handler->function = handler;

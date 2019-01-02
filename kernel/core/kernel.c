@@ -88,17 +88,17 @@ void idle_loop()
 
 void usermode_entry()
 {
-    klog_logln(1, INFO, "Starting up Usermode thread");
+    klog_logln(INFO, "Starting up Usermode thread");
     void* retaddr = (void*)0x400000;
 
-    klog_logln(1, DEBUG, "Beginning code mapping");
+    klog_logln(DEBUG, "Beginning code mapping");
     mmu_map(retaddr, mm_alloc(1), MMU_ACCESS_RWX | MMU_ACCESS_USER);
 
-    klog_logln(1, DEBUG, "Beginning code copy");
+    klog_logln(DEBUG, "Beginning code copy");
     memcpy(retaddr, &usermode_code, 4096);
     mmu_change_attr(retaddr, MMU_ACCESS_RX | MMU_ACCESS_USER);
 
-    klog_logln(1, DEBUG, "Done code copy");
+    klog_logln(DEBUG, "Done code copy");
     enter_usermode(sched_active_thread(), retaddr);
     while(1) intr_wait();
 }
@@ -297,7 +297,6 @@ void reshow_buf()
 {
     struct klog_entry* entry = (struct klog_entry*)get_klog_base();
     char buffer[128];
-    const char* fmt = "[%u.%u] (%s): ";
     memset(buffer, 0, sizeof(buffer));
 
     while(entry->level != EOL)
@@ -307,7 +306,7 @@ void reshow_buf()
             uint64_t timestamp_secs = entry->timestamp / 1000000000;
             uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
 
-            sprintf(buffer, "[%3llu.%05llu] (%5s): ", timestamp_secs, timestamp_ms, klog_get_name(entry->subsystem_id));
+            sprintf(buffer, "[%3llu.%05llu]: ", timestamp_secs, timestamp_ms);
             tty_puts(tty, buffer);
 
             for(uint16_t i = 0; i < entry->length; i++)
@@ -337,8 +336,8 @@ static void walk_dir(vfs_inode_t* dir, int level)
             continue;
 
         for(int j = 0; j < level; j++)
-            klog_logc(1, INFO, '\t');
-        klog_loglnf(1, INFO, KLOG_FLAG_NO_HEADER, "\\_ %s ", dirent->name);
+            klog_logc(INFO, '\t');
+        klog_loglnf(INFO, KLOG_FLAG_NO_HEADER, "\\_ %s ", dirent->name);
 
         if(dir->type == VFS_TYPE_DIRECTORY)
             walk_dir(node, level + 1);
@@ -347,9 +346,7 @@ static void walk_dir(vfs_inode_t* dir, int level)
 
 void core_fini()
 {
-    uint16_t core_subsystem = klog_add_subsystem("CORE");
-
-    klog_logln(core_subsystem, INFO, "Setting up system calls");
+    klog_logln(INFO, "Setting up system calls");
     syscall_init();
 
     acpi_init();
@@ -367,40 +364,40 @@ void core_fini()
     uint8_t* transfer_buffer = kmalloc(4096);
     int err_code = 0;
 
-    klog_logln(core_subsystem, INFO, "Command: ATAPI READ(12):", err_code);
+    klog_logln(INFO, "Command: ATAPI READ(12):", err_code);
     err_code = atapi_send_command(2, (uint16_t*)read_command, (uint16_t*)transfer_buffer, 4096, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "ErrCode (%d)", err_code);
+    klog_logln(INFO, "ErrCode (%d)", err_code);
 
     // Dump contents
     for(size_t i = 0; i < 2048 && !err_code; i++)
     {
-        klog_logf(core_subsystem, INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
+        klog_logf(INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
         if(i % 16 == 15)
-            klog_logc(core_subsystem, INFO, '\n');
+            klog_logc(INFO, '\n');
     }
 
-    klog_logln(core_subsystem, INFO, "Command: ATAPI START STOP UNIT (LoEJ):");
+    klog_logln(INFO, "Command: ATAPI START STOP UNIT (LoEJ):");
     err_code = atapi_send_command(2, (uint16_t*)eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "ErrCode (%d)", err_code);
+    klog_logln(INFO, "ErrCode (%d)", err_code);
 
-    klog_logln(core_subsystem, INFO, "Command: ATA READ");
+    klog_logln(INFO, "Command: ATA READ");
     err_code = pata_do_transfer(0, 1, (uint16_t*)transfer_buffer, 1, TRANSFER_READ, false, false);
-    klog_logln(core_subsystem, INFO, "ErrCode (%d)", err_code);
+    klog_logln(INFO, "ErrCode (%d)", err_code);
 
     // Dump contents
     for(size_t i = 0; i < 512 && !err_code; i++)
     {
-        klog_logf(core_subsystem, INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
+        klog_logf(INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
         if(i % 16 == 15)
-            klog_logc(core_subsystem, INFO, '\n');
+            klog_logc(INFO, '\n');
     }
 
     vfs_inode_t *root;
     if(initrd_start != 0xDEADBEEF)
     {
-        klog_logln(core_subsystem, INFO, "Setting up initrd");
+        klog_logln(INFO, "Setting up initrd");
         vfs_inode_t* tarfs = tarfs_init((void*)initrd_start, initrd_size);
-        klog_logln(core_subsystem, INFO, "Mounting initrd:");
+        klog_logln(INFO, "Mounting initrd:");
         vfs_mount(tarfs, "/");
         root = vfs_getrootnode("/");
         walk_dir(root, 0);
@@ -409,27 +406,27 @@ void core_fini()
     // TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS
     uint8_t* alloc_test = kmalloc(16);
-    klog_logln(core_subsystem, INFO, "Alloc test: %#p", (uintptr_t)alloc_test);
+    klog_logln(INFO, "Alloc test: %#p", (uintptr_t)alloc_test);
     kfree(alloc_test);
 
     // Part 1: allocation
     uint32_t* laddr = (uint32_t*)0xF0000000;
     unsigned long addr = mm_alloc(1);
-    klog_logln(core_subsystem, INFO, "PAlloc test: Addr0 (%#p)", (uintptr_t)addr);
+    klog_logln(INFO, "PAlloc test: Addr0 (%#p)", (uintptr_t)addr);
 
     // Part 2: Mapping
     mmu_map(laddr, addr, MMU_ACCESS_RW);
     *laddr = 0xbeefb00f;
-    klog_logln(core_subsystem, INFO, "At Addr1 direct map (%#p): %#lx", laddr, *laddr);
+    klog_logln(INFO, "At Addr1 direct map (%#p): %#lx", laddr, *laddr);
 
     // Part 3: Remapping
     mmu_unmap(laddr, true);
     mmu_map(laddr, mm_alloc(1), MMU_ACCESS_RW);
-    klog_logln(core_subsystem, INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
+    klog_logln(INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
     if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 
     {
-        klog_logln(core_subsystem, INFO, "VFS-TEST");
+        klog_logln(INFO, "VFS-TEST");
         vfs_inode_t *blorg;
         vfs_inode_t *blorg_aaa;
 
@@ -441,11 +438,11 @@ void core_fini()
         blorg_aaa = vfs_finddir(root, "/blorg/aaa");
         vfs_finddir(root, "/bork/aaa");
         vfs_finddir(root, "/blorg/aa");
-        klog_logln(core_subsystem, INFO, "VFS-TEST-DONE");
+        klog_logln(INFO, "VFS-TEST-DONE");
     }
 #endif
 
-    klog_logln(core_subsystem, INFO, "Testing ELF parser:");
+    klog_logln(INFO, "Testing ELF parser:");
 
     vfs_inode_t* test_bin = vfs_finddir(root, "usr/bin/test.bin");
     struct elf_data* elf_data;
@@ -455,33 +452,33 @@ void core_fini()
     errno = elf_parse(test_bin, &elf_data);
     if(errno)
     {
-        klog_logln(core_subsystem, ERROR, "Error parsing elf file (ec %d)", errno);
+        klog_logln(ERROR, "Error parsing elf file (ec %d)", errno);
         vfs_close(test_bin);
     }
     else
     {
-        klog_logln(core_subsystem, INFO, "Details:");
+        klog_logln(INFO, "Details:");
 
-        klog_logln(core_subsystem, INFO, "\tVersion: %x",  elf_data->version);
-        klog_logln(core_subsystem, INFO, "\t   Type: %x",  elf_data->type);
-        klog_logln(core_subsystem, INFO, "\t  Flags: %lx", elf_data->flags);
-        klog_logln(core_subsystem, INFO, "\t  Entry: %#p",  elf_data->entry_point);
+        klog_logln(INFO, "\tVersion: %x",  elf_data->version);
+        klog_logln(INFO, "\t   Type: %x",  elf_data->type);
+        klog_logln(INFO, "\t  Flags: %lx", elf_data->flags);
+        klog_logln(INFO, "\t  Entry: %#p",  elf_data->entry_point);
 
-        klog_logln(core_subsystem, INFO, "Program Segments:");
-        klog_logln(core_subsystem, INFO, "\tTYPE      ADDR      SIZE      FLAGS");
-        klog_logln(core_subsystem, INFO, "\t          OFFSET    FSIZE     ALIGN");
+        klog_logln(INFO, "Program Segments:");
+        klog_logln(INFO, "\tTYPE      ADDR      SIZE      FLAGS");
+        klog_logln(INFO, "\t          OFFSET    FSIZE     ALIGN");
 
         for(size_t i = 0; i < elf_data->phnum; i++)
         {
             struct elf_phdr* proghead = &elf_data->phdrs[i];
-            klog_logln(core_subsystem, INFO, "\t%08lx  %08p  %08p  % .3s", proghead->p_type, proghead->p_vaddr, proghead->p_memsz, "R___W_RW___XR_X_WXRWX" + (proghead->p_flags & 7) * 3 - 3);
-            klog_logln(core_subsystem, INFO, "\t\t\t  %08p  %08p  %08p", proghead->p_offset, proghead->p_filesz, proghead->p_align);
+            klog_logln(INFO, "\t%08lx  %08p  %08p  % .3s", proghead->p_type, proghead->p_vaddr, proghead->p_memsz, "R___W_RW___XR_X_WXRWX" + (proghead->p_flags & 7) * 3 - 3);
+            klog_logln(INFO, "\t\t\t  %08p  %08p  %08p", proghead->p_offset, proghead->p_filesz, proghead->p_align);
         }
 
         elf_put(elf_data);
     }
 
-    klog_logln(core_subsystem, INFO, "Finished Kernel Initialisation");
+    klog_logln(INFO, "Finished Kernel Initialisation");
     // reshow_buf();
 
     taskswitch_disable();

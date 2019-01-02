@@ -44,7 +44,6 @@ key_mapping_t *charmap;
 static bool caps_pressed = false;
 static bool is_inited = false;
 static bool has_data = false;
-static uint16_t kbd_subsys;
 
 static void input_push(uint8_t keycode)
 {
@@ -61,18 +60,12 @@ static uint8_t input_pop()
 
 void kbd_init()
 {
-    kbd_subsys = klog_add_subsystem("KBD");
-    klog_logln(kbd_subsys, INFO, "Initialising keyboard driver");
+    klog_logln(INFO, "Initialising keyboard driver");
     charmap = default_charmap;
 
     memset(input_buffer, 0x00, 4096);
     memset(key_states, 0x00, 255);
     is_inited = true;
-}
-
-uint16_t kbd_subsytem_id()
-{
-    return kbd_subsys;
 }
 
 void kbd_write(uint8_t keycode)
