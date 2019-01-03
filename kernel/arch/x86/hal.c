@@ -51,7 +51,7 @@ static struct heap_info heap_context = {
 #if defined(__x86_64__)
     .base=0xFFFF900000000000, .length=0x0000100000000000
 #else
-    .base=0x90000000, .length=0x10000000
+    .base=0xD0000000, .length=0x10000000
 #endif
 };
 

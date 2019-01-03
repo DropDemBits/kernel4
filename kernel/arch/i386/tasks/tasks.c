@@ -29,7 +29,7 @@ extern void bounce_entry();
 
 /****SUPER TEMPORARY ADDRESS ALLOCATION****/
 // #ifndef __K4_VISUAL_STACK__
-static uint32_t alloc_base = 0x88000000;
+static uint32_t alloc_base = 0xC8000000;
 // #else
 // static uint32_t alloc_base = 0xE0080000;
 // #endif

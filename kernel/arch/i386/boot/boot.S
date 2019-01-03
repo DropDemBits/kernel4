@@ -37,7 +37,7 @@
 #define FRAMEBUFFER_HEIGHT  480
 #define FRAMEBUFFER_BPP     16
 
-.set KERNEL_VIRTUAL_BASE, 0x80000000
+.set KERNEL_VIRTUAL_BASE, 0xC0000000
 
 .section .multiboot, "awx"
     # Multiboot2 Header

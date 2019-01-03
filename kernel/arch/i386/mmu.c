@@ -25,6 +25,7 @@
 #include <common/tty/tty.h>
 #include <common/util/kfuncs.h>
 
+#include <arch/iobase.h>
 #include <arch/idt.h>
 #include <stack_state.h>
 
@@ -271,7 +272,7 @@ bool mmu_check_access(void* address, uint32_t flags)
 
 void* mm_get_base()
 {
-    return (void*) 0x88000000;
+    return (void*) MMU_BASE;
 }
 
 paging_context_t* mmu_create_context()

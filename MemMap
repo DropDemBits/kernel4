@@ -1,14 +1,14 @@
 i386 Address Space
 
-0x00000000 - 0x7FFFFFFF Usermode Space
-0x80000000 - 0x83FFFFFF Kernel Code       ( 64 MiB)
-0x84000000 - 0x87FFFFFF Kernel Stacks     ( 64 MiB)
-0x88000000 - 0x8BFFFFFF MMU Space         ( 64 MiB)
-0x8C000000 - 0x8FFFFFFF Kernel Log Buffer ( 64 MiB)
-0x90000000 - 0x9FFFFFFF Heap Space        (256 MiB)
-0xA0000000 - 0xDFFFFFFF **UNUSED**        (  1 GiB)
+0x00000000 - 0xBFFFFFFF Usermode Space
+0xC0000000 - 0xC3FFFFFF Kernel Code       ( 64 MiB)
+0xC4000000 - 0xC7FFFFFF Kernel Stacks     ( 64 MiB)
+0xC8000000 - 0xCBFFFFFF MMU Space         ( 64 MiB)
+0xCC000000 - 0xCFFFFFFF Kernel Log Buffer ( 64 MiB)
+0xD0000000 - 0xDFFFFFFF Heap Space        (256 MiB)
 0xE0000000 - 0xEFFFFFFF Framebuffer       (256 MiB)
-0xF0000000 - 0xFF7FFFFF Device MMIO Space (248 MiB)
+0xF0000000 - 0xF3FFFFFF Temp. initrd      (64 MiB, Reclaimed into Device MMIO)
+0xF4000000 - 0xFF7FFFFF Device MMIO Space (184 MiB)
 0xFF800000 - 0xFFBFFFFF Temporary Mapping (  4 MiB)
 0xFFC00000 - 0xFFFFFFFF Recursive Mapping (  4 MiB)
 
@@ -38,6 +38,7 @@ x86_64 L4 Address Space
 0xFFFF9000_00000000 - 0xFFFF9FFF_FFFFFFFF Heap Space        ( 16 TiB)
 0xFFFFA000_00000000 - 0xFFFFDFFF_FFFFFFFF **UNUSED**        ( 64 TiB)
 0xFFFFE000_00000000 - 0xFFFFEFFF_FFFFFFFF Framebuffer       ( 16 TiB)
-0xFFFFF000_00000000 - 0xFFFFFEFF_FFFFFFFF Device MMIO Space ( 15 TiB)
+0xFFFFF000_00000000 - 0xFFFFF000_03FFFFFF Temp. initrd      ( 64 MiB, Reclaimed into Device MMIO)
+0xFFFFF000_04000000 - 0xFFFFFEFF_FFFFFFFF Device MMIO Space (~15 TiB)
 0xFFFFFF00_00000000 - 0xFFFFFF7F_FFFFFFFF Guest PML4        (512 GiB)
 0xFFFFFF80_00000000 - 0xFFFFFFFF_FFFFFFFF Recursive Mapping (512 GiB)
