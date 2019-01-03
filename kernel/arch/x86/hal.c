@@ -17,10 +17,10 @@
  * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
+#include <common/hal.h>
 
 #include <stdio.h>
 
-#include <common/hal.h>
 #include <common/acpi.h>
 #include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
@@ -34,6 +34,8 @@
 #include <arch/io.h>
 #include <arch/iobase.h>
 #include <stack_state.h>
+
+//TODO: Breakup HAL into more subsystems
 
 #define MAX_TIMERS 64
 

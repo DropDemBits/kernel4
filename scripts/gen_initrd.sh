@@ -3,5 +3,7 @@
 set -e
 echo "Generating initrd"
 mkdir -p initrd/initrd
-cd initrd/files
-find * | pax -w -d -M 0x008F > ../initrd/initrd.tar
+
+cd sysroot
+find * | awk '!/(include)|(lib)|(\.[oha])/' - | pax -w -Ld -M 0x008F > ../initrd/initrd/initrd.tar
+tar -tf ../initrd/initrd/initrd.tar

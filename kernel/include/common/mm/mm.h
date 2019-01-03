@@ -23,6 +23,12 @@
 #ifndef __MM_H__
 #define __MM_H__ 1
 
+#define PAGE_SIZE 4096
+#define PAGE_MASK 0xFFF
+
+#define PAGE_ROUNDUP(x) \
+    (((x) + PAGE_MASK) & ~PAGE_MASK) 
+
 // Access Types
 #define MMU_ACCESS_R                0x00000001  // If not set, indicates the mapping is not active
 #define MMU_ACCESS_W                0x00000002  // Set: Mapping is writeable
@@ -80,6 +86,7 @@ int mmu_map(void* address, unsigned long mapping, uint32_t flags);
 /**
  * @brief  Sets up a new mapping attribute for the mapping specified
  * @note   Implicitly invalidates the page entry for cache reloading
+ *         Also changes the privilage bit on all levels
  * @param  address: The linear address to change the mapping attributes
  * @param  flags: The new attributes to set to
  * @retval See MMU_MAPPING_xxx error codes

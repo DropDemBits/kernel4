@@ -27,6 +27,8 @@ int elf_parse(vfs_inode_t* file, struct elf_data** data)
     if(!elf_arch_checks(header))
         return -EINVAL;
 
+    // More checks need to be done here
+
     // Fill up the elf_data bits
     elf_data->version = header.e_ident[EI_VERSION];
     elf_data->type = header.e_type;
@@ -43,6 +45,7 @@ int elf_parse(vfs_inode_t* file, struct elf_data** data)
     // Parse the elf program headers
     while(phndx < header.e_phnum)
     {
+        // TODO: Validate that the target addresses don't touch kernel space
         vfs_read(file, phoff, header.e_phentsize, &elf_data->phdrs[phndx++]);
         phoff += header.e_phentsize;
     }

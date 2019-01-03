@@ -33,6 +33,7 @@
 #include <common/tty/tty.h>
 #include <common/tty/fb.h>
 #include <common/sched/sched.h>
+#include <common/elf.h>
 
 #include <common/hal.h>
 #include <common/util/kfuncs.h>
@@ -64,6 +65,82 @@ static uint8_t shell_bg_clr = 0x0;
 static tty_dev_t* tty;
 static thread_t *test_wakeup = KNULL;
 static thread_t *refresh_thread = KNULL;
+
+extern void enter_usermode(thread_t* thread, void* entry_addr);
+extern uint32_t initrd_start;
+extern uint32_t initrd_size;
+
+void program_launch(const char* path)
+{
+    klog_logln(INFO, "Launching program %s", path);
+
+    // Temporarily map initrd
+    for(size_t pages = 0; pages < ((initrd_size + 0xFFF) >> 12); pages++)
+    {
+        mmu_map((void*)(initrd_start + (pages << 12)), initrd_start + (pages << 12), MMU_FLAGS_DEFAULT);
+    }
+
+    vfs_inode_t* root = vfs_getrootnode("/");
+    vfs_inode_t* test_bin = vfs_finddir(root, path);
+
+    if(test_bin == NULL)
+    {
+        klog_logln(ERROR, "Error: %s doesn't exist", path);
+        sched_terminate();
+    }
+    
+    struct elf_data* elf_data;
+    int errno = 0;
+
+    klog_logln(DEBUG, "Parsing elf file");
+    vfs_open(test_bin, VFSO_RDONLY);
+    errno = elf_parse(test_bin, &elf_data);
+    if(errno)
+    {
+        klog_logln(ERROR, "Error parsing elf file (ec %d)", errno);
+        vfs_close(test_bin);
+        sched_terminate();
+    }
+
+    // Validation is done, load the program
+    void* entry_point = elf_data->entry_point;
+
+    klog_logln(DEBUG, "Copying elf data");
+    for(size_t i = 0; i < elf_data->phnum; i++)
+    {
+        struct elf_phdr* proghead = &elf_data->phdrs[i];
+
+        if(proghead->p_type != PT_LOAD)
+            continue;   // Only concerned with loding segments right now
+
+        // Map all the pages
+        uint32_t flags = proghead->p_flags;
+        
+        // Flip flag around (RWX -> XWR) and add read flag by default
+        flags = ((flags & PF_X) << 2) | (flags & PF_W) | MMU_ACCESS_R;
+
+        for(size_t off = 0; off < PAGE_ROUNDUP(proghead->p_memsz); off += 0x1000)
+        {
+            // Initially map pages to RW
+            mmu_map((void*)((proghead->p_vaddr + off) & ~PAGE_MASK), mm_alloc(1), MMU_FLAGS_DEFAULT | MMU_ACCESS_USER);
+        }
+
+        // Copy data from the file
+        vfs_read(elf_data->file, proghead->p_offset, proghead->p_filesz, (void*)proghead->p_vaddr);
+
+        for(size_t off = 0; off < PAGE_ROUNDUP(proghead->p_memsz); off += 0x1000)
+        {
+            // Set as the final type
+            mmu_change_attr((void*)(proghead->p_vaddr + off), flags | MMU_ACCESS_USER | MMU_CACHE_WB);
+            klog_logln(DEBUG, "FlgsSet: %x", flags | MMU_ACCESS_USER | MMU_CACHE_WB);
+        }
+    }
+
+    // Last cleanup
+    elf_put(elf_data);
+    klog_logln(DEBUG, "Done code copy");
+    enter_usermode(sched_active_thread(), entry_point);
+}
 
 void wakeup_task()
 {
@@ -361,7 +438,20 @@ static bool shell_parse()
         return true;
     }
 
-    return false;
+    // Try loading a program
+    vfs_inode_t* root = vfs_getrootnode("/");
+    vfs_inode_t* file = vfs_finddir(root, command);
+
+    if(!file)
+    {
+        // File doesn't exist
+        return false;
+    }
+
+    // Placeholder until fork & exec are implemented
+    thread_create(process_create(), (void*)program_launch, PRIORITY_NORMAL, "program", command);
+
+    return true;
 }
 
 void kshell_main()
@@ -388,6 +478,10 @@ void kshell_main()
         "test_wakeup",
         NULL);
 
+    // Temporarily map initrd
+    for(size_t pages = 0; pages < ((initrd_size + 0xFFF) >> 12); pages++)
+        mmu_map((void*)(initrd_start + (pages << 12)), initrd_start + (pages << 12), MMU_FLAGS_DEFAULT);
+
     tty_set_colours(tty, 0xF, 0x0);
     printf("Welcome to K4!\n");
     tty_set_colours(tty, 0x7, 0x0);
@@ -401,7 +495,7 @@ void kshell_main()
         if(!shell_parse())
         {
             tty_set_colours(tty, 0xC, 0x0);
-            printf("%s: command not found\n", input_buffer);
+            printf("%s: executable file or command not found\n", input_buffer);
             puts("Try 'help' or '?' for a list of available commands");
             tty_set_colours(tty, shell_text_clr, shell_bg_clr);
         }

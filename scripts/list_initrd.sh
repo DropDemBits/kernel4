@@ -1,5 +1,5 @@
 #!/bin/sh
 
 set -e
-cd initrd/files
-find *
+cd sysroot
+find * | awk '!/(include)|(lib)|(\.[oha])/' -

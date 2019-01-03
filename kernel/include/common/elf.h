@@ -74,6 +74,11 @@
 #define PT_LOPROC   0x70000000
 #define PT_HIPROC   0x7FFFFFFF
 
+#define PF_X        1
+#define PF_W        2
+#define PF_R        4
+#define PF_MASKPROC 0xf0000000
+
 /** Section Header Related **/
 // Special Indicies
 #define SHN_UNDEF            0

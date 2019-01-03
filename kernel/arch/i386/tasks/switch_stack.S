@@ -160,28 +160,3 @@ set_esp0:
     movl 4(%esp), %edx 
     movl %edx, (tss_begin+4)
     ret
-
-.global usermode_code
-usermode_code:
-
-    # Print out test string
-    xor %eax, %eax
-    movl $1, %eax
-    movl $(strval - usermode_code + 0x400000), %ebx
-    int $0x80
-
-    # Sleep for 1 second
-    xor %eax, %eax
-    movl $2, %eax
-    movl $1000, %ebx
-    int $0x80
-
-    # Yield
-    xor %eax, %eax
-    int $0x80
-    jmp usermode_code
-
-strval:
-    .asciz "Hello World! "
-endcode:
-    .skip 4096 - (endcode - usermode_code)

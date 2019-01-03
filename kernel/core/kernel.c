@@ -50,8 +50,6 @@ extern uint32_t initrd_start;
 extern uint32_t initrd_size;
 extern unsigned long long tswp_counter;
 extern struct thread_queue run_queue;
-extern void enter_usermode(thread_t* thread, void* entry_addr);
-extern void usermode_code();
 
 void core_fini();
 
@@ -84,23 +82,6 @@ void idle_loop()
     }*/
     while(1)
         intr_wait();
-}
-
-void usermode_entry()
-{
-    klog_logln(INFO, "Starting up Usermode thread");
-    void* retaddr = (void*)0x400000;
-
-    klog_logln(DEBUG, "Beginning code mapping");
-    mmu_map(retaddr, mm_alloc(1), MMU_ACCESS_RWX | MMU_ACCESS_USER);
-
-    klog_logln(DEBUG, "Beginning code copy");
-    memcpy(retaddr, &usermode_code, 4096);
-    mmu_change_attr(retaddr, MMU_ACCESS_RX | MMU_ACCESS_USER);
-
-    klog_logln(DEBUG, "Done code copy");
-    enter_usermode(sched_active_thread(), retaddr);
-    while(1) intr_wait();
 }
 
 void info_display()
@@ -205,11 +186,6 @@ void info_display()
         sched_sleep_ms(10);
         show_times = true;
     }
-}
-
-void hallo_entry(char* string)
-{
-    klog_logln(0, INFO, string);
 }
 
 void main_fb_init()
@@ -442,42 +418,6 @@ void core_fini()
     }
 #endif
 
-    klog_logln(INFO, "Testing ELF parser:");
-
-    vfs_inode_t* test_bin = vfs_finddir(root, "usr/bin/test.bin");
-    struct elf_data* elf_data;
-    int errno = 0;
-
-    vfs_open(test_bin, VFSO_RDONLY);
-    errno = elf_parse(test_bin, &elf_data);
-    if(errno)
-    {
-        klog_logln(ERROR, "Error parsing elf file (ec %d)", errno);
-        vfs_close(test_bin);
-    }
-    else
-    {
-        klog_logln(INFO, "Details:");
-
-        klog_logln(INFO, "\tVersion: %x",  elf_data->version);
-        klog_logln(INFO, "\t   Type: %x",  elf_data->type);
-        klog_logln(INFO, "\t  Flags: %lx", elf_data->flags);
-        klog_logln(INFO, "\t  Entry: %#p",  elf_data->entry_point);
-
-        klog_logln(INFO, "Program Segments:");
-        klog_logln(INFO, "\tTYPE      ADDR      SIZE      FLAGS");
-        klog_logln(INFO, "\t          OFFSET    FSIZE     ALIGN");
-
-        for(size_t i = 0; i < elf_data->phnum; i++)
-        {
-            struct elf_phdr* proghead = &elf_data->phdrs[i];
-            klog_logln(INFO, "\t%08lx  %08p  %08p  % .3s", proghead->p_type, proghead->p_vaddr, proghead->p_memsz, "R___W_RW___XR_X_WXRWX" + (proghead->p_flags & 7) * 3 - 3);
-            klog_logln(INFO, "\t\t\t  %08p  %08p  %08p", proghead->p_offset, proghead->p_filesz, proghead->p_align);
-        }
-
-        elf_put(elf_data);
-    }
-
     klog_logln(INFO, "Finished Kernel Initialisation");
     // reshow_buf();
 
@@ -485,8 +425,6 @@ void core_fini()
     process_t *p1 = process_create();
     thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell", NULL);
     thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread", NULL);
-    thread_create(process_create(), (void*)usermode_entry, PRIORITY_NORMAL, "usermode", NULL);
-    thread_create(process_create(), (void*)hallo_entry, PRIORITY_NORMAL, "hallogoodbye", "test_string");
     taskswitch_enable();
 
     // Now we are done, exit thread.

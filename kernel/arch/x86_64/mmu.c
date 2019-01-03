@@ -183,7 +183,7 @@ void pf_handler(struct intr_stack *frame, void* params)
         page_entry_t* entry = get_pte_entry((void*)address);
         kpanic_intr(frame, "Page fault at %p (error code PWUF: %d%d%d%d, PG PWUX: %d%d%d%d)", address,
                     page_error->was_present, page_error->was_write, page_error->was_user, page_error->was_instruction_fetch,
-                    entry->p, entry->rw, entry->su, entry->xd);
+                    entry->p, entry->rw, entry->su, 1 - entry->xd);
     }
 }
 
@@ -265,6 +265,15 @@ int mmu_change_attr(void* address, uint32_t flags)
         get_pdpe_entry(address)->p == 0 ||
         get_pde_entry(address)->p == 0)
         return MMU_MAPPING_ERROR;
+
+    // For user & execute access, change the others too
+    get_pml4e_entry(address)->su = (flags & MMU_ACCESS_USER) >> 3;
+    get_pdpe_entry(address)->su = (flags & MMU_ACCESS_USER) >> 3;
+    get_pde_entry(address)->su = (flags & MMU_ACCESS_USER) >> 3;
+
+    get_pml4e_entry(address)->xd = ((~flags) & MMU_ACCESS_X) >> 2;
+    get_pdpe_entry(address)->xd = ((~flags) & MMU_ACCESS_X) >> 2;
+    get_pde_entry(address)->xd = ((~flags) & MMU_ACCESS_X) >> 2;
 
     get_pte_entry(address)->p =  (flags & MMU_ACCESS_R) >> 0;
     get_pte_entry(address)->rw = (flags & MMU_ACCESS_W) >> 1;

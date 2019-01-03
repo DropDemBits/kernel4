@@ -5,8 +5,8 @@ TARGET_ARCH ?=
 SYSROOT ?=
 BIN_PREFIX := $(SYSROOT)/usr/bin
 
-# Currently, there's no OS toolchain, so don't use the stdlib
-CFLAGS := -ffreestanding -nostdlib
+# Don't use the stdlib
+CFLAGS := -nostdlib
 
 OBJS := \
 	test.o \
@@ -17,7 +17,7 @@ OBJS := \
 	$(CC) $< -o $@ $(CFLAGS)
 
 test.bin: $(OBJS)
-	$(LD) -T arch/$(TARGET_ARCH)/linker.ld $< -o $@
+	$(LD) $< -o $@
 
 all: test.bin
 
