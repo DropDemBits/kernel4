@@ -75,12 +75,6 @@ void program_launch(const char* path)
 {
     klog_logln(INFO, "Launching program %s", path);
 
-    // Temporarily map initrd
-    for(size_t pages = 0; pages < ((initrd_size + 0xFFF) >> 12); pages++)
-    {
-        mmu_map((void*)(initrd_start + (pages << 12)), initrd_start + (pages << 12), MMU_FLAGS_DEFAULT);
-    }
-
     vfs_inode_t* root = vfs_getrootnode("/");
     vfs_inode_t* test_bin = vfs_finddir(root, path);
 
@@ -516,10 +510,6 @@ void kshell_main()
         PRIORITY_NORMAL,
         "test_wakeup",
         NULL);
-
-    // Temporarily map initrd
-    for(size_t pages = 0; pages < ((initrd_size + 0xFFF) >> 12); pages++)
-        mmu_map((void*)(initrd_start + (pages << 12)), initrd_start + (pages << 12), MMU_FLAGS_DEFAULT);
 
     tty_set_colours(tty, 0xF, 0x0);
     printf("Welcome to K4!\n");

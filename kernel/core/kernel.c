@@ -46,6 +46,9 @@
 #include <common/usb/usb.h>
 #include <common/elf.h>
 
+// TODO: Move definitions to more appropriate files
+#include <arch/iobase.h>
+
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
 extern unsigned long long tswp_counter;
@@ -372,7 +375,12 @@ void core_fini()
     if(initrd_start != 0xDEADBEEF)
     {
         klog_logln(INFO, "Setting up initrd");
-        vfs_inode_t* tarfs = tarfs_init((void*)initrd_start, initrd_size);
+        
+        // Map initrd to temporary region
+        for(size_t off = 0; off < PAGE_ROUNDUP(initrd_size) && off < INITRD_SIZE; off += PAGE_SIZE)
+            mmu_map((void*)(INITRD_BASE + off), initrd_start + off, MMU_FLAGS_DEFAULT);
+
+        vfs_inode_t* tarfs = tarfs_init((void*)INITRD_BASE, initrd_size);
         klog_logln(INFO, "Mounting initrd:");
         vfs_mount(tarfs, "/");
         root = vfs_getrootnode("/");

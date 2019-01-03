@@ -414,12 +414,6 @@ vfs_inode_t* tarfs_init(void* address, size_t tar_len)
 {
     if(address == KNULL) return KNULL;
 
-    // Identity map tarfs into address space (Temporary)
-    for(size_t pages = 0; pages < ((tar_len + 0xFFF) >> 12); pages++)
-    {
-        mmu_map((void*)(address + (pages << 12)), (uintptr_t)address + (pages << 12), MMU_FLAGS_DEFAULT);
-    }
-
     struct tar_header *tar_file = (struct tar_header*) address;
     if(strncmp(tar_file->ustar_magic,"ustar",6) != 0)
         return KNULL;
