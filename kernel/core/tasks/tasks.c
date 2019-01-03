@@ -42,8 +42,11 @@ void tasks_init(char* init_name, void* init_entry)
 {
     // Build init process
     init_process.page_context_base = mmu_current_context();
-    init_process.child_threads = KNULL;
-    init_process.child_count = 0;
+    init_process.child = KNULL;
+    init_process.sibling = KNULL;
+    init_process.parent = KNULL;
+    init_process.threads = KNULL;
+    init_process.name = "init";
     init_process.pid = 1;
 
     // Build init thread
@@ -58,35 +61,32 @@ void tasks_init(char* init_name, void* init_entry)
     sched_queue_thread(&init_thread);
 }
 
-process_t* process_create()
+process_t* process_create(const char *name)
 {
     process_t *process = kmalloc(sizeof(process_t));
 
-    process->child_threads = KNULL;
+    process->parent = sched_active_process();
+    process->child = KNULL;
+    process->threads = KNULL;
+    process->sibling = KNULL;
+    process->name = name;
     process->pid = pid_counter++;
-    process->child_count = 0;
     process->page_context_base = mmu_create_context();
+
+    if(process->parent != KNULL)
+    {
+        // Append the process to the head of the parent child list
+        process->sibling = process->parent->child;
+        process->parent->child = process;
+    }
 
     return process;
 }
 
 void process_add_child(process_t *parent, thread_t *child)
 {
-    if(parent->child_threads == KNULL)
-    {
-        parent->child_threads = kcalloc(4, sizeof(thread_t*));
-        if(parent->child_threads == NULL)
-            return;
-
-        parent->child_threads[0] = child;
-        return;
-    } else
-    {
-        if(parent->child_count % 4 == 0)
-            parent->child_threads = krealloc(parent->child_threads, (parent->child_count+4)*sizeof(thread_t*));
-
-        parent->child_threads[parent->child_count++] = child;
-    }
+    child->sibling = parent->threads;
+    parent->threads = child;
 }
 
 thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priority priority, const char* name, void* params)
@@ -117,26 +117,33 @@ void thread_destroy(thread_t *thread)
 {
     if(thread == KNULL) return;
     cleanup_register_state(thread);
-    bool shiftback = false;
-
-    if(thread->parent != KNULL)
-    {
-        for(uint64_t i = 0; i < thread->parent->child_count; i++)
-        {
-            if(shiftback)
-            {
-                thread->parent->child_threads[i-1] = thread->parent->child_threads[i];
-            } else if(thread->parent->child_threads[i] == thread)
-            {
-                thread->parent->child_threads[i] = NULL;
-                shiftback = true;
-            }
-        }
-        thread->parent->child_count--;
-    }
 
     // TODO: Do something with pending messages and senders
     kfree(thread->pending_msgs);
+
+    if(thread->parent != KNULL)
+    {
+        // Push back thread list
+        thread_t* current = thread->parent->threads;
+        thread_t* prev = KNULL;
+
+        while(current != thread)
+        {
+            prev = current;
+            current = current->sibling;
+        }
+
+        if(prev != KNULL)
+            prev->sibling = current->sibling;
+        else
+            thread->parent->threads = current->sibling;
+
+        /*if(thread->parent->threads == KNULL)
+        {
+            // Destroy the process
+            process_destroy(thread->parent);
+        }*/
+    }
 
     kfree(thread);
 }

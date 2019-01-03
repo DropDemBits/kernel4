@@ -178,8 +178,8 @@ ACPI_THREAD_ID AcpiOsGetThreadId()
 ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function, void *Context)
 {
     if(acpid_process == KNULL)
-        acpid_process = process_create();
-    
+        acpid_process = process_create("acpid");
+
     thread_create(acpid_process, Function, PRIORITY_KERNEL, "ACPID Thread", Context);
     return AE_OK;
 }

@@ -422,7 +422,7 @@ void core_fini()
     // reshow_buf();
 
     taskswitch_disable();
-    process_t *p1 = process_create();
+    process_t *p1 = process_create("tui_process");
     thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell", NULL);
     thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread", NULL);
     taskswitch_enable();

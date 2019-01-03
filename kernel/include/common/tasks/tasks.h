@@ -39,8 +39,13 @@ enum thread_priority
 typedef struct process
 {
     unsigned int pid;
-    uint64_t child_count;
-    struct thread **child_threads;
+    struct thread *threads;
+
+    struct process *parent;
+    struct process *sibling;
+    struct process *child;
+
+    const char* name;
 
     // TODO: Do we want to implement separate address spaces for exploit mitigation?
     paging_context_t* page_context_base;
@@ -63,7 +68,9 @@ typedef struct thread
     unsigned int timeslice;
     uint64_t sleep_until;
     enum thread_priority priority;
-    const char* name;
+    const char *name;
+
+    struct thread *sibling;
 
     // Message Passing
     void* pending_msgs; // Avoids circular dependency between message.h and tasks.h
@@ -72,7 +79,7 @@ typedef struct thread
 } thread_t;
 
 void tasks_init(char* init_name, void* init_entry);
-process_t* process_create();
+process_t* process_create(const char *name);
 thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priority priority, const char* name, void* params);
 void thread_destroy(thread_t *thread);
 

@@ -69,6 +69,7 @@ static thread_t *refresh_thread = KNULL;
 extern void enter_usermode(thread_t* thread, void* entry_addr);
 extern uint32_t initrd_start;
 extern uint32_t initrd_size;
+extern process_t init_process;
 
 void program_launch(const char* path)
 {
@@ -187,6 +188,36 @@ static void print_log(uint16_t log_level)
                 tty_putchar(tty, entry->data[i]);
         }
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
+    }
+}
+
+static void print_tree(process_t* process, int level)
+{
+    // Recursively print process tree
+    if(process == KNULL)
+        return;
+    
+    // First print processes (\ )
+    for(int i = 0; i < level; i++)
+        printf("|   ");
+    printf("\\- %s\n", process->name);
+
+    // Print the children
+    process_t* child = process->child;
+    while(child != KNULL)
+    {
+        print_tree(child, level + 1);
+        child = child->sibling;
+    }
+
+    // Then threads (| )
+    thread_t* thread = process->threads;
+    while(thread != KNULL)
+    {
+        for(int i = 0; i < level; i++)
+            printf("|   ");
+        printf("|- %s\n", thread->name);
+        thread = thread->sibling;
     }
 }
 
@@ -333,6 +364,7 @@ static bool shell_parse()
         puts("\t                 \tand above");
         puts("\tshutdown [exit]: \tShuts down the computer");
         puts("\treboot:          \tReboots the computer");
+        puts("\tps:              \tPrints out a list of all processes and threads");
         return true;
     } else if(is_command("fonttest", command))
     {
@@ -437,6 +469,12 @@ static bool shell_parse()
         arch_reboot();
         return true;
     }
+    else if(is_command("ps", command))
+    {
+        // Print the process tree from init
+        print_tree(&init_process, 0);
+        return true;
+    }
 
     // Try loading a program
     vfs_inode_t* root = vfs_getrootnode("/");
@@ -449,7 +487,8 @@ static bool shell_parse()
     }
 
     // Placeholder until fork & exec are implemented
-    thread_create(process_create(), (void*)program_launch, PRIORITY_NORMAL, "program", command);
+    process_t* proc = process_create("program");
+    thread_create(proc, (void*)program_launch, PRIORITY_NORMAL, "thread", command);
 
     return true;
 }
