@@ -317,9 +317,13 @@ static void walk_dir(struct vfs_dir* dir, int level)
             klog_logc(INFO, '\t');
         klog_loglnf(INFO, KLOG_FLAG_NO_HEADER, "\\_ %s ", dirent.name);
 
-        struct vfs_dir* node = vfs_find_dir(dir, dirent.name);
-        if(node != NULL && (dir->instance->get_inode(dir->instance, dir->inode)->type & 7) == VFS_TYPE_DIRECTORY)
-            walk_dir(node, level + 1);
+        if((to_inode(dir)->type & 7) == VFS_TYPE_DIRECTORY)
+        {
+            // Walk through subdirectories
+            struct vfs_dir* node = vfs_find_dir(dir, dirent.name);
+            if(node != NULL)
+                walk_dir(node, level + 1);
+        }
     }
 }
 

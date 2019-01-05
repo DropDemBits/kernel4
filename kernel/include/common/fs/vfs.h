@@ -114,5 +114,6 @@ void vfs_open(vfs_inode_t *file_node, int oflags);
 void vfs_close(vfs_inode_t *file_node);
 struct dirent* vfs_readdir(struct vfs_dir *root, size_t index, struct dirent* dirent);
 struct vfs_dir* vfs_find_dir(struct vfs_dir* root, const char* path);
+vfs_inode_t* to_inode(struct vfs_dir* dnode);
 
 #endif /* __VFS_H__ */

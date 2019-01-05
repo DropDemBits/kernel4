@@ -34,6 +34,7 @@ static struct vfs_mount **vfs_mounts = KNULL;
 struct vfs_dir* vfs_walk_path(struct vfs_dir* base_dir, const char* path)
 {
     struct vfs_dir* dnode = base_dir;
+    struct vfs_dir* vnode = base_dir;
 
     // All paths given are absolute
 
@@ -102,9 +103,15 @@ struct vfs_dir* vfs_walk_path(struct vfs_dir* base_dir, const char* path)
         *current_node = '\0';
     } while(true);
 
+    if((to_inode(dnode)->type & 0x7) != VFS_TYPE_DIRECTORY && *(current_node - 1) == '/')
+        // Slash on the end of a not dir
+        return NULL;
+
     // Somehow, find this file/directory
     dnode = base_dir->dops->find_dir(base_dir, resolved_path);
+
     if(dnode == NULL)
+        // Non-existant
         return NULL;
 
     return dnode;
@@ -188,4 +195,9 @@ struct vfs_dir* vfs_find_dir(struct vfs_dir *root, const char* path)
     if(root == NULL || root == NULL)
         return NULL;
     return vfs_walk_path(root, path);
+}
+
+vfs_inode_t* to_inode(struct vfs_dir* dnode)
+{
+    return dnode->instance->get_inode(dnode->instance, dnode->inode);
 }

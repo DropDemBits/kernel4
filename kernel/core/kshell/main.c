@@ -476,13 +476,13 @@ static bool shell_parse()
     struct vfs_mount* mount = vfs_get_mount("/");
     struct vfs_dir* file = vfs_find_dir(mount->instance->root, command);
 
-    if(!file)
+    // Placeholder until fork & exec are implemented in usermode
+    if(file == NULL || (to_inode(file)->type & 7) != VFS_TYPE_FILE)
     {
-        // File doesn't exist
+        // File doesn't exist or isn't a file
         return false;
     }
 
-    // Placeholder until fork & exec are implemented
     process_t* proc = process_create("program");
     thread_create(proc, (void*)program_launch, PRIORITY_NORMAL, "thread", command);
 
