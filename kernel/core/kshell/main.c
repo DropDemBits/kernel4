@@ -149,13 +149,23 @@ void wakeup_task()
 
 void refresh_task()
 {
+    uint64_t next_refresh_time = 0;
+    const uint64_t refresh_rate = 1000000000 / 60;
+
     while(1)
     {
+        if(timer_read_counter(0) < next_refresh_time)
+            goto keep_waiting;
+        // Don't update too fast (helps prevent tearing)
+        next_refresh_time = timer_read_counter(0) + refresh_rate;
+
         if(tty->refresh_back)
-            fb_fillrect(get_fb_address(), 0, 0, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
+            fb_fillrect(get_fb_address(), 0, 0, tty->width << 3, tty->height << 4, /*tty->current_palette[tty->default_colour.bg_colour]*/ 0);
     
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
         tty_make_clean(tty);
+
+        keep_waiting:
         sched_block_thread(STATE_SUSPENDED);
     }
 }
@@ -236,28 +246,19 @@ static void shell_readline()
         switch(keycode)
         {
             case KEY_UP_ARROW:
-                tty_scroll(tty, -1);
+                tty_scroll(tty, -1, false);
                 break;
             case KEY_DOWN_ARROW:
-                if(tty->display_base < tty->draw_base)
-                    tty_scroll(tty, 1);
+                tty_scroll(tty, 1, false);
                 break;
 
             case KEY_PG_UP:
-                if(((int32_t)tty->display_base - SHELL_SCREEN_SIZE) > (int32_t)tty->scrollback_limit)
-                    // Scroll up an entire screen
-                    tty_scroll(tty, -SHELL_HEIGHT);
-                else if((int32_t)tty->display_base - (int32_t)tty->scrollback_limit > 0)
-                    // Scroll up to the scrollback limit
-                    tty_scroll(tty, -((int32_t)tty->display_base - (int32_t)tty->scrollback_limit) / SHELL_WIDTH);
+                // Scroll up an entire screen
+                tty_scroll(tty, -SHELL_HEIGHT, false);
                 break;
             case KEY_PG_DOWN:
-                if(((int32_t)tty->display_base + SHELL_SCREEN_SIZE) < (int32_t)tty->draw_base)
-                    // Scroll down an entire screen
-                    tty_scroll(tty, SHELL_HEIGHT);
-                else if((int32_t)tty->draw_base - (int32_t)tty->display_base > 0)
-                    // Scroll down to the draw base
-                    tty_scroll(tty, ((int32_t)tty->draw_base - (int32_t)tty->display_base) / SHELL_WIDTH);
+                // Scroll down an entire screen
+                tty_scroll(tty, SHELL_HEIGHT, false);
                 break;
         }
 
@@ -273,7 +274,7 @@ static void shell_readline()
             // is at the beginning of the index buffer
             if((kchr != '\b' && index < INPUT_SIZE) || kchr == '\n' || (kchr == '\b' && index > 0))
             {
-                tty_scroll(tty, 0);
+                tty_scroll(tty, 0, false);
                 putchar(kchr);
             }
 

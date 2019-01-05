@@ -91,9 +91,10 @@ void tty_init(tty_dev_t* tty, uint16_t width, uint16_t height, void* buffer, siz
  *         If the direction is zero, the tty is scrolled to the last drawn line
  * @param  tty: The tty to scroll
  * @param  direction: The direction to scroll by
+ * @param  force: If true, ignores all checks
  * @retval True if the tty was scrolled successfully
  */
-bool tty_scroll(tty_dev_t* tty, int direction);
+bool tty_scroll(tty_dev_t* tty, int direction, bool force);
 
 /**
  * @brief  Moves or sets the cursor's position

@@ -87,7 +87,7 @@ static void putchar_raw(tty_dev_t* tty, const char c, int column_delta)
         if(++(tty->row) >= tty->height)
         {
             tty->row = tty->height - 1;
-            tty_scroll(tty, 1);
+            tty_scroll(tty, 1, true);
         }
     }
 
@@ -136,18 +136,33 @@ void tty_putchar(tty_dev_t* tty, const char c)
 
 // Because display_base is not bounded by buffer size, it will overflow.
 // However, this should not be worrisome if the tty is used for short-term use (on the order of days to years)
-bool tty_scroll(tty_dev_t* tty, int direction)
+bool tty_scroll(tty_dev_t* tty, int direction, bool force)
 {
     bool has_changed = false;
 
-    // Don't scroll if we hit the scrollback limit
+    // Adjust direction so that it'll hit the draw base
+    if((tty->display_base + tty->width * direction) >= tty->draw_base && direction > 0 && !force)
+    {
+        direction = direction - ((tty->display_base + tty->width * direction) - tty->draw_base) / tty->width;
+    }
+    else if((int32_t)(tty->display_base + tty->width * direction - tty->scrollback_limit) <= 0 && direction < 0 && !force)
+    {
+        // Casted to int32_t to allow negative values (beyond scrollback)
+        direction = direction + (tty->scrollback_limit - (tty->display_base + tty->width * direction)) / tty->width;
+
+        // Don't scroll up when there's no change
+        if(direction == 0)
+            return has_changed;
+    }
+
+    // Don't scroll up if we hit the scrollback limit
     if (tty->scrollback_limit == (tty->display_base % tty->buffer_size) &&
-        direction < 0)
+            direction < 0 && !force)
         return has_changed;
 
-    if(tty->draw_base == tty->display_base && direction > 0)
+    else if(tty->draw_base <= tty->display_base && direction > 0)
     {
-        // Move draw base down
+        // Move draw base down (regardless of the conditions)
         tty->draw_base += (tty->width * direction);
     }
 
@@ -160,7 +175,7 @@ bool tty_scroll(tty_dev_t* tty, int direction)
 
     if(direction == 0)
     {
-        // Reshow back if we have just moved
+        // Reshow back if we have just moved to a different position
         has_changed = tty->display_base != tty->draw_base;
         
         // Move display base to draw base
@@ -243,6 +258,7 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
     mutex_acquire(tty->mutex);
 
     uint32_t i = 0;
+    uint32_t limit = 0;
 
     // Draw from the beginning if it was a full redraw
     if(tty->refresh_back)
@@ -250,7 +266,13 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
     else
         i = tty->last_idx;
 
-    for(; i < tty->current_idx || (i < tty->width * tty->height && tty->just_scrolled); i++)
+    // Redraw the entire screen if we've just scrolled and are not at the draw base
+    if(tty->just_scrolled && tty->draw_base != tty->display_base)
+        limit = tty->width * tty->height;
+    else
+        limit = tty->current_idx;
+
+    for(; i < limit; i++)
     {
         int index = (i + tty->display_base) % tty->buffer_size;
 
