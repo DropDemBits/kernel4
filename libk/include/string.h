@@ -21,6 +21,8 @@ __EXPORT_SPEC__ void* strncpy(char* dest, const char* src, size_t num);
 __EXPORT_SPEC__ char* strcat (char* dest, const char* src);
 __EXPORT_SPEC__ char* strncat (char* dest, const char* src, size_t num);
 __EXPORT_SPEC__ const char* strstr (const char* str1, const char* str2);
+__EXPORT_SPEC__ const char* strrchr(const char* str, int chr);
+__EXPORT_SPEC__ const char* strchr(const char* str, int chr);
 
 __EXPORT_SPEC__ size_t strspn(const char* str, const char* delim);
 __EXPORT_SPEC__ char* strtok_r(char* str, const char* delim, char** lasts);

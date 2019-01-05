@@ -18,62 +18,118 @@
  * 
  */
 
+#include <common/fs/vfs.h>
+
 #include <string.h>
 
-#include <common/fs/vfs.h>
 #include <common/mm/mm.h>
 #include <common/mm/liballoc.h>
-
-struct vfs_mount
-{
-    const char* path;
-    vfs_inode_t* root;
-    uint32_t is_root_node : 1;
-    uint32_t path_len;
-};
+#include <common/util/klog.h>
 
 static vfs_inode_t *root_node = KNULL;
 static const char *root_path = KNULL;
 static unsigned int num_mounts;
 static struct vfs_mount **vfs_mounts = KNULL;
 
-void vfs_mount(vfs_inode_t* root_node, const char* path)
+struct vfs_dir* vfs_walk_path(struct vfs_dir* base_dir, const char* path)
 {
-    bool is_root_node = false;
-    if(strcmp(path, "/") == 0)
-        is_root_node = true;
+    struct vfs_dir* dnode = base_dir;
 
+    // All paths given are absolute
+
+    // Walks the path given, returns the appropriate node
+    char resolved_path[MAX_PATHLEN];
+    char *current_node = resolved_path; // Points to current node in resolved path
+    const char *path_node = path;  // Points to current path node
+    size_t len = 0;
+
+    // For every path seperator, do:
+    // IF ., skip to next path seperator
+    // IF .., delete currently pointed path
+    // Find the directory
+    //     IF it doesn't exist, stop immediately (ret NULL)
+
+    resolved_path[0] = '\0';
+    do
+    {
+        path_node += len;
+
+        // Skip slashes
+        while(*path_node == '/')
+            path_node++;
+
+        if(!*path_node)
+            // Done with it
+            break;
+
+        // Get length of the path node
+        const char *path_tail = strchr(path_node, '/');
+
+        if(path_tail != NULL)
+            len = (uintptr_t)(path_tail - path_node);
+        else
+            len = strlen(path_node);
+
+        if(path_node[0] == '.')
+        {
+            if(path_node[1] == '.')
+            {
+                // Deal with going up
+                if(strlen(resolved_path) == 0)
+                    continue;
+                
+                // We are actually going up, so move back a node
+                *(current_node - 1) = '\0';
+                if(strchr(resolved_path, '/') == NULL)
+                {
+                    // Erase the entire path
+                    current_node = resolved_path;
+                    *current_node = '\0';
+                }
+                else
+                {
+                    // Erase the rest
+                    current_node = strrchr(current_node, '/');
+                    current_node++;
+                }
+            }
+        }
+        else
+        {
+            memcpy(current_node, path_node, len+1);
+            current_node += len+1;
+        }
+        *current_node = '\0';
+    } while(true);
+
+    // Somehow, find this file/directory
+    dnode = base_dir->dops->find_dir(base_dir, resolved_path);
+    if(dnode == NULL)
+        return NULL;
+
+    return dnode;
+}
+
+void vfs_mount(struct vfs_fs_instance* root, const char* path)
+{
     if(vfs_mounts == KNULL)
         vfs_mounts = kcalloc(16, sizeof(struct vfs_mount*));
     else if(num_mounts > 16)
         vfs_mounts = krealloc(vfs_mounts, (16+num_mounts)*sizeof(struct vfs_mount*));
 
     vfs_mounts[num_mounts] = kmalloc(sizeof(struct vfs_mount));
+    vfs_mounts[num_mounts]->instance = root;
     vfs_mounts[num_mounts]->path = path;
-    vfs_mounts[num_mounts]->root = root_node;
-    vfs_mounts[num_mounts]->is_root_node = is_root_node;
-    vfs_mounts[num_mounts]->path_len = strlen(path);
     num_mounts++;
 }
 
-vfs_inode_t* vfs_getrootnode(const char* path)
+struct vfs_mount* vfs_get_mount(const char* path)
 {
     for(int i = num_mounts - 1; i > 0; i--)
-        if(strncmp(path, vfs_mounts[i]->path, vfs_mounts[i]->path_len) == 0)
-            return vfs_mounts[i]->root;
+        if(strncmp(path, vfs_mounts[i]->path, strlen(vfs_mounts[i]->path)) == 0)
+            return vfs_mounts[i];
 
-    return vfs_mounts[0]->root;
-}
-
-void vfs_setroot(vfs_inode_t* root_node, const char* path)
-{
-    root_node = root_node;
-    root_path = path;
-}
-
-vfs_inode_t* vfs_getroot()
-{
-    return root_node;
+    return vfs_mounts[0];
 }
 
 ssize_t vfs_read(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
@@ -81,8 +137,8 @@ ssize_t vfs_read(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
     if(file_node == KNULL)
         return -1;
 
-    if(file_node->read != KNULL)
-        return file_node->read(file_node, off, len, buffer);
+    if(file_node->iops->read != NULL)
+        return file_node->iops->read(file_node, off, len, buffer);
     else
         return -1;
 }
@@ -92,8 +148,8 @@ ssize_t vfs_write(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
     if(file_node == KNULL)
         return -1;
 
-    if(file_node->write != KNULL)
-        return file_node->write(file_node, off, len, buffer);
+    if(file_node->iops->write != NULL)
+        return file_node->iops->write(file_node, off, len, buffer);
     else
         return -1;
 }
@@ -103,8 +159,8 @@ void vfs_open(vfs_inode_t *file_node, int oflags)
     if(file_node == KNULL)
         return;
 
-    if(file_node->open != KNULL)
-        file_node->open(file_node, oflags);
+    if(file_node->iops->open != NULL)
+        file_node->iops->open(file_node, oflags);
 }
 
 void vfs_close(vfs_inode_t *file_node)
@@ -112,28 +168,24 @@ void vfs_close(vfs_inode_t *file_node)
     if(root_node == KNULL)
         return;
 
-    if(file_node->close != KNULL)
-        file_node->close(file_node);
+    if(file_node->iops->close != NULL)
+        file_node->iops->close(file_node);
 }
 
-struct vfs_dirent* vfs_readdir(vfs_inode_t *root_node, size_t index)
+struct dirent* vfs_readdir(struct vfs_dir *dnode, size_t index, struct dirent* dirent)
 {
-    if(root_node == KNULL)
+    if(dnode == KNULL)
         return NULL;
 
-    if((root_node->type & 0x7) == VFS_TYPE_DIRECTORY && root_node->readdir != KNULL)
-        return root_node->readdir(root_node, index);
+    if(dnode->dops->read_dir != NULL)
+        return dnode->dops->read_dir(dnode, index, dirent);
     else
         return NULL;
 }
 
-vfs_inode_t* vfs_finddir(vfs_inode_t *root_node, const char* name)
+struct vfs_dir* vfs_find_dir(struct vfs_dir *root, const char* path)
 {
-    if(root_node == NULL || root_node == KNULL)
+    if(root == NULL || root == NULL)
         return NULL;
-
-    if((root_node->type & 0x7) == VFS_TYPE_DIRECTORY && root_node->finddir != KNULL)
-        return root_node->finddir(root_node, name);
-    else
-        return NULL;
+    return vfs_walk_path(root, path);
 }

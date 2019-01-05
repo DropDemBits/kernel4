@@ -298,27 +298,27 @@ void reshow_buf()
     tty_make_clean(tty);
 }
 
-static void walk_dir(vfs_inode_t* dir, int level)
+static void walk_dir(struct vfs_dir* dir, int level)
 {
-    struct vfs_dirent *dirent;
+    struct dirent dirent;
     int i = 0;
 
     if(dir == NULL)
         return;
 
-    while((dirent = vfs_readdir(dir, i++)) != NULL)
+    while(vfs_readdir(dir, i++, &dirent) != NULL)
     {
-        vfs_inode_t* node = vfs_finddir(dir, dirent->name);
-
         // Don't show current or parent directory dots
-        if(!strncmp(dirent->name, ".", 1) || !strncmp(dirent->name, "..", 1))
+        if(!strncmp(dirent.name, ".", 1) || !strncmp(dirent.name, "..", 1))
             continue;
 
+        klog_log(INFO, "");
         for(int j = 0; j < level; j++)
             klog_logc(INFO, '\t');
-        klog_loglnf(INFO, KLOG_FLAG_NO_HEADER, "\\_ %s ", dirent->name);
+        klog_loglnf(INFO, KLOG_FLAG_NO_HEADER, "\\_ %s ", dirent.name);
 
-        if(dir->type == VFS_TYPE_DIRECTORY)
+        struct vfs_dir* node = vfs_find_dir(dir, dirent.name);
+        if(node != NULL && (dir->instance->get_inode(dir->instance, dir->inode)->type & 7) == VFS_TYPE_DIRECTORY)
             walk_dir(node, level + 1);
     }
 }
@@ -350,9 +350,9 @@ void core_fini()
     // Dump contents
     for(size_t i = 0; i < 2048 && !err_code; i++)
     {
-        klog_logf(INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
+        klog_logf(DEBUG, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
         if(i % 16 == 15)
-            klog_logc(INFO, '\n');
+            klog_logc(DEBUG, '\n');
     }
 
     klog_logln(INFO, "Command: ATAPI START STOP UNIT (LoEJ):");
@@ -371,7 +371,7 @@ void core_fini()
             klog_logc(INFO, '\n');
     }
 
-    vfs_inode_t *root;
+    struct vfs_mount *root;
     if(initrd_start != 0xDEADBEEF)
     {
         klog_logln(INFO, "Setting up initrd");
@@ -380,11 +380,12 @@ void core_fini()
         for(size_t off = 0; off < PAGE_ROUNDUP(initrd_size) && off < INITRD_SIZE; off += PAGE_SIZE)
             mmu_map((void*)(INITRD_BASE + off), initrd_start + off, MMU_FLAGS_DEFAULT);
 
-        vfs_inode_t* tarfs = tarfs_init((void*)INITRD_BASE, initrd_size);
+        struct vfs_fs_instance* tarfs = tarfs_init((void*)INITRD_BASE, initrd_size);
         klog_logln(INFO, "Mounting initrd:");
         vfs_mount(tarfs, "/");
-        root = vfs_getrootnode("/");
-        walk_dir(root, 0);
+        root = vfs_get_mount("/");
+        klog_logln(INFO, "Walking initrd:");
+        walk_dir(root->instance->root, 0);
     }
 
     // TODO: Wrap into a separate test file

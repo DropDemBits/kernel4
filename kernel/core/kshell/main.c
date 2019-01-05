@@ -75,25 +75,26 @@ void program_launch(const char* path)
 {
     klog_logln(INFO, "Launching program %s", path);
 
-    vfs_inode_t* root = vfs_getrootnode("/");
-    vfs_inode_t* test_bin = vfs_finddir(root, path);
+    struct vfs_mount* mount = vfs_get_mount("/");
+    struct vfs_dir* dnode = vfs_find_dir(mount->instance->root, path);
 
-    if(test_bin == NULL)
+    if(dnode == NULL)
     {
         klog_logln(ERROR, "Error: %s doesn't exist", path);
         sched_terminate();
     }
     
+    vfs_inode_t* inode = dnode->instance->get_inode(dnode->instance, dnode->inode);
     struct elf_data* elf_data;
     int errno = 0;
 
     klog_logln(DEBUG, "Parsing elf file");
-    vfs_open(test_bin, VFSO_RDONLY);
-    errno = elf_parse(test_bin, &elf_data);
+    vfs_open(inode, VFSO_RDONLY);
+    errno = elf_parse(inode, &elf_data);
     if(errno)
     {
         klog_logln(ERROR, "Error parsing elf file (ec %d)", errno);
-        vfs_close(test_bin);
+        vfs_close(inode);
         sched_terminate();
     }
 
@@ -471,8 +472,8 @@ static bool shell_parse()
     }
 
     // Try loading a program
-    vfs_inode_t* root = vfs_getrootnode("/");
-    vfs_inode_t* file = vfs_finddir(root, command);
+    struct vfs_mount* mount = vfs_get_mount("/");
+    struct vfs_dir* file = vfs_find_dir(mount->instance->root, command);
 
     if(!file)
     {

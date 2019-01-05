@@ -51,6 +51,8 @@ string/strupr.o \
 string/strstr.o \
 string/strcat.o \
 string/strncat.o \
+string/strrchr.o \
+string/strchr.o \
 ctype/ctype.o \
 
 BIN_PREFIX := bin/$(TARGET_ARCH)/
