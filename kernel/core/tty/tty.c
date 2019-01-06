@@ -275,13 +275,14 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
     for(; i < limit; i++)
     {
         int index = (i + tty->display_base) % tty->buffer_size;
+        char printchar = tty->buffer_base[index].actual_char;
 
-        if(tty->buffer_base[index].actual_char == 0 || tty->buffer_base[index].actual_char == '\t')
+        if(printchar == 0 || printchar == '\t')
         {
             // Skip null and tab bytes
             continue;
         }
-        else if(tty->buffer_base[index].actual_char == '\n')
+        else if(printchar == '\n')
         {
             // Move onto next line
             i += tty->width - (i % tty->width) - 1;
@@ -291,7 +292,7 @@ void tty_reshow_fb(tty_dev_t* tty, void* fb_base, uint16_t x, uint16_t y)
         fb_fill_putchar(fb_base,
                     ((i % tty->width) << 3) + x,
                     ((i / tty->width) << 4) + y,
-                    tty->buffer_base[index].actual_char,
+                    printchar,
                     tty->current_palette[tty->buffer_base[index].colour.fg_colour],
                     tty->current_palette[tty->buffer_base[index].colour.bg_colour]);
     }

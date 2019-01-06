@@ -59,31 +59,6 @@ void core_fini();
 
 void idle_loop()
 {
-    /*const int x_off = 0;
-    const int y_off = 25 << 4;
-    const int buffer_size = 80*5*2;
-
-    uint16_t* buffer = kmalloc(buffer_size);
-    tty_dev_t* tty = kmalloc(sizeof(tty_dev_t));
-
-    tty_init(tty, 80, 5, buffer, buffer_size, NULL);
-    tty_set_colours(tty, 0xC, 0x0);
-
-    while(1)
-    {
-        tty_set_cursor(tty, 0, 0, false);
-
-        // Divider
-        for(int i = 0; i < tty->width; i++)
-            tty_putchar(tty, '-');
-
-        // Force reshow all
-        tty->refresh_back = true;
-        tty_reshow_fb(tty, get_fb_address(), x_off, y_off);
-        tty_make_clean(tty);
-        tty_clear(tty, true);
-        intr_wait();
-    }*/
     while(1)
         intr_wait();
 }
@@ -230,7 +205,6 @@ void main_fb_init()
 }
 
 extern process_t init_process;
-static tty_dev_t* tty = NULL;
 void kmain()
 {
     klog_early_init();
@@ -262,8 +236,6 @@ void kmain()
     klog_early_logln(DEBUG, "Entering threaded init");
 
     klog_init();
-    tty = kmalloc(sizeof(tty_dev_t));
-    tty_init(tty, 80, 25, kmalloc(80*25*2), 80*25*2, NULL);
 
     while(1)
     {
@@ -271,32 +243,6 @@ void kmain()
         sched_switch_thread();
         sched_unlock();
     }
-}
-
-void reshow_buf()
-{
-    struct klog_entry* entry = (struct klog_entry*)get_klog_base();
-    char buffer[128];
-    memset(buffer, 0, sizeof(buffer));
-
-    while(entry->level != EOL)
-    {
-        if(entry->level >= DEBUG)
-        {
-            uint64_t timestamp_secs = entry->timestamp / 1000000000;
-            uint64_t timestamp_ms = (entry->timestamp / 1000000) % 100000;
-
-            sprintf(buffer, "[%3llu.%05llu]: ", timestamp_secs, timestamp_ms);
-            tty_puts(tty, buffer);
-
-            for(uint16_t i = 0; i < entry->length; i++)
-                tty_putchar(tty, entry->data[i]);
-        }
-        entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
-    }
-
-    tty_reshow_fb(tty, get_fb_address(), 0, 0);
-    tty_make_clean(tty);
 }
 
 void walk_dir(struct dnode* dir, int level)
@@ -395,10 +341,8 @@ void core_fini()
         struct fs_instance* ttyfs = ttyfs_create();
         vfs_mount(ttyfs, "/dev");
 
-        ttyfs_add_tty(ttyfs, tty, "tty0");
-
-        klog_logln(INFO, "Walking tree:");
-        //walk_dir(root->instance->root, 0);
+        klog_logln(INFO, "Walking dir tree:");
+        walk_dir(root->instance->root, 0);
     }
 
     // TODO: Wrap into a separate test file
@@ -441,7 +385,6 @@ void core_fini()
 #endif
 
     klog_logln(INFO, "Finished Kernel Initialisation");
-    // reshow_buf();
 
     taskswitch_disable();
     process_t *p1 = process_create("tui_process");

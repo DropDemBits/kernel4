@@ -161,7 +161,7 @@ void refresh_task()
         next_refresh_time = timer_read_counter(0) + refresh_rate;
 
         if(tty->refresh_back)
-            fb_fillrect(get_fb_address(), 0, 0, tty->width << 3, tty->height << 4, /*tty->current_palette[tty->default_colour.bg_colour]*/ 0);
+            fb_fillrect(get_fb_address(), 0, 0, tty->width << 3, tty->height << 4, tty->current_palette[tty->default_colour.bg_colour]);
     
         tty_reshow_fb(tty, get_fb_address(), 0, 0);
         tty_make_clean(tty);
@@ -490,7 +490,6 @@ static bool shell_parse()
     return true;
 }
 
-extern void walk_dir(struct dnode* dir, int level);
 void kshell_main()
 {
     uint16_t* buffer = kmalloc(SHELL_SCREEN_SIZE * SHELL_SCREENS * 2);
@@ -524,7 +523,6 @@ void kshell_main()
 
     // Add our tty to the list of ttys (temporary)
     ttyfs_add_tty((struct ttyfs_instance*)(vfs_get_mount("/dev")->instance), tty, "tty1");
-    walk_dir(vfs_get_mount("/")->instance->root, 0);
 
     while(should_run)
     {
