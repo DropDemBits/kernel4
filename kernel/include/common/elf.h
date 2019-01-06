@@ -280,7 +280,7 @@ struct elf_data
     size_t phnum;
 
     struct elf_phdr* phdrs;
-    vfs_inode_t* file;  // File associated with the elf data
+    struct inode* file;  // File associated with the elf data
 };
 
 /**
@@ -291,7 +291,7 @@ struct elf_data
  * @param data A pointer where the data structure will be put into
  * @return int 0 if successful, non-zero otherwise 
  */
-int elf_parse(vfs_inode_t* file, struct elf_data** data);
+int elf_parse(struct inode* file, struct elf_data** data);
 
 /**
  * @brief Frees the elf data structure given

@@ -23,6 +23,6 @@
 #ifndef __TARFS_H__
 #define __TARFS_H__
 
-struct vfs_fs_instance* tarfs_init(void* address, size_t tarlen);
+struct fs_instance* tarfs_init(void* address, size_t tarlen);
 
 #endif /* __TARFS_H__ */

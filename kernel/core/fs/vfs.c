@@ -26,15 +26,16 @@
 #include <common/mm/liballoc.h>
 #include <common/util/klog.h>
 
-static vfs_inode_t *root_node = KNULL;
+static struct inode *root_node = KNULL;
 static const char *root_path = KNULL;
 static unsigned int num_mounts;
 static struct vfs_mount **vfs_mounts = KNULL;
 
-struct vfs_dir* vfs_walk_path(struct vfs_dir* base_dir, const char* path)
+static struct vfs_mount *root_mount = KNULL;
+
+struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
 {
-    struct vfs_dir* dnode = base_dir;
-    struct vfs_dir* vnode = base_dir;
+    struct dnode* dnode = base_dir;
 
     // All paths given are absolute
 
@@ -60,8 +61,14 @@ struct vfs_dir* vfs_walk_path(struct vfs_dir* base_dir, const char* path)
             path_node++;
 
         if(!*path_node)
+        {
+            // Check for last slash on a non-dir
+            if((to_inode(dnode)->type & 0x7) != VFS_TYPE_DIRECTORY && *(path_node - 1) == '/')
+                return NULL;
+
             // Done with it
             break;
+        }
 
         // Get length of the path node
         const char *path_tail = strchr(path_node, '/');
@@ -75,6 +82,10 @@ struct vfs_dir* vfs_walk_path(struct vfs_dir* base_dir, const char* path)
         {
             if(path_node[1] == '.')
             {
+                if(dnode->parent != NULL)
+                    // Rebase to parent
+                    dnode = dnode->parent;
+
                 // Deal with going up
                 if(strlen(resolved_path) == 0)
                     continue;
@@ -93,53 +104,95 @@ struct vfs_dir* vfs_walk_path(struct vfs_dir* base_dir, const char* path)
                     current_node = strrchr(current_node, '/');
                     current_node++;
                 }
+
+                // Skip path lookup, move to next component
+                continue;
             }
         }
         else
         {
+            // Copy path component
             memcpy(current_node, path_node, len+1);
             current_node += len+1;
         }
+
         *current_node = '\0';
+
+        klog_logln(DEBUG, "lkup: %s", current_node - len - 1);
+        // Lookup & rebase
+        dnode = dnode->dops->find_dir(dnode, current_node - len - 1);
+
+        if(dnode == NULL)
+            return NULL;
+
+        if((dnode->inode->type & VFS_TYPE_MOUNT) != 0)
+        {
+            // We have found a mount point, jump to it
+            dnode = dnode->inode->symlink_ptr->instance->root;
+        }
+
     } while(true);
-
-    if((to_inode(dnode)->type & 0x7) != VFS_TYPE_DIRECTORY && *(current_node - 1) == '/')
-        // Slash on the end of a not dir
-        return NULL;
-
-    // Somehow, find this file/directory
-    dnode = base_dir->dops->find_dir(base_dir, resolved_path);
-
-    if(dnode == NULL)
-        // Non-existant
-        return NULL;
 
     return dnode;
 }
 
-void vfs_mount(struct vfs_fs_instance* root, const char* path)
+void vfs_mount(struct fs_instance* root, const char* path)
 {
-    if(vfs_mounts == KNULL)
-        vfs_mounts = kcalloc(16, sizeof(struct vfs_mount*));
-    else if(num_mounts > 16)
-        vfs_mounts = krealloc(vfs_mounts, (16+num_mounts)*sizeof(struct vfs_mount*));
-
-    vfs_mounts[num_mounts] = kmalloc(sizeof(struct vfs_mount));
-    vfs_mounts[num_mounts]->instance = root;
-    vfs_mounts[num_mounts]->path = path;
+    struct vfs_mount* mount = kmalloc(sizeof(struct vfs_mount));
+    mount->instance = root;
+    mount->path = path;
+    mount->next = NULL;
     num_mounts++;
+
+    if(root_mount == KNULL)
+    {
+        // Make this mount the new root
+        root_mount = mount;
+    }
+    else
+    {
+        // Go through & attach it to the correct node
+        struct dnode *parent_root = vfs_walk_path(root_mount->instance->root, path);
+
+        if(parent_root == NULL)
+        {
+            // Directory is non-existant
+            klog_logln(ERROR, "Unable to mount fs to %s", path);
+            kfree(mount);
+            return;
+        }
+
+        // Attach inode to root of new fs
+        parent_root->inode->symlink_ptr = root->root->inode;
+        parent_root->inode->type |= VFS_TYPE_MOUNT;
+
+        // Link root back up
+        root->root->parent = parent_root;
+
+        // Add to the list of mounts
+        mount->next = root_mount->next;
+        root_mount->next = mount;
+    }
 }
 
 struct vfs_mount* vfs_get_mount(const char* path)
 {
-    for(int i = num_mounts - 1; i > 0; i--)
-        if(strncmp(path, vfs_mounts[i]->path, strlen(vfs_mounts[i]->path)) == 0)
-            return vfs_mounts[i];
+    if(strcmp(path, "/") == 0)
+        // Quick exit
+        return root_mount;
 
-    return vfs_mounts[0];
+    // Search through all the mounts for a path
+    for(struct vfs_mount* mount = root_mount->next; mount != NULL; mount = mount->next)
+    {
+        if(strcmp(mount->path, path) == 0)
+            return mount;
+    }
+
+    // None found
+    return NULL;
 }
 
-ssize_t vfs_read(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
+ssize_t vfs_read(struct inode *file_node, size_t off, size_t len, void* buffer)
 {
     if(file_node == KNULL)
         return -1;
@@ -150,7 +203,7 @@ ssize_t vfs_read(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
         return -1;
 }
 
-ssize_t vfs_write(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
+ssize_t vfs_write(struct inode *file_node, size_t off, size_t len, void* buffer)
 {
     if(file_node == KNULL)
         return -1;
@@ -161,7 +214,7 @@ ssize_t vfs_write(vfs_inode_t *file_node, size_t off, size_t len, void* buffer)
         return -1;
 }
 
-void vfs_open(vfs_inode_t *file_node, int oflags)
+void vfs_open(struct inode *file_node, int oflags)
 {
     if(file_node == KNULL)
         return;
@@ -170,7 +223,7 @@ void vfs_open(vfs_inode_t *file_node, int oflags)
         file_node->iops->open(file_node, oflags);
 }
 
-void vfs_close(vfs_inode_t *file_node)
+void vfs_close(struct inode *file_node)
 {
     if(root_node == KNULL)
         return;
@@ -179,7 +232,7 @@ void vfs_close(vfs_inode_t *file_node)
         file_node->iops->close(file_node);
 }
 
-struct dirent* vfs_readdir(struct vfs_dir *dnode, size_t index, struct dirent* dirent)
+struct dirent* vfs_readdir(struct dnode *dnode, size_t index, struct dirent* dirent)
 {
     if(dnode == KNULL)
         return NULL;
@@ -190,14 +243,14 @@ struct dirent* vfs_readdir(struct vfs_dir *dnode, size_t index, struct dirent* d
         return NULL;
 }
 
-struct vfs_dir* vfs_find_dir(struct vfs_dir *root, const char* path)
+struct dnode* vfs_find_dir(struct dnode *root, const char* path)
 {
     if(root == NULL || root == NULL)
         return NULL;
     return vfs_walk_path(root, path);
 }
 
-vfs_inode_t* to_inode(struct vfs_dir* dnode)
+struct inode* to_inode(struct dnode* dnode)
 {
-    return dnode->instance->get_inode(dnode->instance, dnode->inode);
+    return dnode->inode;
 }

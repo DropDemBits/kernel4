@@ -21,10 +21,10 @@ semaphore_t* semaphore_create(long max_count)
 void semaphore_destroy(semaphore_t* semaphore)
 {
     // Release the semaphores
+    taskswitch_disable();
     while(semaphore->count > 0)
         semaphore_release(semaphore);
     
-    taskswitch_disable();
     kfree(semaphore);
     taskswitch_enable();
 }

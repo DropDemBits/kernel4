@@ -38,6 +38,7 @@
 #include <common/hal.h>
 #include <common/util/kfuncs.h>
 #include <common/io/uart.h>
+#include <common/fs/ttyfs.h>
 
 /*
  * KSHELL: Basic command line interface
@@ -76,7 +77,7 @@ void program_launch(const char* path)
     klog_logln(INFO, "Launching program %s", path);
 
     struct vfs_mount* mount = vfs_get_mount("/");
-    struct vfs_dir* dnode = vfs_find_dir(mount->instance->root, path);
+    struct dnode* dnode = vfs_find_dir(mount->instance->root, path);
 
     if(dnode == NULL)
     {
@@ -84,7 +85,7 @@ void program_launch(const char* path)
         sched_terminate();
     }
     
-    vfs_inode_t* inode = dnode->instance->get_inode(dnode->instance, dnode->inode);
+    struct inode* inode = dnode->inode;
     struct elf_data* elf_data;
     int errno = 0;
 
@@ -474,7 +475,7 @@ static bool shell_parse()
 
     // Try loading a program
     struct vfs_mount* mount = vfs_get_mount("/");
-    struct vfs_dir* file = vfs_find_dir(mount->instance->root, command);
+    struct dnode* file = vfs_find_dir(mount->instance->root, command);
 
     // Placeholder until fork & exec are implemented in usermode
     if(file == NULL || (to_inode(file)->type & 7) != VFS_TYPE_FILE)
@@ -489,6 +490,7 @@ static bool shell_parse()
     return true;
 }
 
+extern void walk_dir(struct dnode* dir, int level);
 void kshell_main()
 {
     uint16_t* buffer = kmalloc(SHELL_SCREEN_SIZE * SHELL_SCREENS * 2);
@@ -519,6 +521,10 @@ void kshell_main()
 
     input_buffer = kmalloc(INPUT_SIZE+1);
     memset(input_buffer, 0x00, INPUT_SIZE+1);
+
+    // Add our tty to the list of ttys (temporary)
+    ttyfs_add_tty((struct ttyfs_instance*)(vfs_get_mount("/dev")->instance), tty, "tty1");
+    walk_dir(vfs_get_mount("/")->instance->root, 0);
 
     while(should_run)
     {

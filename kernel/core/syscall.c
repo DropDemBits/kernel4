@@ -2,6 +2,8 @@
 
 #include <common/syscall.h>
 #include <common/sched/sched.h>
+#include <common/fs/vfs.h>
+#include <common/util/klog.h>
 
 syscall_func_t syscalls[NR_SYSCALLS];
 
@@ -15,7 +17,19 @@ syscall_ret syscall_yield(struct syscall_args* frame)
 
 syscall_ret syscall_print(struct syscall_args* frame)
 {
-    return printf((char*)frame->arg1);
+    // TODO: TEMP Acqure tty file & write to it
+    // TODO: Replace with acquiring filedesc & calling write
+    struct vfs_mount *mount = vfs_get_mount("/");
+    if(mount == NULL)
+        return -1;
+
+    struct dnode *tty = vfs_find_dir(mount->instance->root, "/dev/tty1");
+
+    // Oppsie
+    if(tty == NULL)
+        return -1;
+
+    return vfs_write(tty->inode, 0, strlen(frame->arg1), frame->arg1);
 }
 
 syscall_ret syscall_sleep(struct syscall_args* frame)

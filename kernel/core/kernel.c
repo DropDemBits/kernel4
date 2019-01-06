@@ -39,8 +39,9 @@
 #include <common/mm/mm.h>
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
-#include <common/fs/tarfs.h>
 #include <common/fs/vfs.h>
+#include <common/fs/tarfs.h>
+#include <common/fs/ttyfs.h>
 #include <common/tty/fb.h>
 #include <common/tty/tty.h>
 #include <common/usb/usb.h>
@@ -298,7 +299,7 @@ void reshow_buf()
     tty_make_clean(tty);
 }
 
-static void walk_dir(struct vfs_dir* dir, int level)
+void walk_dir(struct dnode* dir, int level)
 {
     struct dirent dirent;
     int i = 0;
@@ -314,13 +315,14 @@ static void walk_dir(struct vfs_dir* dir, int level)
 
         klog_log(INFO, "");
         for(int j = 0; j < level; j++)
-            klog_logc(INFO, '\t');
-        klog_loglnf(INFO, KLOG_FLAG_NO_HEADER, "\\_ %s ", dirent.name);
+            klog_logf(INFO, KLOG_FLAG_NO_HEADER, "|  ");
+
+        klog_loglnf(INFO, KLOG_FLAG_NO_HEADER, "|_ %s ", dirent.name);
 
         if((to_inode(dir)->type & 7) == VFS_TYPE_DIRECTORY)
         {
             // Walk through subdirectories
-            struct vfs_dir* node = vfs_find_dir(dir, dirent.name);
+            struct dnode* node = vfs_find_dir(dir, dirent.name);
             if(node != NULL)
                 walk_dir(node, level + 1);
         }
@@ -384,12 +386,19 @@ void core_fini()
         for(size_t off = 0; off < PAGE_ROUNDUP(initrd_size) && off < INITRD_SIZE; off += PAGE_SIZE)
             mmu_map((void*)(INITRD_BASE + off), initrd_start + off, MMU_FLAGS_DEFAULT);
 
-        struct vfs_fs_instance* tarfs = tarfs_init((void*)INITRD_BASE, initrd_size);
+        struct fs_instance* tarfs = tarfs_init((void*)INITRD_BASE, initrd_size);
         klog_logln(INFO, "Mounting initrd:");
         vfs_mount(tarfs, "/");
         root = vfs_get_mount("/");
-        klog_logln(INFO, "Walking initrd:");
-        walk_dir(root->instance->root, 0);
+
+        klog_logln(INFO, "Mounting ttyfs:");
+        struct fs_instance* ttyfs = ttyfs_create();
+        vfs_mount(ttyfs, "/dev");
+
+        ttyfs_add_tty(ttyfs, tty, "tty0");
+
+        klog_logln(INFO, "Walking tree:");
+        //walk_dir(root->instance->root, 0);
     }
 
     // TODO: Wrap into a separate test file
@@ -416,8 +425,8 @@ void core_fini()
 
     {
         klog_logln(INFO, "VFS-TEST");
-        vfs_inode_t *blorg;
-        vfs_inode_t *blorg_aaa;
+        struct inode *blorg;
+        struct inode *blorg_aaa;
 
         blorg = vfs_finddir(root, "blorg/");
         blorg = vfs_finddir(root, "blorg");

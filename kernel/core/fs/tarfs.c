@@ -29,28 +29,7 @@
 #define ROOT_INODE 1
 #define NODE_LIST_BASE (ROOT_INODE + 1)
 #define NUM_NODES   64
-#define NUM_DIRS    64
 #define NUM_PREALLOC_DIRENTS 16
-
-/*
-typedef struct vfs_inode {
-    // name in dirent
-    uint32_t perms_mask : 12; // Access permissions
-    uint32_t type : 4; // Node type
-    uint32_t uid;    // User ID
-    uint32_t gid;    // Group ID
-    uint32_t size;    // Size in bytes
-    ino_t fs_inode; // Associated fs inode
-    vfs_read_func_t read;
-    vfs_write_func_t write;
-    vfs_open_func_t open;
-    vfs_close_func_t close;
-    vfs_readdir_func_t readdir;
-    vfs_finddir_func_t finddir;
-    uint32_t impl_specific; // VFS-impl specific value (dnode)
-    struct vfs_inode* ptr;
-} vfs_inode_t;
-*/
 
 struct tar_header
 {
@@ -75,36 +54,20 @@ struct tar_header
     char padding[12];
 };
 
-struct tar_dir
-{
-    char* base_path;            // Base Path of directory
-    struct dirent* dirents; // Directory entries for subdirs
-    size_t num_dirents;         // Number of dirents
-    ino_t real_inode;           // Inode of associated dir
-};
+// Generic file handling
+extern struct dirent* default_dnode_readdir(struct dnode *dnode, size_t index, struct dirent* dirent);
+extern struct dnode* default_dnode_finddir(struct dnode *dnode, const char* path);
+extern ssize_t default_write(struct inode *file_node, size_t off, size_t len, void* buffer);
+extern void default_open(struct inode *file_node, int oflags);
+extern void default_close(struct inode *file_node);
 
-static struct vfs_dir* root_dir;
-static vfs_inode_t* root_node;
-static vfs_inode_t* node_list[NUM_NODES];
+static struct dnode* root_dir;
+static struct inode* root_node;
+static struct inode* node_list[NUM_NODES];
 static struct tar_header *node_data[NUM_NODES];
 static size_t num_nodes = 0;
 
-static struct tar_dir node_dirs[NUM_DIRS];
-static size_t num_dirs = 0;
-
-static unsigned int getsize(const char *in)
-{
-    unsigned int size = 0;
-    unsigned int j;
-    unsigned int count = 1;
-
-    for (j = 11; j > 0; j--, count *= 8)
-        size += ((in[j - 1] - '0') * count);
-
-    return size;
-}
-
-static vfs_inode_t* get_inode(struct vfs_fs_instance *instance, ino_t inode)
+static struct inode* get_inode(struct fs_instance *instance, ino_t inode)
 {
     if(inode == 0)
         return NULL;        // Bad inode
@@ -112,51 +75,6 @@ static vfs_inode_t* get_inode(struct vfs_fs_instance *instance, ino_t inode)
         return root_node;   // Get the root inode
     
     return node_list[inode - NODE_LIST_BASE];
-}
-
-static struct vfs_dir* find_dir(struct vfs_dir *base, char* path)
-{
-    if(base == NULL || path == NULL)
-        return NULL;
-
-    // Walk through all dirs, starting at the base dir
-    char path_components[MAX_PATHLEN];
-    char *component = NULL, *last = NULL;
-    struct vfs_dir* dir = base;
-
-    memcpy(path_components, path, strlen(path));
-    path_components[strlen(path)] = '\0';
-
-    // Check if root is the target dir
-    if(strcmp(path, dir->name) == 0)
-        return dir;
-
-    component = strtok_r(path_components, "/", &last);
-
-    // Root isn't target dir, so continue
-    do
-    {
-        bool found_path = false;
-
-        for(struct vfs_dir *child = dir->subdirs; child != NULL; child = child->next)
-        {
-            if(strcmp(child->name, component) == 0)
-            {
-                dir = child;
-                found_path = true;
-                break;
-            }
-        }
-
-        if(found_path)
-            continue;
-
-        // No match found, so exit
-        dir = NULL;
-        break;
-    } while((component = strtok_r(NULL, "/", &last)) != NULL);
-
-    return dir;
 }
 
 /**
@@ -175,7 +93,19 @@ static size_t get_parent_len(char* path)
         return 0;   // strlen("/")
 }
 
-static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, void* buffer)
+static unsigned int getsize(const char *in)
+{
+    unsigned int size = 0;
+    unsigned int j;
+    unsigned int count = 1;
+
+    for (j = 11; j > 0; j--, count *= 8)
+        size += ((in[j - 1] - '0') * count);
+
+    return size;
+}
+
+static ssize_t tarfs_read(struct inode *node, size_t off, size_t len, void* buffer)
 {
     uint8_t* data = (uint8_t*)(node_data[node->fs_inode - NODE_LIST_BASE] + 1);
     size_t size = getsize(node_data[node->fs_inode - NODE_LIST_BASE]->size);
@@ -193,95 +123,18 @@ static ssize_t tarfs_read(vfs_inode_t *node, size_t off, size_t len, void* buffe
     return read_len;
 }
 
-static void tarfs_open(vfs_inode_t* file_node, int oflags)
-{
-    file_node->num_users++;
-}
-
-static void tarfs_close(vfs_inode_t* file_node)
-{
-    file_node->num_users--;
-}
-
-static struct vfs_inode_ops iops = 
+static struct inode_ops iops = 
 {
     .read = tarfs_read,
-    .write = NULL,
-    .open = NULL,
-    .close = NULL,
+    .write = default_write,
+    .open = default_open,
+    .close = default_close,
 };
 
-static struct dirent* tarfs_readdir(struct vfs_dir *dnode, size_t index, struct dirent* dirent)
+static struct dnode_ops dops = 
 {
-    // Don't bother for dnode that isn't a directory
-    if((get_inode(dnode->instance, dnode->inode)->type & 7) != VFS_TYPE_DIRECTORY)
-        return NULL;
-
-    // Index 0 & 1 are "." and "..", 2 are the actual directories
-    switch(index)
-    {
-        case 0:
-            dirent->inode = dnode->inode;
-            dirent->name = ".";
-            goto finished;
-        case 1:
-            if(dnode->parent != NULL)
-                dirent->inode = dnode->parent->inode;
-            else
-                dirent->inode = dnode->inode;
-            dirent->name = "..";
-            goto finished;
-    };
-
-    // Go through all of the directories
-    struct vfs_dir* child = dnode->subdirs;
-
-    // Base at zero
-    index -= 2;
-
-    // Keep going until the index is zero, or we hit the end
-    for(; child != NULL && index; index--, child = child->next);
-
-    // By now, we should have the child node
-
-    // Reached the end of the directory list
-    if(child == NULL)
-        return NULL;
-
-    // Fill up dirent
-    dirent->inode = child->inode;
-    dirent->name = child->name;
-
-    finished:
-    return dirent;
-}
-
-static struct vfs_dir* tarfs_finddir(struct vfs_dir *dnode, const char* path)
-{
-    if(strcmp(path, ".") == 0)
-        return dnode;
-    else if(strcmp(path, "..") == 0)
-    {
-        if(dnode->parent != NULL)
-            return dnode->parent;
-
-        // Went up to the root
-        return dnode;
-    }
-
-    // Find the path now
-    struct vfs_dir *dir = find_dir(dnode, path);
-
-    if(!dir)
-        return NULL;
-
-    return dir;
-}
-
-static struct vfs_dnode_ops dops = 
-{
-    .read_dir = tarfs_readdir,
-    .find_dir = tarfs_finddir,
+    .read_dir = default_dnode_readdir,
+    .find_dir = default_dnode_finddir,
 };
 
 static int tar_gettype(char typeflag)
@@ -304,22 +157,24 @@ static int tar_gettype(char typeflag)
     return VFS_TYPE_UNKNOWN;
 }
 
-static void construct_node(vfs_inode_t* node)
+static void construct_node(struct fs_instance *instance, struct inode* node)
 {
     if(node == NULL)
         return;
 
-    memset(node, 0, sizeof(vfs_inode_t));
+    memset(node, 0, sizeof(struct inode));
     node->symlink_ptr = NULL;
     node->iops = &iops;
+    node->num_users_lock = mutex_create();
+    node->instance = instance;
     num_nodes++;
 }
 
-static void construct_dir_node(struct vfs_dir* dnode, vfs_inode_t* inode, const char* name, const char* path)
+static void construct_dir_node(struct dnode* dnode, struct inode* inode, const char* name, const char* path)
 {
     dnode->path = path;
     dnode->name = name;
-    dnode->inode = inode->fs_inode;
+    dnode->inode = inode;
     dnode->subdirs = NULL;
     dnode->next = NULL;
     dnode->parent = NULL;
@@ -331,9 +186,9 @@ static void construct_dir_node(struct vfs_dir* dnode, vfs_inode_t* inode, const 
 /*
  * All base_path's must be absolute paths (excluding the initial /)
  */
-static void append_dirent(vfs_inode_t* target, char* base_path, const char* filename, const char* path)
+static void append_dirent(struct inode* target, char* base_path, const char* filename, const char* path)
 {
-    struct vfs_dir* parent = find_dir(root_dir, base_path);
+    struct dnode* parent = default_dnode_finddir(root_dir, base_path);
     if(!parent)
     {
         klog_logln(ERROR, "initrd dirnode %s does not exist (yet?)", base_path);
@@ -341,7 +196,7 @@ static void append_dirent(vfs_inode_t* target, char* base_path, const char* file
     }
 
     // Setup current dirent
-    struct vfs_dir* dnode = kmalloc(sizeof(struct vfs_dir));
+    struct dnode* dnode = kmalloc(sizeof(struct dnode));
     construct_dir_node(dnode, target, filename, path);
 
     // Pass the fs_instance down
@@ -352,7 +207,7 @@ static void append_dirent(vfs_inode_t* target, char* base_path, const char* file
     parent->subdirs = dnode;
 }
 
-struct vfs_fs_instance* tarfs_init(void* address, size_t tar_len)
+struct fs_instance* tarfs_init(void* address, size_t tar_len)
 {
     if(address == KNULL) return KNULL;
 
@@ -361,18 +216,19 @@ struct vfs_fs_instance* tarfs_init(void* address, size_t tar_len)
         return KNULL;
 
     // Setup root node
-    root_node = kmalloc(sizeof(vfs_inode_t));
-    construct_node(root_node);
+    struct fs_instance* instance = kmalloc(sizeof(struct fs_instance));
+    root_node = kmalloc(sizeof(struct inode));
+    root_dir = kmalloc(sizeof(struct dnode));
+
+    construct_node(instance, root_node);
     root_node->type = VFS_TYPE_DIRECTORY;
     root_node->fs_inode = ROOT_INODE;
     root_node->impl_specific = 0;
 
     // Setup root dirnode
-    root_dir = kmalloc(sizeof(struct vfs_dir));
     construct_dir_node(root_dir, root_node, "/", "/");
 
     // Setup fs_instance
-    struct vfs_fs_instance* instance = kmalloc(sizeof(struct vfs_fs_instance));
     instance->get_inode = get_inode;
     instance->root = root_dir;
 
@@ -384,11 +240,11 @@ struct vfs_fs_instance* tarfs_init(void* address, size_t tar_len)
     {
         unsigned int size = getsize(tar_file->size);
         const char* filename = strrchr(tar_file->filename, '/');
-        vfs_inode_t* node = kmalloc(sizeof(vfs_inode_t));
+        struct inode* node = kmalloc(sizeof(struct inode));
 
         // Setup vfs_node
         node_list[finode - NODE_LIST_BASE] = node;
-        construct_node(node);
+        construct_node(instance, node);
         node->fs_inode = finode;
         node->size = size;
         node->type = tar_gettype(tar_file->typeflag);

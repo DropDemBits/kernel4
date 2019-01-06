@@ -5,7 +5,7 @@
 
 #define EINVAL 1
 
-int elf_parse(vfs_inode_t* file, struct elf_data** data)
+int elf_parse(struct inode* file, struct elf_data** data)
 {
     if(file == NULL || data == NULL)
         return -EINVAL;
