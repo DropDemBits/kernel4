@@ -399,14 +399,14 @@ void mm_early_init()
 
     mm_base_ptr = mm_get_base();
 
-    klog_early_logln(INFO, "Complete list:");
+    klog_logln(LVL_INFO, "Complete list:");
     for(size_t i = 0; i < next_free_area; i++)
     {
         struct mem_area* area = &(area_list[i]);
 
         if(!area->type)
             continue;
-        klog_early_logln(INFO, "    %08.8p | %08.8p | %01d", area->base, area->length, area->type);
+        klog_logln(LVL_INFO, "    %08.8p | %08.8p | %01d", area->base, area->length, area->type);
         mm_add_region(area->base, area->length, area->type);
     }
 }
@@ -426,12 +426,12 @@ static void add_area(unsigned long base, unsigned long length, uint32_t type)
     area->length = length;
     area->type = type;
 
-    klog_early_logln(INFO, "      : %08.8p | %08.8p | %01d", base, length, type);
+    klog_logln(LVL_INFO, "      : %08.8p | %08.8p | %01d", base, length, type);
 }
 
 void mm_add_area(unsigned long base, unsigned long length, uint32_t type)
 {
-    klog_early_logln(INFO, "Create: %08.8p | %08.8p | %01d", base, length, type);
+    klog_logln(LVL_INFO, "Create: %08.8p | %08.8p | %01d", base, length, type);
 
     // Cut out overlapping regiojn
     struct mem_area* base_overlap = find_area(base);

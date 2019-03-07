@@ -146,7 +146,7 @@ static uint32_t ioapic_write(void* ioapic_base, uint32_t reg, uint32_t value)
 
 void apic_init(uint64_t phybase)
 {
-    klog_early_logln(INFO, "Initializing APIC @ %p", phybase);
+    klog_logln(LVL_INFO, "Initializing APIC @ %p", phybase);
 
     mmu_map(apic_map, (uintptr_t)phybase, MMU_ACCESS_RW | MMU_CACHE_UC);
 
@@ -160,7 +160,7 @@ void apic_set_lint_entry(uint8_t lint_entry, uint8_t polarity, uint8_t trigger_m
     if(lint_entry > 1 || delivery_mode == APIC_DELMODE_FIXED || delivery_mode == APIC_DELMODE_EXTINT)
         return;
 
-    klog_early_logln(INFO, "Setting up LINT%d %s vector (Level: %d, Low: %d)", lint_entry, apic_delmode_names[delivery_mode], trigger_mode, polarity);
+    klog_logln(LVL_INFO, "Setting up LINT%d %s vector (Level: %d, Low: %d)", lint_entry, apic_delmode_names[delivery_mode], trigger_mode, polarity);
     apic_write(APIC_LVT_LINT0 + (lint_entry << 4), (polarity << APIC_LVT_POL_SHF) | (trigger_mode << APIC_LVT_TRIG_SHF) | (delivery_mode << APIC_LVT_DELMODE_SHF));
 }
 
@@ -194,7 +194,7 @@ void ioapic_set_mode(uint8_t line, uint8_t polarity, uint8_t trigger_mode, uint8
 
 void ioapic_init(uint64_t phybase, uint32_t irq_base)
 {
-    klog_early_logln(INFO, "Initializing IOAPIC @ %p (+%d)", phybase, irq_base);
+    klog_logln(LVL_INFO, "Initializing IOAPIC @ %p (+%d)", phybase, irq_base);
 
     memset(&main_ioapic, 0, sizeof(struct ioapic_dev));
 
@@ -224,7 +224,7 @@ void ioapic_init(uint64_t phybase, uint32_t irq_base)
 
 void ioapic_route_line(uint32_t global_source, uint32_t bus_source, uint8_t polarity, uint8_t trigger_mode)
 {
-    klog_early_logln(INFO, "Adding mapping to IOAPICs (%d -> IRQ%d, Level: %d, Low: %d)", global_source, bus_source, trigger_mode, polarity);
+    klog_logln(LVL_INFO, "Adding mapping to IOAPICs (%d -> IRQ%d, Level: %d, Low: %d)", global_source, bus_source, trigger_mode, polarity);
 
     // Setup IO APIC Line to match requirements
     uint32_t isa_reg = (bus_source * 2) + IOAPIC_REDTBL;
@@ -241,7 +241,7 @@ void ioapic_route_line(uint32_t global_source, uint32_t bus_source, uint8_t pola
 
         if(mapping_head != NULL)
         {
-            klog_early_logln(DEBUG, "%p -> %p", mapping_head, mapping_tail);
+            klog_logln(LVL_DEBUG, "%p -> %p", mapping_head, mapping_tail);
             mapping_tail->next = mapping;
             mapping_tail = mapping;
         }
@@ -313,10 +313,7 @@ struct irq_handler* ioapic_handle_irq(uint8_t irq, uint32_t int_flags, irq_funct
     if(irq_handler == NULL)
         return NULL;
 
-    if(!klog_is_init())
-        klog_early_logln(INFO, "Handling INT%d using %p", irq, handler);
-    else
-        klog_logln(INFO, "Handling INT%d using %p", irq, handler);
+    klog_logln(LVL_INFO, "Handling INT%d using %p", irq, handler);
     irq_handler->next = NULL;
     irq_handler->interrupt = irq;
     irq_handler->function = handler;

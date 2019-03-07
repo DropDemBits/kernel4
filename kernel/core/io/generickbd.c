@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <common/hal.h>
 #include <common/sched/sched.h>
 #include <common/io/kbd.h>
 #include <common/io/ps2.h>
@@ -60,7 +59,7 @@ static uint8_t input_pop()
 
 void kbd_init()
 {
-    klog_logln(INFO, "Initialising keyboard driver");
+    klog_logln(LVL_INFO, "Initialising keyboard driver");
     charmap = default_charmap;
 
     memset(input_buffer, 0x00, 4096);

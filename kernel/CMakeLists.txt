@@ -39,7 +39,8 @@ list(APPEND SOURCES
     core/acpi/osl.c
     core/acpi/acpi.c
     core/ipc/message.c
-    core/usb/usbcore.c)
+    core/usb/usbcore.c
+    core/hal/timer.c)
 
 if(TARGET_ARCH STREQUAL "i386" OR TARGET_ARCH STREQUAL "x86_64")
     include(arch/x86/CMakeLists.txt)
@@ -49,7 +50,7 @@ endif()
 
 # Misc.
 set(TARGET_NAME k4-kernel)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall")
 
 add_executable(${TARGET_NAME} ${SOURCES})
 

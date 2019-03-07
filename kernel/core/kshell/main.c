@@ -74,14 +74,14 @@ extern process_t init_process;
 
 void program_launch(const char* path)
 {
-    klog_logln(INFO, "Launching program %s", path);
+    klog_logln(LVL_INFO, "Launching program %s", path);
 
     struct vfs_mount* mount = vfs_get_mount("/");
     struct dnode* dnode = vfs_find_dir(mount->instance->root, path);
 
     if(dnode == NULL)
     {
-        klog_logln(ERROR, "Error: %s doesn't exist", path);
+        klog_logln(LVL_ERROR, "Error: %s doesn't exist", path);
         sched_terminate();
     }
     
@@ -89,12 +89,12 @@ void program_launch(const char* path)
     struct elf_data* elf_data;
     int errno = 0;
 
-    klog_logln(DEBUG, "Parsing elf file");
+    klog_logln(LVL_DEBUG, "Parsing elf file");
     vfs_open(inode, VFSO_RDONLY);
     errno = elf_parse(inode, &elf_data);
     if(errno)
     {
-        klog_logln(ERROR, "Error parsing elf file (ec %d)", errno);
+        klog_logln(LVL_ERROR, "Error parsing elf file (ec %d)", errno);
         vfs_close(inode);
         sched_terminate();
     }
@@ -102,7 +102,7 @@ void program_launch(const char* path)
     // Validation is done, load the program
     void* entry_point = elf_data->entry_point;
 
-    klog_logln(DEBUG, "Copying elf data");
+    klog_logln(LVL_DEBUG, "Copying elf data");
     for(size_t i = 0; i < elf_data->phnum; i++)
     {
         struct elf_phdr* proghead = &elf_data->phdrs[i];
@@ -129,13 +129,13 @@ void program_launch(const char* path)
         {
             // Set as the final type
             mmu_change_attr((void*)(proghead->p_vaddr + off), flags | MMU_ACCESS_USER | MMU_CACHE_WB);
-            klog_logln(DEBUG, "FlgsSet: %x", flags | MMU_ACCESS_USER | MMU_CACHE_WB);
+            klog_logln(LVL_DEBUG, "FlgsSet: %x", flags | MMU_ACCESS_USER | MMU_CACHE_WB);
         }
     }
 
     // Last cleanup
     elf_put(elf_data);
-    klog_logln(DEBUG, "Done code copy");
+    klog_logln(LVL_DEBUG, "Done code copy");
     enter_usermode(sched_active_thread(), entry_point);
 }
 
@@ -405,7 +405,7 @@ static bool shell_parse()
         
         if(log_level_str != NULL) 
         {
-            for(int i = 0; i < FATAL; i++)
+            for(int i = 0; i < LVL_FATAL; i++)
             {
                 if(strnicmp(level_names[i], log_level_str, strlen(level_names[i])) == 0)
                 {
@@ -422,7 +422,7 @@ static bool shell_parse()
         }
 
         if(log_level == 0)
-            log_level = DEBUG;
+            log_level = LVL_DEBUG;
 
         print_log(log_level);
         return true;

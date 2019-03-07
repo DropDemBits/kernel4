@@ -89,7 +89,7 @@ static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS 
             status = AE_BAD_PARAMETER;
     }
 
-    klog_logln(DEBUG, "ECACC %s: %02x = %02x (%02x, %02x)", Function ? "WR" : "RD", Address, *Value, (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
+    klog_logln(LVL_DEBUG, "ECACC %s: %02x = %02x (%02x, %02x)", Function ? "WR" : "RD", Address, *Value, (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
 
     return status;
 }
@@ -103,12 +103,12 @@ ACPI_STATUS acpi_early_init()
 
     if(ACPI_FAILURE(status))
     {
-        klog_early_logln(ERROR, "Early ACPI Error: %s", AcpiFormatException(status));
+        klog_logln(LVL_ERROR, "Early ACPI Error: %s", AcpiFormatException(status));
         return (status);
     }
 
-    klog_early_logln(INFO, "Gathered ACPI tables");
-    klog_early_logln(INFO, "ACPI Tables:");
+    klog_logln(LVL_INFO, "Gathered ACPI tables");
+    klog_logln(LVL_INFO, "ACPI Tables:");
 
     for(size_t i = 0; i < ACPI_MAX_EARLY_TABLES; i++)
     {
@@ -119,11 +119,11 @@ ACPI_STATUS acpi_early_init()
             break;
 
         if(ACPI_COMPARE_NAME(table->Signature, ACPI_SIG_FACS))
-            klog_early_logln(INFO, "\t%.4s (%8dB)",
+            klog_logln(LVL_INFO, "\t%.4s (%8dB)",
                 table->Signature,
                 table->Length);
         else
-            klog_early_logln(INFO, "\t%.4s (%8dB) v%02.2x OEM=%-8.8s %-8.8s %-4.4s",
+            klog_logln(LVL_INFO, "\t%.4s (%8dB) v%02.2x OEM=%-8.8s %-8.8s %-4.4s",
                 table->Signature,
                 table->Length,
                 table->Revision,
@@ -152,12 +152,12 @@ ACPI_STATUS acpi_init()
     ACPI_TABLE_ECDT* ecdt_table;
     ACPI_BUFFER ec_crs;
 
-    klog_logln(INFO, "Initializing ACPI subsystem");
+    klog_logln(LVL_INFO, "Initializing ACPI subsystem");
 
     status = AcpiInitializeSubsystem();
     if(ACPI_FAILURE(status))
     {
-        klog_logln(ERROR, "Failed to initialize ACPICA subsystem (%s)", AcpiFormatException(status));
+        klog_logln(LVL_ERROR, "Failed to initialize ACPICA subsystem (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -165,7 +165,7 @@ ACPI_STATUS acpi_init()
     status = AcpiReallocateRootTable();
     if(ACPI_FAILURE(status))
     {
-        klog_logln(ERROR, "Failed to move root table (%s)", AcpiFormatException(status));
+        klog_logln(LVL_ERROR, "Failed to move root table (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -173,7 +173,7 @@ ACPI_STATUS acpi_init()
     status = AcpiLoadTables();
     if(ACPI_FAILURE(status))
     {
-        klog_logln(ERROR, "Failed to load tables / build namespace (%s)", AcpiFormatException(status));
+        klog_logln(LVL_ERROR, "Failed to load tables / build namespace (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -183,7 +183,7 @@ ACPI_STATUS acpi_init()
     status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
     if(ACPI_FAILURE(status))
     {
-        klog_logln(ERROR, "Failed to enable ACPI hardware (%s)", AcpiFormatException(status));
+        klog_logln(LVL_ERROR, "Failed to enable ACPI hardware (%s)", AcpiFormatException(status));
         return (status);
     }
 
@@ -191,11 +191,11 @@ ACPI_STATUS acpi_init()
     status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
     if(ACPI_FAILURE(status))
     {
-        klog_logln(ERROR, "Failed to finalize namespace objects (%s)", AcpiFormatException(status));
+        klog_logln(LVL_ERROR, "Failed to finalize namespace objects (%s)", AcpiFormatException(status));
         return (status);
     }
 
-    klog_logln(DEBUG, "Initializing ACPI EC");
+    klog_logln(LVL_DEBUG, "Initializing ACPI EC");
 
     // Procedure for finding embedded controller:
     // 1 - Use ECDT if it exists
@@ -210,7 +210,7 @@ ACPI_STATUS acpi_init()
         status = AcpiGetHandle(NULL, (ACPI_STRING)ecdt_table->Id, &ec_handle);
         if(ACPI_FAILURE(status))
         {
-            klog_logln(ERROR, "Failed to get EC handle (%s)", AcpiFormatException(status));
+            klog_logln(LVL_ERROR, "Failed to get EC handle (%s)", AcpiFormatException(status));
             goto walk_namespace;
         }
 
@@ -244,7 +244,7 @@ ACPI_STATUS acpi_init()
         }
         else if(ACPI_FAILURE(status))
         {
-            klog_logln(ERROR, "Failed to acquire the CRS for the ACPI EC (%s)", AcpiFormatException(status));
+            klog_logln(LVL_ERROR, "Failed to acquire the CRS for the ACPI EC (%s)", AcpiFormatException(status));
             goto ec_handle_failed;
         }
 
@@ -266,7 +266,7 @@ ACPI_STATUS acpi_init()
                         ec_context.Data = (unsigned long)crs_res->Data.Io.Minimum;
                     else if(port_index == 1)
                         ec_context.Control = (unsigned long)crs_res->Data.Io.Minimum;
-                    klog_logln(DEBUG, "ECIsO: %p -> %p (%x), %ld", &ec_context.Data, ptr, *ptr, (uint32_t)port_index);
+                    klog_logln(LVL_DEBUG, "ECIsO: %p -> %p (%x), %ld", &ec_context.Data, ptr, *ptr, (uint32_t)port_index);
                     port_index--;
                     ec_context.IsPortSpace = true;
                     break;
@@ -283,7 +283,7 @@ ACPI_STATUS acpi_init()
                     break;
             }
 
-            klog_logln(DEBUG, "ECIO: %x, %x", (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
+            klog_logln(LVL_DEBUG, "ECIO: %x, %x", (uint8_t)ec_context.Control, (uint8_t)ec_context.Data);
             if(!port_index)
                 break;
 
@@ -299,11 +299,11 @@ ACPI_STATUS acpi_init()
         status = AcpiInstallAddressSpaceHandler(ec_handle, ACPI_ADR_SPACE_EC, acpi_ec_space_handler, NULL, NULL);
         if(ACPI_FAILURE(status))
         {
-            klog_logln(ERROR, "Failed to install EC Address Space Handler (%s)", AcpiFormatException(status));
+            klog_logln(LVL_ERROR, "Failed to install EC Address Space Handler (%s)", AcpiFormatException(status));
             goto ec_handle_failed;
         }
 
-        klog_logln(INFO, "EC AS Handler Initialized (CMD/STS: 0x%02x, DAT: 0x%02x)", ec_context.Control, ec_context.Data);
+        klog_logln(LVL_INFO, "EC AS Handler Initialized (CMD/STS: 0x%02x, DAT: 0x%02x)", ec_context.Control, ec_context.Data);
 
         // TODO: Handle EC GPE Event (Last step preventing us from actually handling the EC)
 
@@ -331,7 +331,7 @@ ACPI_TABLE_HEADER* acpi_get_table(char* sig, uint32_t instance)
     ACPI_TABLE_HEADER* table = NULL;
     ACPI_STATUS Status = AcpiGetTable(sig, instance, &table);
 
-    if(ACPI_FAILURE(Status) && table == NULL);
+    if(ACPI_FAILURE(Status) && table == NULL)
         return NULL;
     return table;
 }
@@ -350,7 +350,7 @@ ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)
     Status = AcpiEnterSleepStatePrep(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(ERROR, "Error in preparing to enter S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(LVL_ERROR, "Error in preparing to enter S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 
@@ -360,7 +360,7 @@ ACPI_STATUS acpi_enter_sleep(uint8_t sleep_state)
     Status = AcpiEnterSleepState(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(FATAL, "Failed to enter sleep state S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(LVL_FATAL, "Failed to enter sleep state S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 
@@ -378,14 +378,14 @@ ACPI_STATUS acpi_leave_sleep(uint8_t sleep_state)
     Status = AcpiLeaveSleepStatePrep(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(LVL_ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 
     Status = AcpiLeaveSleepState(sleep_state);
     if(ACPI_FAILURE(Status))
     {
-        klog_logln(ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
+        klog_logln(LVL_ERROR, "Error in preparing to leave S%d: %s", sleep_state, AcpiFormatException(Status));
         return Status;
     }
 

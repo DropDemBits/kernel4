@@ -22,6 +22,7 @@
 #include <stdio.h>
 
 #include <common/acpi.h>
+#include <common/hal/timer.h>
 #include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 #include <common/util/kfuncs.h>
@@ -37,11 +38,7 @@
 
 //TODO: Breakup HAL into more subsystems
 
-#define MAX_TIMERS 64
-
-#define KLOG_FATAL(msg, ...) \
-    if(klog_is_init()) {klog_logln(FATAL, msg, __VA_ARGS__);} \
-    else {klog_early_logln(FATAL, msg, __VA_ARGS__);}
+#define KLOG_FATAL(msg, ...) klog_logln(LVL_FATAL, msg, __VA_ARGS__);
 
 extern void halt();
 
@@ -55,29 +52,8 @@ static struct heap_info heap_context = {
 #endif
 };
 
-// ID 0 is reserved (1 = free, 0 = set)
-static uint64_t timer_id_bitmap = ~1;
-// Default timer (index to array below)
-static unsigned int default_timer = 0x0;
-static struct timer_dev* timers[MAX_TIMERS];
-
 static struct ic_dev* default_ic;
 static uint8_t ic_mode = IC_MODE_PIC;
-
-// Valid timer id's are in the range of 1 - 64
-static unsigned int next_timer_id()
-{
-    for(unsigned int i = 0; i < 64; i++)
-    {
-        if((timer_id_bitmap & (1ULL << i)) == 0)
-            continue;
-        
-        timer_id_bitmap &= ~(1ULL << i);
-        return i+1;
-    }
-
-    return 0;
-}
 
 static bool apic_exists()
 {
@@ -124,13 +100,13 @@ void hal_init()
         uint64_t apic_base = (uint64_t)madt->Address;
 
         // Common
-        uint32_t current_instance = 1;
+        uint32_t current_table_instance = 1;
 
         // Initialize BSP LAPIC
         ACPI_MADT_LOCAL_APIC* madt_lapic = (ACPI_MADT_LOCAL_APIC*)madt_find_table(madt, ACPI_MADT_TYPE_LOCAL_APIC, 1);
         if(madt_lapic == NULL || (madt_lapic->LapicFlags & ACPI_MADT_ENABLED) != ACPI_MADT_ENABLED)
         {
-            klog_early_logln(ERROR, "No APIC found");
+            klog_logln(LVL_ERROR, "No APIC found");
             return;
         }
         else
@@ -139,16 +115,16 @@ void hal_init()
         }
 
         // Initialize IOAPICs
-        current_instance = 1;
+        current_table_instance = 1;
         ACPI_MADT_IO_APIC* madt_ioapic = (ACPI_MADT_IO_APIC*)madt_find_table(madt, ACPI_MADT_TYPE_IO_APIC, 1);
         while(madt_ioapic != NULL)
         {
             ioapic_init(madt_ioapic->Address, madt_ioapic->GlobalIrqBase);
-            madt_ioapic = (ACPI_MADT_IO_APIC*)madt_find_table(madt, ACPI_MADT_TYPE_IO_APIC, ++current_instance);
+            madt_ioapic = (ACPI_MADT_IO_APIC*)madt_find_table(madt, ACPI_MADT_TYPE_IO_APIC, ++current_table_instance);
         }
 
         // Setup IOAPIC routing
-        current_instance = 1;
+        current_table_instance = 1;
         ACPI_MADT_INTERRUPT_OVERRIDE* madt_iso = (ACPI_MADT_INTERRUPT_OVERRIDE*)madt_find_table(madt, ACPI_MADT_TYPE_INTERRUPT_OVERRIDE, 1);
         while(madt_iso != NULL)
         {
@@ -174,7 +150,7 @@ void hal_init()
             ioapic_route_line(madt_iso->GlobalIrq, madt_iso->SourceIrq, polarity, trigger_mode);
 
         skip_entry:
-            madt_iso = (ACPI_MADT_INTERRUPT_OVERRIDE*)madt_find_table(madt, ACPI_MADT_TYPE_INTERRUPT_OVERRIDE, ++current_instance);
+            madt_iso = (ACPI_MADT_INTERRUPT_OVERRIDE*)madt_find_table(madt, ACPI_MADT_TYPE_INTERRUPT_OVERRIDE, ++current_table_instance);
         }
 
         ACPI_MADT_LOCAL_APIC_NMI* madt_nmi = (ACPI_MADT_LOCAL_APIC_NMI*)madt_find_table(madt, ACPI_MADT_TYPE_LOCAL_APIC_NMI, 1);
@@ -211,118 +187,9 @@ void hal_init()
     }
     acpi_put_table((ACPI_TABLE_HEADER*)madt);
     // acpi_set_pic_mode(ic_mode);
-
-    for(int i = 0; i < MAX_TIMERS; i++)
-        timers[i] = KNULL;
     
+    timer_init();
     pit_init();
-}
-
-unsigned long timer_add(struct timer_dev* device, enum timer_type type)
-{
-    if(device == KNULL)
-        return 0;
-    
-    device->id = next_timer_id();
-    device->list_head = KNULL;
-
-    if(!device->id)
-        return 0;
-    
-    timers[device->id - 1] = device;
-
-    return device->id;
-}
-
-void timer_set_default(unsigned long id)
-{
-    if(id == 0)
-    {
-        // ID 0 is reserved for default timer
-        return;
-    }
-
-    default_timer = id - 1;
-}
-
-void timer_add_handler(unsigned long id, timer_handler_t handler_function)
-{
-    // Timer id is an index to the array, not the actual id itself
-    unsigned long timer_id = id - 1;
-    if(id > MAX_TIMERS)
-        return;
-    else if(id == 0)
-        timer_id = default_timer;
-    else if(timers[timer_id] == KNULL)
-        return;
-    
-    struct timer_handler_node* node = kmalloc(sizeof(struct timer_handler_node));
-    if(node == NULL)
-        return;
-    
-    node->handler = handler_function;
-    node->next = KNULL;
-
-    if(timers[timer_id]->list_head == KNULL)
-    {
-        // The list is empty, so this node begins the new list
-        timers[timer_id]->list_head = node;
-        return;
-    }
-
-    // We'll have to go through the entire loop to append the node
-    struct timer_handler_node* current_node = KNULL;
-    struct timer_handler_node* next_node = timers[timer_id]->list_head;
-
-    while(next_node != KNULL)
-    {
-        current_node = next_node;
-        next_node = next_node->next;
-    }
-
-    if(current_node == KNULL)
-    {
-        kfree(node);
-        return;
-    }
-
-    current_node->next = node;
-}
-
-void timer_broadcast_update(unsigned long id)
-{
-    // Timer id is an index to the array, not the actual id itself
-    unsigned int timer_id = id - 1;
-    if(id > MAX_TIMERS)
-        return;
-    else if(id == 0)
-        timer_id = default_timer;
-    if(timers[timer_id] == KNULL)
-        return;
-
-    if(timers[timer_id]->list_head == KNULL)  // No point in going through the loop
-        return;
-
-    struct timer_handler_node* node = timers[timer_id]->list_head;
-
-    while(node != KNULL)
-    {
-        node->handler(timers[timer_id]);
-        node = node->next;
-    }
-}
-
-uint64_t timer_read_counter(unsigned long id)
-{
-    unsigned int timer_id = id - 1;
-    if(id > MAX_TIMERS)
-        return 0;
-    else if(id == 0)
-        timer_id = default_timer;
-    if(timers[timer_id] == KNULL || timers[timer_id] == NULL)
-        return 0;
-    
-    return timers[timer_id]->counter;
 }
 
 void ic_mask(uint16_t irq)

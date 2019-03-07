@@ -191,7 +191,7 @@ static void append_dirent(struct inode* target, char* base_path, const char* fil
     struct dnode* parent = default_dnode_finddir(root_dir, base_path);
     if(!parent)
     {
-        klog_logln(ERROR, "initrd dirnode %s does not exist (yet?)", base_path);
+        klog_logln(LVL_ERROR, "initrd dirnode %s does not exist (yet?)", base_path);
         return;
     }
 
@@ -286,7 +286,7 @@ struct fs_instance* tarfs_init(void* address, size_t tar_len)
         // Too many nodes? Stop parsing
         if(finode >= NUM_NODES + NODE_LIST_BASE)
         {
-            klog_logln(WARN, "Too many entries in initrd");
+            klog_logln(LVL_WARN, "Too many entries in initrd");
             break;
         }
 

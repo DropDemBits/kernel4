@@ -9,11 +9,11 @@
 enum klog_level
 {
     EOL = 0x0,
-    DEBUG = 1,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL,
+    LVL_DEBUG = 1,
+    LVL_INFO,
+    LVL_WARN,
+    LVL_ERROR,
+    LVL_FATAL,
 };
 
 struct klog_entry
@@ -41,17 +41,6 @@ void klog_early_init();
 void klog_init();
 
 bool klog_is_init();
-
-// Early-init versions of the methods below
-void klog_early_log(enum klog_level level, const char* format, ...);
-void klog_early_logv(enum klog_level level, const char* format, va_list args);
-void klog_early_logln(enum klog_level level, const char* format, ...);
-void klog_early_loglnv(enum klog_level level, const char* format, va_list args);
-void klog_early_logf(enum klog_level level, uint8_t flags, const char* format, ...);
-void klog_early_logfv(enum klog_level level, uint8_t flags, const char* format, va_list args);
-void klog_early_loglnf(enum klog_level level, uint8_t flags, const char* format, ...);
-void klog_early_loglnfv(enum klog_level level, uint8_t flags, const char* format, va_list args);
-void klog_early_logc(enum klog_level level, const char c);
 
 void klog_log(enum klog_level level, const char* format, ...);
 void klog_logv(enum klog_level level, const char* format, va_list args);

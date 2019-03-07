@@ -19,6 +19,7 @@
  */
 
 #include <common/hal.h>
+#include <common/hal/timer.h>
 
 #include <arch/pit.h>
 #include <arch/idt.h>

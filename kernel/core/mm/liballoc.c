@@ -1,4 +1,5 @@
 #include <common/mm/liballoc.h>
+//#define DEBUG
 
 /**  Durand's Amazing Super Duper Memory functions.  */
 /**  Modified to work with this kernel  */
@@ -50,9 +51,11 @@
 #define LIBALLOC_DEAD    0xdeaddead
 
 #if defined DEBUG || defined INFO
-#include <stdio.h>
+//#include <stdio.h>
+#include <common/util/klog.h>
 
 #define FLUSH()        /*fflush( stdout ) Changed*/
+#define printf(fmt, ...) klog_logln(LVL_DEBUG, (fmt), ## __VA_ARGS__)
 
 #endif
 

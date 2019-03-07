@@ -20,7 +20,6 @@
 
 #include <stdio.h>
 
-#include <common/hal.h>
 #include <common/sched/sched.h>
 #include <common/io/ps2.h>
 #include <common/util/kfuncs.h>
@@ -149,7 +148,7 @@ static void controller_init()
     /*send_controller_command(0x20);
     if(wait_read_data() != cfg_byte)
     {
-        klog_logln(INFO, "Unable to change config byte");
+        klog_logln(LVL_INFO, "Unable to change config byte");
         modify_cfg = false;
         goto device_init;
     }*/
@@ -159,10 +158,10 @@ static void controller_init()
     uint8_t ret_byte = wait_read_data();
     if(ret_byte == 0xFC)
     {
-        klog_logln(INFO, "Self test failed (code %#x)", ret_byte);
+        klog_logln(LVL_INFO, "Self test failed (code %#x)", ret_byte);
         return;
     }
-    klog_logln(INFO, "Self test success (code %#x)", ret_byte);
+    klog_logln(LVL_INFO, "Self test success (code %#x)", ret_byte);
 
     // Test ports
     device_init:
@@ -171,7 +170,7 @@ static void controller_init()
     if(retval != 0x00)
     {
         usable_bitmask &= ~0b01;
-        klog_logln(INFO, "Unable to use device on port 1 (code %#x)\n", retval);
+        klog_logln(LVL_INFO, "Unable to use device on port 1 (code %#x)\n", retval);
     }
 
     if(usable_bitmask & 0b10)
@@ -181,13 +180,13 @@ static void controller_init()
         if(retval != 0x00)
         {
             usable_bitmask &= ~0b10;
-            klog_logln(INFO, "Unable to use device on port 2 (code %#x)\n", retval);
+            klog_logln(LVL_INFO, "Unable to use device on port 2 (code %#x)\n", retval);
         }
     }
 
     if(usable_bitmask == 0)
     {
-        klog_logln(INFO, "No usable devices");
+        klog_logln(LVL_INFO, "No usable devices");
         return;
     }
 
@@ -205,9 +204,9 @@ static void controller_init()
             devices[0].present = 0;
 
         if(devices[0].present)
-            klog_logln(DEBUG, "Detected PS/2 device on port 1 (code %#x)", reset_result);
+            klog_logln(LVL_DEBUG, "Detected PS/2 device on port 1 (code %#x)", reset_result);
         else
-            klog_logln(DEBUG, "No device on port 1 (code %#x)", reset_result);
+            klog_logln(LVL_DEBUG, "No device on port 1 (code %#x)", reset_result);
     }
 
     if(usable_bitmask & 0b10)
@@ -224,9 +223,9 @@ static void controller_init()
             devices[1].present = 0;
 
         if(devices[1].present)
-            klog_logln(DEBUG, "Detected PS/2 device on port 2 (code %#x)", reset_result);
+            klog_logln(LVL_DEBUG, "Detected PS/2 device on port 2 (code %#x)", reset_result);
         else
-            klog_logln(DEBUG, "No device on port 2 (code %#x)", reset_result);
+            klog_logln(LVL_DEBUG, "No device on port 2 (code %#x)", reset_result);
     }
 
     if(!modify_cfg) return;
@@ -256,7 +255,7 @@ static void detect_device(int device)
     }
 
     uint16_t first_byte = 0xFF, second_byte = 0xFF;
-    klog_logln(DEBUG, "Identifying device on port %d", device + 1);
+    klog_logln(LVL_DEBUG, "Identifying device on port %d", device + 1);
     while(ps2_read_status() & STATUS_DATA_READY)
         ps2_read_data();
     send_dev_command(device, 0xF2);
@@ -271,8 +270,8 @@ static void detect_device(int device)
     else if(first_byte == 0xAB && second_byte == 0x41) devices[device].type = TYPE_MF2_KBD_TRANS;
     else if(first_byte == 0xAB && second_byte == 0xC1) devices[device].type = TYPE_MF2_KBD_TRANS;
     else if(first_byte == 0xAB && second_byte == 0x83) devices[device].type = TYPE_MF2_KBD;
-    else klog_logln(DEBUG, "Identified unknown device on port %d: %#x %#x", device+1, first_byte, second_byte);
-    klog_logln(DEBUG, "SigBytes(%d): %#x %#x", device+1, first_byte, second_byte);
+    else klog_logln(LVL_DEBUG, "Identified unknown device on port %d: %#x %#x", device+1, first_byte, second_byte);
+    klog_logln(LVL_DEBUG, "SigBytes(%d): %#x %#x", device+1, first_byte, second_byte);
 
     // The following combination isn't possible
     if((devices[device].type == TYPE_MF2_KBD_TRANS || devices[device].type == TYPE_AT_KBD) &&
@@ -288,7 +287,7 @@ static void detect_device(int device)
 
 void ps2_init()
 {
-    klog_logln(INFO, "Initialising PS/2 controller");
+    klog_logln(LVL_INFO, "Initialising PS/2 controller");
     controller_init();
     detect_device(0);
     detect_device(1);
@@ -300,19 +299,19 @@ void ps2_init()
 
         if(devices[active_device].type == TYPE_MF2_KBD)
         {
-            klog_logln(DEBUG, "Initialising MF2 keyboard");
+            klog_logln(LVL_DEBUG, "Initialising MF2 keyboard");
             ps2kbd_init(active_device);
         } else if(devices[active_device].type == TYPE_MF2_KBD_TRANS ||
                 devices[active_device].type == TYPE_AT_KBD)
         {
             if(devices[active_device].type == TYPE_MF2_KBD_TRANS)
-                klog_logln(DEBUG, "Initialising AT Translated MF2 keyboard Scan Set 2");
+                klog_logln(LVL_DEBUG, "Initialising AT Translated MF2 keyboard Scan Set 2");
             else
-                klog_logln(DEBUG, "Initialising AT keyboard Scan Set 1");
+                klog_logln(LVL_DEBUG, "Initialising AT keyboard Scan Set 1");
             atkbd_init(active_device);
         }
         else
-            klog_logln(DEBUG, "Device on port %d not initialized (%s)",
+            klog_logln(LVL_DEBUG, "Device on port %d not initialized (%s)",
                 active_device+1,
                 type2name[devices[active_device].type]);
     }

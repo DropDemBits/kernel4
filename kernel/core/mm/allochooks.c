@@ -43,7 +43,7 @@ static size_t alloc_memblocks(size_t length)
         if(status != 0)
         {
             errored = true;
-            klog_logln(ERROR, "Error mapping %p: %d", free_base, status);
+            klog_logln(LVL_ERROR, "Error mapping %p: %d", free_base, status);
             break;
         }
         free_base += 0x1000;

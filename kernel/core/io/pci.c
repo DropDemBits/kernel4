@@ -49,7 +49,7 @@ void test_function(uint8_t bus, uint8_t device, uint8_t function)
     else if(vendor_id == 0x80ee && device_id == 0xbeef) device_name = "VirtualBox Graphics Adapter";
     else if(vendor_id == 0x80ee && device_id == 0xcafe) device_name = "VirtualBox Guest Service";
 
-    klog_logln(DEBUG, "%x:%x.%x: %s (%x:%x)", bus, device, function, device_name, vendor_id, device_id);
+    klog_logln(LVL_DEBUG, "%x:%x.%x: %s (%x:%x)", bus, device, function, device_name, vendor_id, device_id);
 
     struct pci_dev_handler *node = driver_head;
     struct pci_dev* dev = pci_get_dev(bus, device, function);
@@ -105,7 +105,7 @@ void pci_check_bus(uint8_t bus)
 void pci_init()
 {
     // Enumerate the pci bus
-    klog_logln(INFO, "Enumerating PCI Bus");
+    klog_logln(LVL_INFO, "Enumerating PCI Bus");
     pci_check_bus(0);
 }
 

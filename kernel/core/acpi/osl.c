@@ -46,7 +46,7 @@ static size_t page_alloc(size_t bytes)
 static irq_ret_t acpi_handler_wrapper(struct irq_handler* handler)
 {
     struct acpi_handler* node = handler_head;
-    if(node == KNULL);
+    if(node == KNULL)
         return IRQ_NOT_HANDLED;
 
     while(node != KNULL)
@@ -209,8 +209,7 @@ void AcpiOsStall(UINT32 Microseconds)
 void AcpiOsWaitEventsComplete(void)
 {
     // TODO: Wait until all pending GPE threads have executed
-    if(klog_is_init())
-        klog_logln(ERROR, "Can't wait for GPE thread execution");
+    klog_logln(LVL_ERROR, "Can't wait for GPE thread execution");
 }
 
 /**** Mutual Exclusion & Synchronization ****/
@@ -578,10 +577,7 @@ void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char* format, ...)
 
 void ACPI_INTERNAL_VAR_XFACE AcpiOsVprintf(const char* format, va_list args)
 {
-    if(!klog_is_init())
-        klog_early_logfv(DEBUG, KLOG_FLAG_NO_HEADER, format, args);
-    else
-        klog_logfv(DEBUG, KLOG_FLAG_NO_HEADER, format, args);
+    klog_logfv(LVL_DEBUG, KLOG_FLAG_NO_HEADER, format, args);
 }
 
 void AcpiOsRedirectOutput(void* Destination) {}

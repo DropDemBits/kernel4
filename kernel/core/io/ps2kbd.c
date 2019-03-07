@@ -173,9 +173,9 @@ void ps2kbd_init(int device)
     decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2", NULL);
 
     if(!send_command(0xF4, 0x00))
-        klog_logln(INFO, "MF2 Scanning enable failed");
+        klog_logln(LVL_INFO, "MF2 Scanning enable failed");
 
-    klog_logln(DEBUG, "MF2: Clearing buffer");
+    klog_logln(LVL_DEBUG, "MF2: Clearing buffer");
     memset(keycode_buffer, 0x00, 4096);
 
     ps2_handle_device(kbd_device, ps2_keyboard_isr);

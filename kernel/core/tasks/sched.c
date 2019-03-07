@@ -22,6 +22,7 @@
 
 #include <common/util/kfuncs.h>
 #include <common/hal.h>
+#include <common/hal/timer.h>
 #include <common/mm/liballoc.h>
 
 extern void switch_stack(

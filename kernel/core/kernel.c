@@ -25,6 +25,7 @@
 
 #include <common/acpi.h>
 #include <common/hal.h>
+#include <common/hal/timer.h>
 #include <common/util/kfuncs.h>
 #include <common/util/klog.h>
 #include <common/mb2parse.h>
@@ -207,33 +208,38 @@ void main_fb_init()
 extern process_t init_process;
 void kmain()
 {
-    klog_early_init();
-    klog_early_logln(INFO, "Initialising UART");
     uart_init();
-    klog_early_logln(INFO, "Parsing Multiboot info");
+    klog_early_init();
+    klog_logln(LVL_INFO, "Initialising UART");
+    uart_writec('1');
+    klog_logln(LVL_INFO, "Parsing Multiboot info");
     multiboot_parse();
-    klog_early_logln(INFO, "Initialising MM");
+    uart_writec('2');
+    klog_logln(LVL_INFO, "Initialising MM");
     mm_early_init();
     mmu_init();
     mm_init();
+    uart_writec('3');
 
-    klog_early_logln(INFO, "Initialising Framebuffer");
+    klog_logln(LVL_INFO, "Initialising Framebuffer");
     fb_init();
     main_fb_init();
     acpi_early_init();
+    uart_writec('4');
 
-    klog_early_logln(INFO, "Initialising HAL");
+    klog_logln(LVL_INFO, "Initialising HAL");
     hal_init();
+    uart_writec('5');
     
     // Resume init in other thread
-    klog_early_logln(INFO, "Starting up threads for init");
+    klog_logln(LVL_INFO, "Starting up threads for init");
     tasks_init("init", (void*)core_fini);
     thread_create(&init_process, (void*)idle_loop, PRIORITY_IDLE, "idle_thread", NULL);
 
     // sched_init depends on init_process
-    klog_early_logln(INFO, "Initialising Scheduler");
+    klog_logln(LVL_INFO, "Initialising Scheduler");
     sched_init();
-    klog_early_logln(DEBUG, "Entering threaded init");
+    klog_logln(LVL_DEBUG, "Entering threaded init");
 
     klog_init();
 
@@ -259,11 +265,11 @@ void walk_dir(struct dnode* dir, int level)
         if(!strncmp(dirent.name, ".", 1) || !strncmp(dirent.name, "..", 1))
             continue;
 
-        klog_log(INFO, "");
+        klog_log(LVL_INFO, "");
         for(int j = 0; j < level; j++)
-            klog_logf(INFO, KLOG_FLAG_NO_HEADER, "|  ");
+            klog_logf(LVL_INFO, KLOG_FLAG_NO_HEADER, "|  ");
 
-        klog_loglnf(INFO, KLOG_FLAG_NO_HEADER, "|_ %s ", dirent.name);
+        klog_loglnf(LVL_INFO, KLOG_FLAG_NO_HEADER, "|_ %s ", dirent.name);
 
         if((to_inode(dir)->type & 7) == VFS_TYPE_DIRECTORY)
         {
@@ -277,7 +283,7 @@ void walk_dir(struct dnode* dir, int level)
 
 void core_fini()
 {
-    klog_logln(INFO, "Setting up system calls");
+    klog_logln(LVL_INFO, "Setting up system calls");
     syscall_init();
 
     acpi_init();
@@ -295,80 +301,80 @@ void core_fini()
     uint8_t* transfer_buffer = kmalloc(4096);
     int err_code = 0;
 
-    klog_logln(INFO, "Command: ATAPI READ(12):", err_code);
+    klog_logln(LVL_INFO, "Command: ATAPI READ(12):", err_code);
     err_code = atapi_send_command(2, (uint16_t*)read_command, (uint16_t*)transfer_buffer, 4096, TRANSFER_READ, false, false);
-    klog_logln(INFO, "ErrCode (%d)", err_code);
+    klog_logln(LVL_INFO, "ErrCode (%d)", err_code);
 
     // Dump contents
     for(size_t i = 0; i < 2048 && !err_code; i++)
     {
-        klog_logf(DEBUG, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
+        klog_logf(LVL_DEBUG, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
         if(i % 16 == 15)
-            klog_logc(DEBUG, '\n');
+            klog_logc(LVL_DEBUG, '\n');
     }
 
-    klog_logln(INFO, "Command: ATAPI START STOP UNIT (LoEJ):");
+    klog_logln(LVL_INFO, "Command: ATAPI START STOP UNIT (LoEJ):");
     err_code = atapi_send_command(2, (uint16_t*)eject_command, transfer_buffer, 4096, TRANSFER_READ, false, false);
-    klog_logln(INFO, "ErrCode (%d)", err_code);
+    klog_logln(LVL_INFO, "ErrCode (%d)", err_code);
 
-    klog_logln(INFO, "Command: ATA READ");
+    klog_logln(LVL_INFO, "Command: ATA READ");
     err_code = pata_do_transfer(0, 1, (uint16_t*)transfer_buffer, 1, TRANSFER_READ, false, false);
-    klog_logln(INFO, "ErrCode (%d)", err_code);
+    klog_logln(LVL_INFO, "ErrCode (%d)", err_code);
 
     // Dump contents
     for(size_t i = 0; i < 512 && !err_code; i++)
     {
-        klog_logf(INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
+        klog_logf(LVL_INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
         if(i % 16 == 15)
-            klog_logc(INFO, '\n');
+            klog_logc(LVL_INFO, '\n');
     }
 
     struct vfs_mount *root;
     if(initrd_start != 0xDEADBEEF)
     {
-        klog_logln(INFO, "Setting up initrd");
+        klog_logln(LVL_INFO, "Setting up initrd");
         
         // Map initrd to temporary region
         for(size_t off = 0; off < PAGE_ROUNDUP(initrd_size) && off < INITRD_SIZE; off += PAGE_SIZE)
             mmu_map((void*)(INITRD_BASE + off), initrd_start + off, MMU_FLAGS_DEFAULT);
 
         struct fs_instance* tarfs = tarfs_init((void*)INITRD_BASE, initrd_size);
-        klog_logln(INFO, "Mounting initrd:");
+        klog_logln(LVL_INFO, "Mounting initrd:");
         vfs_mount(tarfs, "/");
         root = vfs_get_mount("/");
 
-        klog_logln(INFO, "Mounting ttyfs:");
+        klog_logln(LVL_INFO, "Mounting ttyfs:");
         struct fs_instance* ttyfs = ttyfs_create();
         vfs_mount(ttyfs, "/dev");
 
-        klog_logln(INFO, "Walking dir tree:");
+        klog_logln(LVL_INFO, "Walking dir tree:");
         walk_dir(root->instance->root, 0);
     }
 
     // TODO: Wrap into a separate test file
 #ifdef ENABLE_TESTS
     uint8_t* alloc_test = kmalloc(16);
-    klog_logln(INFO, "Alloc test: %#p", (uintptr_t)alloc_test);
+    klog_logln(LVL_INFO, "Alloc test: %#p", (uintptr_t)alloc_test);
     kfree(alloc_test);
 
     // Part 1: allocation
     uint32_t* laddr = (uint32_t*)0xF0000000;
     unsigned long addr = mm_alloc(1);
-    klog_logln(INFO, "PAlloc test: Addr0 (%#p)", (uintptr_t)addr);
+    klog_logln(LVL_INFO, "PAlloc test: Addr0 (%#p)", (uintptr_t)addr);
 
     // Part 2: Mapping
     mmu_map(laddr, addr, MMU_ACCESS_RW);
     *laddr = 0xbeefb00f;
-    klog_logln(INFO, "At Addr1 direct map (%#p): %#lx", laddr, *laddr);
+    klog_logln(LVL_INFO, "At Addr1 direct map (%#p): %#lx", laddr, *laddr);
 
     // Part 3: Remapping
     mmu_unmap(laddr, true);
     mmu_map(laddr, mm_alloc(1), MMU_ACCESS_RW);
-    klog_logln(INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
+    klog_logln(LVL_INFO, "At Addr1 indirect map (%#p): %#lx", laddr, *laddr);
     if(*laddr != 0xbeefb00f) kpanic("PAlloc test failed (laddr is %#lx)", laddr);
 
     {
-        klog_logln(INFO, "VFS-TEST");
+        klog_logln(LVL_INFO, "VFS-TEST");
         struct inode *blorg;
         struct inode *blorg_aaa;
 
@@ -380,11 +386,11 @@ void core_fini()
         blorg_aaa = vfs_finddir(root, "/blorg/aaa");
         vfs_finddir(root, "/bork/aaa");
         vfs_finddir(root, "/blorg/aa");
-        klog_logln(INFO, "VFS-TEST-DONE");
+        klog_logln(LVL_INFO, "VFS-TEST-DONE");
     }
 #endif
 
-    klog_logln(INFO, "Finished Kernel Initialisation");
+    klog_logln(LVL_INFO, "Finished Kernel Initialisation");
 
     taskswitch_disable();
     process_t *p1 = process_create("tui_process");

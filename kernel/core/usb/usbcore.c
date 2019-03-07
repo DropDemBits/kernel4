@@ -20,7 +20,7 @@ static void ohci_disable_emu(struct pci_dev* dev)
 
 static pci_handle_ret_t hci_disable_emu(struct pci_dev* dev)
 {
-    klog_logln(DEBUG, "Disabling USB emulation for %02x:%02x.%01x", dev->bus, dev->device, dev->function);
+    klog_logln(LVL_DEBUG, "Disabling USB emulation for %02x:%02x.%01x", dev->bus, dev->device, dev->function);
 
     switch(dev->prog_if)
     {

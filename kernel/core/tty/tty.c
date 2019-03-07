@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <common/hal.h>
 #include <common/tty/tty.h>
 #include <common/tty/fb.h>
 #include <common/mm/mm.h>

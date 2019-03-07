@@ -118,7 +118,7 @@ struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
 
         *current_node = '\0';
 
-        klog_logln(DEBUG, "lkup: %s", current_node - len - 1);
+        klog_logln(LVL_DEBUG, "lkup: %s", current_node - len - 1);
         // Lookup & rebase
         dnode = dnode->dops->find_dir(dnode, current_node - len - 1);
 
@@ -157,7 +157,7 @@ void vfs_mount(struct fs_instance* root, const char* path)
         if(parent_root == NULL)
         {
             // Directory is non-existant
-            klog_logln(ERROR, "Unable to mount fs to %s", path);
+            klog_logln(LVL_ERROR, "Unable to mount fs to %s", path);
             kfree(mount);
             return;
         }

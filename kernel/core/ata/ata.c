@@ -11,7 +11,7 @@ void pata_init() {}
 
 void ata_init()
 {
-    klog_logln(INFO, "Setting up driver");
+    klog_logln(LVL_INFO, "Setting up driver");
     
     pata_init();
 }

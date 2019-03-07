@@ -128,11 +128,11 @@ void multiboot_parse()
 
     switch (multiboot_magic) {
         case MULTIBOOT2_BOOTLOADER_MAGIC:
-            klog_early_logln(DEBUG, "Parsing Multiboot 2 structure");
+            klog_logln(LVL_DEBUG, "Parsing Multiboot 2 structure");
             parse_mb2();
             break;
         case MULTIBOOT_BOOTLOADER_MAGIC:
-            klog_early_logln(DEBUG, "Parsing Multiboot 1 structure");
+            klog_logln(LVL_DEBUG, "Parsing Multiboot 1 structure");
             parse_mb1();
             break;
         default:
@@ -167,7 +167,7 @@ void parse_mb1()
         {
             initrd_start = module->mod_start;
             initrd_size = module->mod_end - initrd_start;
-            klog_early_logln(DEBUG, "Found initrd.tar");
+            klog_logln(LVL_DEBUG, "Found initrd.tar");
         }
     }
 
@@ -198,18 +198,18 @@ void parse_mb1()
     }
 
     if(flags & MULTIBOOT_INFO_BOOT_LOADER_NAME)
-        klog_early_logln(INFO, "Loaded by bootloader \"%s\"", (const char*)((uintptr_t)mb1->boot_loader_name));
+        klog_logln(LVL_INFO, "Loaded by bootloader \"%s\"", (const char*)((uintptr_t)mb1->boot_loader_name));
 
     // This needs to be last as to not overwrite the rest of multiboot things
     if(flags & MULTIBOOT_INFO_MEM_MAP)
     {
-        klog_early_logln(INFO, "Memory Regions:");
+        klog_logln(LVL_INFO, "Memory Regions:");
         mb_mmap_t* mmap = (mb_mmap_t*)((uintptr_t)mb1->mmap_addr);
 
         while((size_t)mmap < mb1->mmap_addr + mb1->mmap_length) {
             mb2_mmap_t* actual = (mb2_mmap_t*)((uintptr_t)mmap + sizeof(mmap->size));
 
-            klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type(%lx): %s", actual->addr, actual->len, actual->type, region_names[(actual->type-1) % 5]);
+            klog_logln(LVL_INFO, "base: 0x%08llx, length: 0x%08llx, type(%lx): %s", actual->addr, actual->len, actual->type, region_names[(actual->type-1) % 5]);
 
             if(actual->type != 0)
                 mm_add_area(actual->addr, actual->len, actual->type);
@@ -220,29 +220,29 @@ void parse_mb1()
 
 #ifdef __X86__
     // Only find the RSDP on x86 machines
-    klog_early_logln(INFO, "Searching for RSDP...");
+    klog_logln(LVL_INFO, "Searching for RSDP...");
     uint32_t address = 0;
 
     // Begin with searching in the EBDA
     uint32_t ebda_seg = *((uint16_t*)0x40E) << 4;
-    klog_early_logln(INFO, "- in EBDA (0x%05p)", ebda_seg);
+    klog_logln(LVL_INFO, "- in EBDA (0x%05p)", ebda_seg);
     address = find_rsdp(ebda_seg, ebda_seg + 1024);
 
     if(address == 0)
     {
         // Search in the BIOS ROM region (0xE0000 - 0xFFFFF)
-        klog_early_logln(INFO, "- in BIOS ROM");
+        klog_logln(LVL_INFO, "- in BIOS ROM");
         address = find_rsdp(0xE0000, 0xFFFFF);
     }
 
     if(address != 0)
     {
-        klog_early_logln(INFO, "Found RSDP @ 0x%05p", address);
+        klog_logln(LVL_INFO, "Found RSDP @ 0x%05p", address);
         mb_rsdp_addr = (uint64_t)address;
     }
     else
     {
-        klog_early_logln(INFO, "Unable to find RSDP (Pre-ACPI / (U)EFI machine?)");
+        klog_logln(LVL_INFO, "Unable to find RSDP (Pre-ACPI / (U)EFI machine?)");
     }
 
 #endif
@@ -279,7 +279,7 @@ void parse_mb2()
                 {
                     initrd_start = ((struct multiboot_tag_module *) tag)->mod_start;
                     initrd_size = ((struct multiboot_tag_module *) tag)->mod_end - initrd_start;
-                    klog_early_logln(DEBUG, "Found initrd.tar");
+                    klog_logln(LVL_DEBUG, "Found initrd.tar");
                 }
                 break;
             case MULTIBOOT_TAG_TYPE_MMAP:
@@ -316,7 +316,7 @@ void parse_mb2()
             case MULTIBOOT_TAG_TYPE_ELF_SECTIONS:
                 break;
             case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME:
-                klog_early_logln(INFO, "Loaded by bootloader \"%s\"", ((struct multiboot_tag_string*)tag)->string);
+                klog_logln(LVL_INFO, "Loaded by bootloader \"%s\"", ((struct multiboot_tag_string*)tag)->string);
                 break;
             case MULTIBOOT_TAG_TYPE_ACPI_OLD:
                 if(mb_rsdp_addr != 0)
@@ -324,8 +324,8 @@ void parse_mb2()
             case MULTIBOOT_TAG_TYPE_ACPI_NEW:
                 // Copy address of the RSDP copy
                 mb_rsdp_addr = (uint64_t)((size_t)(tag+1));
-                klog_early_logln(INFO, "Found RSDP @ %p", mb_rsdp_addr);
-                klog_early_logln(INFO, "%.8s v%d", ((struct acpi_xsdp*)((uintptr_t)mb_rsdp_addr))->RSDP.Sig, ((struct acpi_xsdp*)((uintptr_t)mb_rsdp_addr))->RSDP.Version);
+                klog_logln(LVL_INFO, "Found RSDP @ %p", mb_rsdp_addr);
+                klog_logln(LVL_INFO, "%.8s v%d", ((struct acpi_xsdp*)((uintptr_t)mb_rsdp_addr))->RSDP.Sig, ((struct acpi_xsdp*)((uintptr_t)mb_rsdp_addr))->RSDP.Version);
 
                 break;
             default:
@@ -339,7 +339,7 @@ void parse_mb2()
     // 4KiB align info size
     info_size = (info_size + 0xFFF) & ~0xFFF;
 
-    klog_early_logln(INFO, "Memory Regions:");
+    klog_logln(LVL_INFO, "Memory Regions:");
     for (mmap = mmap_tag->entries;
         (uint8_t *) mmap < ((uint8_t *) mmap_tag + mmap_tag->size);
         mmap = (mb2_mmap_t *)((unsigned long) mmap + mmap_tag->entry_size))
@@ -347,7 +347,7 @@ void parse_mb2()
         if(mmap->type == 0)
             continue;
 
-        //klog_early_logln(INFO, "base: 0x%08llx, length: 0x%08llx, type: %s", mmap->addr, mmap->len, region_names[mmap->type-1]);
+        //klog_logln(LVL_INFO, "base: 0x%08llx, length: 0x%08llx, type: %s", mmap->addr, mmap->len, region_names[mmap->type-1]);
         mm_add_area(mmap->addr, mmap->len, mmap->type);
 
         // Reserve multiboot info region
