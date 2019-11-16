@@ -33,12 +33,18 @@
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
 
-static uint8_t input_buffer[4096];
+// Modifiers that have associated indicator lights
+#define MOD_LIGHTS (MOD_SCROLL_LOCK | MOD_NUM_LOCK | MOD_CAPS_LOCK)
+
+#define BUFFER_SIZE 4096
+#define KEY_LAST 0xFF
+
+static uint8_t input_buffer[BUFFER_SIZE];
 static uint16_t read_head = 0;
 static uint16_t write_head = 0;
 uint8_t key_mods = 0;
-uint8_t key_states[0xFF];
-key_mapping_t default_charmap[] = {KEYCHAR_MAP_DEFAULT};
+uint8_t key_states[KEY_LAST];
+key_mapping_t default_charmap[] = { KEYCHAR_MAP_DEFAULT };
 key_mapping_t *charmap;
 static bool caps_pressed = false;
 static bool is_inited = false;
@@ -46,14 +52,14 @@ static bool has_data = false;
 
 static void input_push(uint8_t keycode)
 {
-    if(write_head >= 4096) write_head = 0;
+    if(write_head >= BUFFER_SIZE) write_head = 0;
     input_buffer[write_head++] = keycode;
 }
 
 static uint8_t input_pop()
 {
     if(read_head == write_head) return 0;
-    else if(read_head >= 4096) read_head = 0;
+    else if(read_head >= BUFFER_SIZE) read_head = 0;
     return input_buffer[read_head++];
 }
 
@@ -62,8 +68,8 @@ void kbd_init()
     klog_logln(LVL_INFO, "Initialising keyboard driver");
     charmap = default_charmap;
 
-    memset(input_buffer, 0x00, 4096);
-    memset(key_states, 0x00, 255);
+    memset(input_buffer, 0x00, BUFFER_SIZE);
+    memset(key_states, 0x00, KEY_LAST);
     is_inited = true;
 }
 
@@ -80,7 +86,8 @@ uint8_t kbd_read()
     keycode = input_pop();
     if(keycode == 0)
     {
-        // We only block usermode-type threads, so remove this later
+        // TODO: We only block usermode-type threads, so remove this later (or async)
+        // Make a notify system to allow threads to wait for an event
         sched_sleep_ms(10);
     }
     return keycode;
@@ -113,12 +120,16 @@ void kbd_loadmap(key_mapping_t *mapping)
 
 bool kbd_handle_key(uint8_t keycode, bool released)
 {
+    // Note: Caps lock is broken, I guess goes into an infinite loop?
     if(!is_inited) return false;
 
     uint8_t new_kmods = key_mods;
     if(!released || keycode == KEY_PAUSE)
     {
+        // ???: Could replace with a write to the tty pipe, or somehow chain
+        // everything together (KBD <-> TTY <-> UserProg)
         kbd_write(keycode);
+
         if(kbd_getstate(keycode) == KEY_STATE_PRESSED)
             kbd_setstate(keycode, KEY_STATE_REPEAT);
         else
@@ -126,27 +137,20 @@ bool kbd_handle_key(uint8_t keycode, bool released)
 
         if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
             new_kmods |= MOD_SHIFT;
-        else if(keycode == KEY_CAPSLOCK && ((new_kmods & MOD_CAPS_LOCK) == 0))
-        {
-            new_kmods |= MOD_CAPS_LOCK;
-            caps_pressed = true;
-        }
+        else if(keycode == KEY_CAPSLOCK)
+            new_kmods ^= MOD_CAPS_LOCK;
     } else if(released)
     {
         kbd_setstate(keycode, KEY_STATE_RELEASED);
 
         if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
-            new_kmods &= ~MOD_SHIFT;
-        else if(keycode == KEY_CAPSLOCK && (new_kmods & MOD_CAPS_LOCK) && !caps_pressed)
         {
-            new_kmods &= ~MOD_CAPS_LOCK;
+            new_kmods &= ~MOD_SHIFT;
         }
-        else if(keycode == KEY_CAPSLOCK)
-            caps_pressed = false;
     }
 
     bool update_mods = false;
-    if((new_kmods & 0x7) != (key_mods & 0x7))
+    if((new_kmods & MOD_LIGHTS) != (key_mods & MOD_LIGHTS))
         update_mods = true;
 
     kbd_setmods(new_kmods);
@@ -156,6 +160,7 @@ bool kbd_handle_key(uint8_t keycode, bool released)
 
 char kbd_tochar(uint8_t keycode)
 {
+    // ???: Why is KP_DOT last???
     if(keycode > KEY_KPDOT) return 0;
 
     if(keycode >= KEY_A && keycode <= KEY_Z)

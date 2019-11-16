@@ -34,43 +34,49 @@
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
 
-static uint8_t keycode_buffer[4096];
+#define BUFFER_SIZE 4096
+
+// Decoding states
+#define DECODE_IDLE      0
+#define DECODE_WAIT_CODE 1
+#define DECODE_PROCESS   2
+
+static uint8_t data_buffer[BUFFER_SIZE];
 static uint16_t read_head = 0;
 static uint16_t write_head = 0;
 static int kbd_device = 0;
 static thread_t* decoder_thread;
-/*
- * 0: xF0 Flag (Release)
- * 1: xE0 Flag
- * 2: xE1 Flag
- * 3: Finish Flag
- */
-static uint8_t key_state_machine = 0;
-static uint8_t ps2set2_translation[] = {PS2_SET2_MAP};
+
+static uint8_t keycode_map[] = {PS2_SET2_MAP};
 static bool command_successful = false;
 
-static void keycode_push(uint8_t keycode)
+static void keycode_push(uint8_t data)
 {
-    if(write_head >= 4096) write_head = 0;
-    keycode_buffer[write_head++] = keycode;
+    if(write_head >= BUFFER_SIZE) write_head = 0;
+    data_buffer[write_head++] = data;
 }
 
 static uint8_t keycode_pop()
 {
     if(read_head == write_head) return 0x00;
-    else if(read_head >= 4096) read_head = 0;
-    return keycode_buffer[read_head++];
+    else if(read_head >= BUFFER_SIZE) read_head = 0;
+
+    return data_buffer[read_head++];
 }
 
 static bool send_command(uint8_t command, uint8_t subcommand)
 {
+    // TODO: Rework to fit with current system of interrupts
+    uint8_t rdVal = 0;
+
     command_successful = false;
     ps2_device_write(kbd_device, true, command);
-    if(!command_successful && ps2_device_read(kbd_device, true) != 0xFA) return false;
+    rdVal = ps2_device_read(kbd_device, true);
+    if(!command_successful && rdVal != 0xFA) return false;
     command_successful = false;
 
-    ps2_device_write(kbd_device, true, subcommand);
-    if(!command_successful && ps2_device_read(kbd_device, true) != 0xFA) return false;
+    rdVal = ps2_device_read(kbd_device, true);
+    if(!command_successful && rdVal != 0xFA) return false;
     command_successful = false;
     return true;
 }
@@ -83,6 +89,8 @@ static irq_ret_t ps2_keyboard_isr(struct irq_handler* handler)
     switch(data)
     {
         case 0xFA:
+            // Decoder thread isn't woken up by this...
+            // Why not integrate command processing into the queue?
             command_successful = true;
             break;
         default:
@@ -98,76 +106,126 @@ static irq_ret_t ps2_keyboard_isr(struct irq_handler* handler)
 static void keycode_decoder()
 {
     uint8_t data = 0;
-    
+    // State machine
+    // Current state of the decoder machine:
+    // 0: IDLE       (Doing nothing)
+    // 1: WAIT_CODE  (Waiting for a key code)
+    // 2: PROCESS    (Processing key)
+    uint8_t key_state_machine = DECODE_IDLE;
+    // Currently processed key code
+    uint16_t keycode = 0;
+    // Number of bytes to read before processing
+    uint8_t read_count = 1;
+    // If the key was released
+    bool released = false;
+    // If the key is an extended code
+    bool extended = false;
+    // If there is a pending status light update
+    bool pending_lights_update = false;
+
     while(1)
     {
-        keep_consume:
+        keep_processing:
         data = keycode_pop();
         
         if(data == 0x00)
         {
+            // Wait for more data
             sched_block_thread(STATE_SUSPENDED);
             continue;
         }
 
-        switch(data)
+        // Deal with the current data byte
+        if (key_state_machine == DECODE_IDLE || key_state_machine == DECODE_WAIT_CODE)
         {
-            case 0xF0: key_state_machine |= 0b0001; break;
-            case 0xE0: key_state_machine |= 0b0010; break;
-            case 0xE1: key_state_machine |= 0b0100; break;
-            case 0x77:
-                if(key_state_machine == 0b0101)
-                {
-                    key_state_machine |= 0b1000;
-                    break;
-                }
-            case 0x7C:
-                if((key_state_machine & 0b0010) && (key_state_machine & 0b0001) == 0)
-                {
-                    key_state_machine |= 0b1000;
-                    break;
-                } else if((key_state_machine & 0b0010) && (key_state_machine & 0b0001) == 1)
-                {
-                    key_state_machine &= ~0b1011;
-                    break;
-                }
-            case 0x12:
-                if((key_state_machine & 0b0010) && (key_state_machine & 0b0001) == 1)
-                {
-                    key_state_machine |= 0b1000;
-                    data = 0x7C;
-                    break;
-                }
-                else if((key_state_machine & 0b0010) && (key_state_machine & 0b0001) == 0)
-                {
-                    key_state_machine &= ~0b1011;
-                    break;
-                }
-            default:
-                if((key_state_machine & 0b0100) == 0)
-                    key_state_machine |= 0b1000;
+            switch (data)
+            {
+            case 0xF0:
+                // Break code
+                // Keep read count the same
+                released = true;
+                // Keep extended state the same
+                key_state_machine = DECODE_WAIT_CODE;
                 break;
+            case 0xE0:
+                // Extended 1 code
+                read_count = 1;
+                // Keep released the same
+                extended = true;
+                key_state_machine = DECODE_WAIT_CODE;
+                break;
+            case 0xE1:
+                // Extended 2 code
+                read_count = 2;
+                // Keep released the same
+                extended = true;
+                key_state_machine = DECODE_WAIT_CODE;
+                break;
+            default:
+                // Data code, can process now
+                --read_count;
+                // Keep released the same
+                // Keep extended the same
+                key_state_machine = DECODE_PROCESS;
+                break;
+            }
+
+            // If more data needs to be accepted, keep going
+            if (key_state_machine == DECODE_WAIT_CODE)
+                goto keep_processing;
         }
 
-        if((key_state_machine & 0b1000) != 0)
+        if (key_state_machine == DECODE_PROCESS)
         {
-            // Get the final key code
-            uint8_t keycode = KEY_RESERVED;
+            // Process the current key code
 
-            if(key_state_machine & 0b0110)
-                keycode = ps2set2_translation[data + 0x80];
-            else
-                keycode = ps2set2_translation[data + 0x00];
+            // Merge current code into current keycode
+            keycode <<= 8;
+            keycode |= data;
 
-            if(kbd_handle_key(keycode, key_state_machine & 0x1))
-                send_command(0xED, kbd_getmods() & 0x7);
-            key_state_machine = 0;
+            // Check for special cases of continues
+            // PrintScr Press
+            if (extended && !released && data == 0x12)
+                read_count = 1;
+            // PrintScr Release
+            if (extended && released && data == 0x7C)
+                read_count = 1;
+
+            if (read_count > 0)
+            {
+                // Still more keys to go, do a thing
+                key_state_machine = DECODE_WAIT_CODE;
+                goto keep_processing;
+            }
+
+            // Compute the effective keycode
+            // Print screen
+            if (keycode == 0x7C12 || keycode == 0x127C)
+                keycode = 0x7C;
+            if (keycode == 0x1477)
+                keycode = 0x77;
+
+            if (extended)
+                keycode += 0x80;
+            
+            pending_lights_update = kbd_handle_key(keycode_map[keycode], released);
+
+            // Key processed, reset state
+            released = false;
+            extended = false;
+            read_count = 1;
+            keycode = 0;
+            key_state_machine = DECODE_IDLE;
+            goto keep_processing;
         }
     }
 }
 
 void ps2kbd_init(int device)
 {
+    // TODO: Merge ps2kbd & atkbd
+    // Only difference is xlation map
+
     // PS2 Side
     kbd_device = device;
     decoder_thread = thread_create(sched_active_process(), keycode_decoder, PRIORITY_KERNEL, "keydecoder_ps2", NULL);
@@ -176,11 +234,14 @@ void ps2kbd_init(int device)
         klog_logln(LVL_INFO, "MF2 Scanning enable failed");
 
     klog_logln(LVL_DEBUG, "MF2: Clearing buffer");
-    memset(keycode_buffer, 0x00, 4096);
+    memset(data_buffer, 0x00, BUFFER_SIZE);
 
     ps2_handle_device(kbd_device, ps2_keyboard_isr);
+    // Set scan set to Set 2
     send_command(0xF0, 0x02);
+    // Repeat rate @ 2hz
     send_command(0xF3, 0x2B);
+    // Reset lights
     send_command(0xED, 0x00);
 
     // Reset heads

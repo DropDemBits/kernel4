@@ -29,12 +29,20 @@
 #include <common/sched/sched.h>
 #include <common/util/kfuncs.h>
 
+// Part of the keycodes, why not in keycodes.h?
 #define MOD_SCROLL_LOCK 0x01
 #define MOD_NUM_LOCK 0x02
 #define MOD_CAPS_LOCK 0x04
 #define MOD_SHIFT 0x80
 
-static uint8_t keycode_buffer[4096];
+#define BUFFER_SIZE 4096
+
+#define STATE_SPECIAL   0b0001
+#define STATE_E0        0b0010
+#define STATE_E1        0b0100
+#define STATE_DONE      0b1000
+
+static uint8_t keycode_buffer[BUFFER_SIZE];
 static uint16_t read_head = 0;
 static uint16_t write_head = 0;
 static int kbd_device = 0;
@@ -51,14 +59,15 @@ static bool command_successful = false;
 
 static void keycode_push(uint8_t keycode)
 {
-    if(write_head >= 4096) write_head = 0;
+    // REWRITE: Use sizeof (keycode_buffer)
+    if(write_head >= BUFFER_SIZE) write_head = 0;
     keycode_buffer[write_head++] = keycode;
 }
 
 static uint8_t keycode_pop()
 {
     if(read_head == write_head) return 0;
-    else if(read_head >= 4096) read_head = 0;
+    else if(read_head >= BUFFER_SIZE) read_head = 0;
     return keycode_buffer[read_head++];
 }
 
@@ -100,52 +109,61 @@ static void keycode_decoder()
     uint8_t data = 0;
     while(1)
     {
-        keep_consume:
         data = keycode_pop();
 
         if(data == 0x00)
         {
+            // TODO: Notify blocked & waiting threads
             sched_block_thread(STATE_SUSPENDED);
             continue;
         }
 
+        // REWRITE: Use bit combos
         switch(data)
         {
-            case 0xE0: key_state_machine |= 0b0010; break;
-            case 0xE1: key_state_machine |= 0b0100; break;
+            case 0xE0: key_state_machine |= STATE_E0; break;
+            case 0xE1: key_state_machine |= STATE_E1; break;
             // Print screen
+            // Press: 0xE0, 0xB7, 0xE0, 0xAA
+            // Release: 0xE0, 0xB7, 0xE0, 0xAA
+
             case 0x2A:
-                if(key_state_machine & 0b0010)
+                if(key_state_machine & STATE_E0)
                 {
-                    key_state_machine |= 0b0001;
+                    // Start Print Screen press sequence
+                    key_state_machine |= STATE_SPECIAL;
                     break;
                 }
             case 0xB7:
-                if(key_state_machine & 0b0010)
+                if(key_state_machine & STATE_E0)
                 {
-                    key_state_machine |= 0b0001;
+                    // Start Print Screen release sequence
+                    key_state_machine |= STATE_SPECIAL;
                     break;
                 }
-            // Pause
             case 0x1D:
-                if(key_state_machine & 0b0100)
+                if(key_state_machine & STATE_E1)
                 {
-                    key_state_machine = 0b0111;
+                    // Pause (0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5)
+                    // Start of Pause sequence
+                    key_state_machine = (STATE_E1 | STATE_E0 | STATE_SPECIAL);
                     break;
                 }
             case 0xC5:
-                if(key_state_machine == 0b0111)
+                if(key_state_machine == (STATE_E1 | STATE_E0 | STATE_SPECIAL))
                 {
-                    key_state_machine |= 0b1000;
+                    // End of Pause sequence
+                    key_state_machine |= STATE_DONE;
                     break;
                 }
             default:
-                if((key_state_machine & 0b0110) < 0b0100)
-                    key_state_machine |= 0b1000;
+                // ???: I guess if state < state_e1?
+                if ((key_state_machine & (STATE_E1 | STATE_E0)) < STATE_E1)
+                    key_state_machine |= STATE_DONE;
                 break;
         }
 
-        if((key_state_machine & 0b1000) != 0)
+        if((key_state_machine & STATE_DONE) != 0)
         {
             // Get the final keycode
             uint8_t keycode = KEY_RESERVED;
@@ -186,11 +204,11 @@ void atkbd_init(int device)
         klog_logln(LVL_INFO, "AT: Scanning enable failed");
 
     klog_logln(LVL_DEBUG, "AT: Clearing buffer");
-    memset(keycode_buffer, 0x00, 4096);
+    memset(keycode_buffer, 0x00, BUFFER_SIZE);
 
     ps2_handle_device(kbd_device, at_keyboard_isr);
     if(ps2_device_get_type(device) == TYPE_MF2_KBD_TRANS)
-        // Force the keyboard into scancode set 2 (preventing double xlation)
+        // Force the keyboard into scancode set 2 (preventing double translation)
         send_command(0xF0, 0x02);
     else
         // Normal AT keyboard
