@@ -263,11 +263,18 @@ void dump_registers(struct intr_stack *stack)
     KLOG_FATAL("%s", "***BEGIN REGISTER DUMP***");
     KLOG_FATAL("%s", "RAX RBX RCX RDX");
     KLOG_FATAL("%#p %#p %#p %#p", stack->rax, stack->rbx, stack->rcx, stack->rdx);
+    KLOG_FATAL("%s", "R8  R9  R10 R11");
+    KLOG_FATAL("%#p %#p %#p %#p", stack->r8, stack->r9, stack->r10, stack->r11);
+    KLOG_FATAL("%s", "R12 R13 R14 R15");
+    KLOG_FATAL("%#p %#p %#p %#p\n", stack->r12, stack->r13, stack->r14, stack->r15);
     KLOG_FATAL("%s", "RSI RDI RSP RBP");
     KLOG_FATAL("%#p %#p %#p %#p", stack->rsi, stack->rdi, stack->rsp, stack->rbp);
     KLOG_FATAL("CR2: %#p", stack->cr2);
     KLOG_FATAL("RIP: %#p", stack->rip);
     KLOG_FATAL("Error code: %x", stack->err_code);
+    KLOG_FATAL("CS: %x", stack->cs);
+    KLOG_FATAL("SS: %x", stack->ss);
+    KLOG_FATAL("RFLAGS: %x", stack->rflags);
 
 #elif defined(__i386__)
     KLOG_FATAL("%s", "***BEGIN REGISTER DUMP***");

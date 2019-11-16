@@ -24,7 +24,6 @@ cpu: count=1, ips=4000000, model=core2_penryn_t9600, reset_on_triple_fault=0, cp
 
 print_timestamps: enabled=0
 debugger_log: -
-debug_symbols: file=i386.sym, offset=0x00
 magic_break: enabled=1
 port_e9_hack: enabled=0
 private_colormap: enabled=0

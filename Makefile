@@ -39,6 +39,8 @@ clean: clean-libk clean-kernel clean-programs
 	rm -rf pxedest
 
 initrd/initrd/initrd.tar: $(INITRD_FILES)
+	# Make the empty directories first
+	mkdir -p sysroot/dev
 	@scripts/gen_initrd.sh
 
 geniso: build-libk build-kernel build-programs initrd/initrd/initrd.tar

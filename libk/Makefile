@@ -60,7 +60,7 @@ OBJ := $(addprefix $(BIN_PREFIX), $(BUILD_OBJ))
 
 LIBK_OBJ:=$(OBJ:.o=.libk.o)
 
-BINARIES=$(BIN_PREFIX)libk.a $(BIN_PREFIX)libc.a
+BINARIES=$(BIN_PREFIX)libk.a #$(BIN_PREFIX)libc.a
 
 all: $(BINARIES)
 

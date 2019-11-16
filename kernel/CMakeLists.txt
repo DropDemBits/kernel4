@@ -31,7 +31,7 @@ list(APPEND SOURCES
     core/fs/vfs.c
     core/fs/tarfs.c
     core/fs/generic_iops.c
-    core/fs/fileops.c
+    #core/fs/fileops.c
     core/fs/ttyfs.c
     core/ata/pata.c
     core/ata/ata.c
