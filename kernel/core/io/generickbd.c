@@ -28,11 +28,6 @@
 #include <common/io/keycodes.h>
 #include <common/util/kfuncs.h>
 
-#define MOD_SCROLL_LOCK 0x01
-#define MOD_NUM_LOCK 0x02
-#define MOD_CAPS_LOCK 0x04
-#define MOD_SHIFT 0x80
-
 // Modifiers that have associated indicator lights
 #define MOD_LIGHTS (MOD_SCROLL_LOCK | MOD_NUM_LOCK | MOD_CAPS_LOCK)
 
@@ -141,7 +136,11 @@ bool kbd_handle_key(uint8_t keycode, bool released)
 
         if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
             new_kmods |= MOD_SHIFT;
-        else if(keycode == KEY_CAPSLOCK && kbd_getstate(keycode) != KEY_STATE_REPEAT)
+        if(keycode == KEY_L_CTRL || keycode == KEY_R_CTRL)
+            new_kmods |= MOD_CTRL;
+        if(keycode == KEY_L_ALT || keycode == KEY_R_ALT)
+            new_kmods |= MOD_ALT;
+        if(keycode == KEY_CAPSLOCK && kbd_getstate(keycode) != KEY_STATE_REPEAT)
             new_kmods ^= MOD_CAPS_LOCK;
     } else if(released)
     {
@@ -149,6 +148,10 @@ bool kbd_handle_key(uint8_t keycode, bool released)
 
         if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
             new_kmods &= ~MOD_SHIFT;
+        if(keycode == KEY_L_ALT || keycode == KEY_R_ALT)
+            new_kmods &= ~MOD_ALT;
+        if(keycode == KEY_L_CTRL || keycode == KEY_R_CTRL)
+            new_kmods &= ~MOD_CTRL;
     }
 
     bool update_mods = false;

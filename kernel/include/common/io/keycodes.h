@@ -19,11 +19,18 @@
  */
 
 /*
- * Based off the USB HID usage tableS
+ * Based off the USB HID usage tables
  */
 
 #ifndef __KEYCODES_H__
 #define __KEYCODES_H__
+
+#define MOD_SCROLL_LOCK 0x01
+#define MOD_NUM_LOCK 0x02
+#define MOD_CAPS_LOCK 0x04
+#define MOD_CTRL 0x20
+#define MOD_ALT 0x40
+#define MOD_SHIFT 0x80
 
 // Modifiers
 #define KEY_MOD_LCTRL           0x01
@@ -35,7 +42,7 @@
 #define KEY_MOD_RALT            0x40
 #define KEY_MOD_RGUI            0x80
 
-// Table 0x07
+// Table 0x07 (Keyboard/Keypad Page)
 #define KEY_RESERVED            0x00
 // 0x01 Error Roll Over
 // 0x02 POST Fail
@@ -270,7 +277,7 @@
 #define KEY_R_ALT               0xe6
 #define KEY_R_GUI               0xe7
 
-// Table 0x0C
+// Table 0x0C (Consumer Page)
 #define KEY_MEDIA_NEXT_TRACK    0xe8
 #define KEY_MEDIA_PREV_TRACK    0xe9
 #define KEY_MEDIA_STOP          0xea
@@ -290,10 +297,11 @@
 #define KEY_WEB_REFRESH         0xf8
 #define KEY_WEB_FAV             0xf9
 
-// Table 0x01
+// Table 0x01 (Generic Desktop Page)
 #define KEY_SYS_POWER           0xfa
 #define KEY_SYS_SLEEP           0xfb
 #define KEY_SYS_WAKE            0xfc
+#define KEY_SYS_BREAK           0xfd
 
 #define KEY_LAST                0xff
 
@@ -371,7 +379,7 @@
 /*x78*/ KEY_F11, KEY_KPPLUS, KEY_KP3, KEY_KPDASH,\
 /*x7C*/ KEY_KPSTAR, KEY_KP9, KEY_SCROLL_LOCK, KEY_RESERVED,\
 /*x80*/ KEY_RESERVED, KEY_RESERVED, KEY_RESERVED, KEY_F7,\
-/*x84*/ KEY_RESERVED, KEY_RESERVED, KEY_RESERVED, KEY_RESERVED,\
+/*x84*/ KEY_SYSRQ, KEY_RESERVED, KEY_RESERVED, KEY_RESERVED,\
 /*x88*/ KEY_RESERVED, KEY_RESERVED, KEY_RESERVED, KEY_RESERVED,\
 /*x8C*/ KEY_RESERVED, KEY_RESERVED, KEY_RESERVED, KEY_RESERVED,\
 /*x90*/ KEY_WEB_SEARCH, KEY_R_ALT, KEY_RESERVED, KEY_RESERVED,\
@@ -401,7 +409,7 @@
 /*xF0*/ KEY_INSERT, KEY_DELETE, KEY_DOWN_ARROW, KEY_RESERVED,\
 /*xF4*/ KEY_RIGHT_ARROW, KEY_UP_ARROW, KEY_RESERVED, KEY_PAUSE,\
 /*xF8*/ KEY_RESERVED, KEY_RESERVED, KEY_PG_DOWN, KEY_RESERVED,\
-/*xFC*/ KEY_PRINTSCR, KEY_PG_UP, KEY_RESERVED, KEY_RESERVED,
+/*xFC*/ KEY_PRINTSCR, KEY_PG_UP, KEY_SYS_BREAK, KEY_RESERVED,
 
 // Offsets: Normal +0x00, Extended +0x50, Extended special (pause+0xA0, sysrq+0xB0)
 #define PS2_SET1_MAP \

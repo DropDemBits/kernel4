@@ -250,13 +250,24 @@ static void keycode_decoder()
             keycode <<= 8;
             keycode |= data;
 
-            // Check for special cases of continues
-            // PrintScr Press
-            if (extended && !released && data == 0x12)
-                read_count = 1;
-            // PrintScr Release
-            if (extended && released && data == 0x7C)
-                read_count = 1;
+            // Weird keys to note (from scancode.doc):
+            // When NumLock is on:  Shift code is  pressed for numpad
+            // When NumLock is off: Shift code is released for numpad
+            // Num_/: Inverts the shift state (regardless of numpad)
+
+            // PrSc = E0 14 7C
+            // Ctrl + PrSc = E0 7C
+            // Alt + PrSc = 84 (SysReq)
+
+            // Ctrl + Pause = 7E (Break)
+
+            // Check for special keys
+            // Extended Left Shift
+            if (extended && data == 0x12)
+                extended = false;
+            // Extended Right Shift
+            if (extended && data == 0x59)
+                extended = false;
 
             if (read_count > 0)
             {
@@ -266,15 +277,13 @@ static void keycode_decoder()
             }
 
             // Compute the effective keycode
-            // Print screen
-            if (keycode == 0x7C12 || keycode == 0x127C)
-                keycode = 0x7C;
-            if (keycode == 0x1477)
+            // Pause
+            if (extended && keycode == 0x1477)
                 keycode = 0x77;
 
             if (extended)
                 keycode += 0x80;
-            
+
             // Update status lights
             if(kbd_handle_key(keycode_map[keycode], released))
                 send_command(0xED, kbd_getmods() & 0x7);
