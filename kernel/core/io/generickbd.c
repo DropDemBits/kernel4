@@ -37,18 +37,22 @@
 #define MOD_LIGHTS (MOD_SCROLL_LOCK | MOD_NUM_LOCK | MOD_CAPS_LOCK)
 
 #define BUFFER_SIZE 4096
-#define KEY_LAST 0xFF
 
 static uint8_t input_buffer[BUFFER_SIZE];
 static uint16_t read_head = 0;
 static uint16_t write_head = 0;
 uint8_t key_mods = 0;
+
+// Array of current & previous key states
+// Lo nibble: Current State
+// Hi nibble: Previous State
 uint8_t key_states[KEY_LAST];
 key_mapping_t default_charmap[] = { KEYCHAR_MAP_DEFAULT };
 key_mapping_t *charmap;
-static bool caps_pressed = false;
 static bool is_inited = false;
 static bool has_data = false;
+
+static bool caps_enable = false;
 
 static void input_push(uint8_t keycode)
 {
@@ -137,16 +141,14 @@ bool kbd_handle_key(uint8_t keycode, bool released)
 
         if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
             new_kmods |= MOD_SHIFT;
-        else if(keycode == KEY_CAPSLOCK)
+        else if(keycode == KEY_CAPSLOCK && kbd_getstate(keycode) != KEY_STATE_REPEAT)
             new_kmods ^= MOD_CAPS_LOCK;
     } else if(released)
     {
         kbd_setstate(keycode, KEY_STATE_RELEASED);
 
         if(keycode == KEY_L_SHIFT || keycode == KEY_R_SHIFT)
-        {
             new_kmods &= ~MOD_SHIFT;
-        }
     }
 
     bool update_mods = false;
