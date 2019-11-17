@@ -59,30 +59,6 @@ static bool taskswitch_postponed = false;
 static bool preempt_enabled = false;
 static uint64_t flags = 0;
 
-// static struct thread_queue thread_queues[PRIORITY_COUNT];
-// static struct thread_queue sleep_queue;
-// static struct thread_queue blocked_queue;
-// static struct sleep_node* sleepers = KNULL;
-// static struct sleep_node* done_sleepers = KNULL;
-// static bool cleanup_needed = false;
-// static bool clean_sleepers = false;
-// static bool idle_entry = false;
-
-/*static unsigned int get_timeslice(enum thread_priority priority)
-{
-    switch(priority)
-    {
-        case PRIORITY_KERNEL: return 30;
-        case PRIORITY_HIGHER: return 20;
-        case PRIORITY_HIGH: return 15;
-        case PRIORITY_NORMAL: return 10;
-        case PRIORITY_LOW: return 5;
-        case PRIORITY_LOWER: return 3;
-        case PRIORITY_IDLE: return 1;
-        default: return 0;
-    }
-}*/
-
 /*
  * Note: taskswitch_disable/enable pair must be called on the outermost handler
  */
@@ -211,6 +187,7 @@ void sched_sleep_until(uint64_t when)
     if(when < now)
     {
         // Only enable the scheduler in order to not fire scheduling
+        kpanic("quoi?");
         sched_unlock();
         return;
     }
@@ -236,62 +213,6 @@ void sched_sleep_ms(uint64_t ms)
 {
     sched_sleep_ns(ms * 1000000);
 }
-
-/*void sched_sleep_ms(uint64_t millis)
-{
-    sched_sleep_ms(millis);
-    
-    if(active_thread == KNULL)
-        // Can't sleep when we haven't initialized
-        return;
-
-    struct sleep_node* node = kmalloc(sizeof(struct sleep_node));
-    node->next = KNULL;
-    node->delta = millis;
-    node->thread = active_thread;
-
-    if(sleepers == KNULL)
-    {
-        // Create a new queue
-        sleepers = node;
-    } else
-    {
-        // There are some sleeping threads.
-        struct sleep_node* last_node = KNULL;
-        struct sleep_node* next_node = sleepers;
-
-        while(next_node != KNULL && node->delta > next_node->delta)
-        {
-            // Iterate through the entire list and adjust the delta accordingly
-            node->delta -= next_node->delta;
-            last_node = next_node;
-            next_node = next_node->next;
-        }
-
-        if(next_node == KNULL)
-        {
-            // We are at the end of the list, so simply append
-            last_node->next = node;
-        } else if(node->delta <= next_node->delta)
-        {
-            if(last_node != KNULL)
-            {
-                // Insert between the last and next node
-                last_node->next = node;
-            } else
-            {
-                // Make our new node the new beginning of the list
-                sleepers = node;
-            }
-            node->next = next_node;
-
-            // Adjust delta of larger node
-            next_node->delta = next_node->delta - node->delta;
-        }
-    }
-
-    sched_block_thread(STATE_SLEEPING);
-}*/
 
 static void switch_to_thread(thread_t* next_thread)
 {
