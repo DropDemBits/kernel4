@@ -295,6 +295,8 @@
 #define KEY_SYS_SLEEP           0xfb
 #define KEY_SYS_WAKE            0xfc
 
+#define KEY_LAST                0xff
+
 #define KEYCHAR_MAP_DEFAULT \
 /*x00*/{'\0','\0','\0'},{'\0','\0','\0'},{'\0','\0','\0'},{'\0','\0','\0'}, \
 /*x04*/{'a','A','\0'},{'b','B','\0'},{'c','C','\0'},{'d','D','\0'}, \
