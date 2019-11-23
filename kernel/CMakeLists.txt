@@ -27,7 +27,6 @@ list(APPEND SOURCES
     core/io/ps2.c
     core/io/generickbd.c
     core/io/ps2kbd.c
-    core/io/atkbd.c
     core/fs/vfs.c
     core/fs/tarfs.c
     core/fs/generic_iops.c

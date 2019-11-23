@@ -57,7 +57,7 @@ do { \
    extern uint8_t* ps2_device_irqs();
  */
 
-extern void ps2kbd_init(int device);
+extern void ps2kbd_init(int device, bool translated);
 extern void atkbd_init(int device);
 //extern void ps2mouse_init(int device);
 
@@ -297,18 +297,15 @@ void ps2_init()
     {
         if(!devices[active_device].present || !devices[active_device].type) continue;
 
-        if(devices[active_device].type == TYPE_MF2_KBD)
+        if(devices[active_device].type == TYPE_MF2_KBD
+            || devices[active_device].type == TYPE_MF2_KBD_TRANS
+            || devices[active_device].type == TYPE_AT_KBD)
         {
-            klog_logln(LVL_DEBUG, "Initialising MF2 keyboard");
-            ps2kbd_init(active_device);
-        } else if(devices[active_device].type == TYPE_MF2_KBD_TRANS ||
-                devices[active_device].type == TYPE_AT_KBD)
-        {
-            if(devices[active_device].type == TYPE_MF2_KBD_TRANS)
-                klog_logln(LVL_DEBUG, "Initialising AT Translated MF2 keyboard Scan Set 2");
-            else
-                klog_logln(LVL_DEBUG, "Initialising AT keyboard Scan Set 1");
-            atkbd_init(active_device);
+            klog_logln(LVL_DEBUG, "Initialising PS2 keyboard");
+            ps2kbd_init(
+                active_device,
+                devices[active_device].type == TYPE_MF2_KBD_TRANS
+                || devices[active_device].type == TYPE_AT_KBD);
         }
         else
             klog_logln(LVL_DEBUG, "Device on port %d not initialized (%s)",
