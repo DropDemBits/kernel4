@@ -22,8 +22,10 @@ LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
 BUILD_OBJ:= $(BUILD_OBJ) \
 stdio/printf.o \
 stdio/sprintf.o \
+stdio/snprintf.o \
 stdio/vprintf.o \
 stdio/vsprintf.o \
+stdio/vsnprintf.o \
 stdio/putchar.o \
 stdio/puts.o \
 stdlib/abort.o \

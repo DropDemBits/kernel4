@@ -1,5 +1,5 @@
 PROJECTS := libk kernel
-TARGETS := i386 x86_64
+TARGETS ?=
 COMPILERS := i686-k4os-gcc x86_64-k4os-gcc
 INITRD_FILES := $(addprefix sysroot/,$(shell /bin/bash scripts/list_initrd.sh))
 PROGRAM_PROJECTS := test

@@ -4,9 +4,17 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build ISOs",
+            "label": "Build ISOs (x86_64)",
             "type": "shell",
-            "command": "make geniso",
+            "command": "make TARGETS=x86_64 geniso",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build ISOs (i386)",
+            "type": "shell",
+            "command": "make TARGETS=i386 geniso",
             "problemMatcher": [
                 "$gcc"
             ]
@@ -26,7 +34,10 @@
         {
             "label": "Run QEMU (i386)",
             "type": "shell",
-            "command": "make geniso && qemu-system-i386 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-i386.iso",
+            "dependsOn": [
+                "Build ISOs (i386)"
+            ],
+            "command": "qemu-system-i386 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-i386.iso",
             "problemMatcher": [
                 "$gcc"
             ],
@@ -38,27 +49,34 @@
         {
             "label": "Run QEMU (x86_64)",
             "type": "shell",
-            "command": "make geniso && qemu-system-x86_64 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-x86_64.iso",
-            "problemMatcher": [
-                "$gcc"
+            "dependsOn": [
+                "Build ISOs (x86_64)"
             ],
+            "command": "qemu-system-x86_64 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-x86_64.iso",
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
-        },
-        {
-            "label": "Debug QEMU (x86_64)",
-            "type": "shell",
-            "command": "make geniso && qemu-system-x86_64 -enable-kvm -S -s -cdrom k4-x86_64.iso",
+            },
             "problemMatcher": [
                 "$gcc"
             ]
         },
         {
+            "label": "Debug QEMU (x86_64)",
+            "type": "process",
+            "dependsOn": [
+                "Build ISOs (x86_64)"
+            ],
+            "command": "${workspaceFolder}/run_thing.sh",
+            "problemMatcher": []
+        },
+        {
             "label": "Debug QEMU (i386)",
             "type": "shell",
-            "command": "make geniso && qemu-system-x86_64 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-x86_64.iso -S -s",
+            "dependsOn": [
+                "Build ISOs (i386)"
+            ],
+            "command": "qemu-system-x86_64 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-x86_64.iso -S -s",
             "problemMatcher": [
                 "$gcc"
             ]
