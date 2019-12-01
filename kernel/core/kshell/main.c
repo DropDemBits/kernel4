@@ -522,7 +522,12 @@ void kshell_main()
     memset(input_buffer, 0x00, INPUT_SIZE+1);
 
     // Add our tty to the list of ttys (temporary)
-    ttyfs_add_tty((struct ttyfs_instance*)(vfs_get_mount("/dev")->instance), tty, "tty1");
+    struct vfs_mount *mount = vfs_get_mount("/dev");
+    if (mount)
+        ttyfs_add_tty((struct ttyfs_instance*)(mount->instance), tty, "tty1");
+    else
+        printf("Warning: Unable to add current tty, programs will not be able to run!\n");
+    
 
     while(should_run)
     {

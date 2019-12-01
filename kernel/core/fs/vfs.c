@@ -157,7 +157,7 @@ void vfs_mount(struct fs_instance* root, const char* path)
         if(parent_root == NULL)
         {
             // Directory is non-existant
-            klog_logln(LVL_ERROR, "Unable to mount fs to %s", path);
+            klog_logln(LVL_ERROR, "Unable to mount fs to %s (directory does not exist)", path);
             kfree(mount);
             return;
         }
@@ -172,6 +172,8 @@ void vfs_mount(struct fs_instance* root, const char* path)
         // Add to the list of mounts
         mount->next = root_mount->next;
         root_mount->next = mount;
+
+        klog_logln(LVL_DEBUG, "Mounted fs to %s", path);
     }
 }
 
