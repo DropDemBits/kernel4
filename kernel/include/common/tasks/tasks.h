@@ -1,6 +1,8 @@
 #include <common/types.h>
 #include <common/mm/mm.h>
 
+#include <arch/cpufuncs.h>
+
 #ifndef __TASKS_H__
 #define __TASKS_H__
 
@@ -56,12 +58,16 @@ typedef struct thread
     process_t *parent;
     struct thread *next;
 
+    // Architechtural State //
     // Editing the stack pointer location requires modification of usermode_entry
     unsigned long kernel_sp;
     unsigned long user_sp;
     unsigned long kernel_stacktop;
     unsigned long user_stacktop;
+    // Only used to preserve the flag state across non-interrupt task switches
+    cpu_flags_t saved_flags;
 
+    // Thread Info //
     enum thread_state current_state;
 
     unsigned int tid;

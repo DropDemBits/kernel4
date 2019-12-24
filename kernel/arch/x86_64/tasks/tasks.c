@@ -87,6 +87,7 @@ void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long*
     thread_stack -= 4; // Remaining preserved registers
 
     thread->kernel_sp = (uint64_t)thread_stack;
+    thread->saved_flags = 0x202;
 }
 
 void cleanup_register_state(thread_t *thread)

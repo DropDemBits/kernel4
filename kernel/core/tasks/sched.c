@@ -57,7 +57,6 @@ static bool taskswitch_postponed = false;
 // Set if we are in the idle state (used for postponing postponed task switches)
 // static bool is_idle = false;
 static bool preempt_enabled = false;
-static uint64_t flags = 0;
 
 /*
  * Note: taskswitch_disable/enable pair must be called on the outermost handler
@@ -393,26 +392,34 @@ void sched_setidle(thread_t* thread)
 
 void sched_lock()
 {
-    flags = hal_disable_interrupts();
+    // Since there are calls to sched_lock in succession, the old flag state
+    // will be overwritten.
+    // As interrupts are only restored on the outer-most level, only preserve
+    // the flag state for the first entry into the lock
+    cpu_flags_t local_flags = hal_disable_interrupts();
+    if(sched_semaphore == 0 && active_thread != KNULL)
+        active_thread->saved_flags = local_flags;
+
     sched_semaphore++;
 }
 
 void sched_unlock()
 {
     sched_semaphore--;
-    if(sched_semaphore == 0)
-        hal_enable_interrupts(flags);
+
+    if(sched_semaphore == 0 && active_thread != KNULL)
+        hal_enable_interrupts(active_thread->saved_flags);
 }
 
 void taskswitch_disable()
 {
     sched_lock();
-    taskswitch_semaphore++;
+    ++taskswitch_semaphore;
 }
 
 void taskswitch_enable()
 {
-    taskswitch_semaphore--;
+    --taskswitch_semaphore;
     // Don't do a task switch if we are in the idle state (will be handled by idle loop exit)
     if(taskswitch_semaphore == 0 && taskswitch_postponed)
     {

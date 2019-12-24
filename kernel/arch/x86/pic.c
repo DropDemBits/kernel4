@@ -72,9 +72,9 @@ static bool is_enabled = false;
 
 static void irq_wrapper(void* params, uint8_t int_num)
 {
-    uint8_t irq = int_num - 32;
-
     taskswitch_disable();
+
+    uint8_t irq = int_num - 32;
     // Check if it's a spurious interrupt
     if(pic_check_spurious(irq))
         return;
@@ -102,6 +102,16 @@ uint32_t pic_read_irr()
     outb(PIC1_CMD, OCW3_WREN | OCW3_RREG);
     irr |= inb(PIC1_CMD);
     outb(PIC2_CMD, OCW3_WREN | OCW3_RREG);
+    irr |= inb(PIC2_CMD) << 8;
+    return (uint32_t)irr;
+}
+
+uint32_t pic_read_isr()
+{
+    uint16_t irr = 0;
+    outb(PIC1_CMD, OCW3_WREN | OCW3_R_IS);
+    irr |= inb(PIC1_CMD);
+    outb(PIC2_CMD, OCW3_WREN | OCW3_R_IS);
     irr |= inb(PIC2_CMD) << 8;
     return (uint32_t)irr;
 }
