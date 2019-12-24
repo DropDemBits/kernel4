@@ -102,7 +102,7 @@ void program_launch(const char* path)
     }
 
     // Validation is done, load the program
-    void* entry_point = elf_data->entry_point;
+    void* entry_point = (void*)elf_data->entry_point;
 
     klog_logln(LVL_DEBUG, "Copying elf data");
     for(size_t i = 0; i < elf_data->phnum; i++)
@@ -224,7 +224,11 @@ static void print_tree(process_t* process, int level)
     {
         for(int i = 0; i < level; i++)
             printf("|   ");
-        printf("|- %s\n", thread->name);
+        printf("|- ");
+        tty_set_colours(tty, 9, 0);
+        printf("%s ", thread->name);
+        tty_set_colours(tty, 7, 0);
+        printf("(%s)\n", process->name);
         thread = thread->sibling;
     }
 }

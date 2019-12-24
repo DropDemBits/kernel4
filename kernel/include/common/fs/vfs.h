@@ -40,7 +40,7 @@ typedef void (*vfs_close_func_t)(struct inode *file_node);
  * Node is the directory to start searching from
  * Dirent is the dirent to fill up and is the one returned
  */
-typedef struct dirent* (*vfs_readdir_func_t)(struct inode *node, size_t index, struct dirent* dirent);
+typedef struct dirent* (*vfs_readdir_func_t)(struct dnode *dnode, size_t index, struct dirent* dirent);
 /** 
  * Gets a vfs_inode from a name. Returns NULL if not found
  * May create a new vfs inode

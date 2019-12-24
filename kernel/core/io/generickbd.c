@@ -47,8 +47,6 @@ key_mapping_t *charmap;
 static bool is_inited = false;
 static bool has_data = false;
 
-static bool caps_enable = false;
-
 static void input_push(uint8_t keycode)
 {
     if(write_head >= BUFFER_SIZE) write_head = 0;

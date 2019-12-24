@@ -3,6 +3,7 @@
 #include <arch/apic.h>
 #include <arch/idt.h>
 #include <arch/iobase.h>
+#include <stack_state.h>
 
 #include <common/hal.h>
 #include <common/mm/mm.h>
@@ -109,11 +110,11 @@ static void apic_write(uint32_t reg, uint32_t value)
     data[reg >> 2] = value;
 }
 
-static void apic_isr_handler(void* params, uint8_t int_num)
+static void apic_isr_handler(struct intr_stack* frame, void* params)
 {
     taskswitch_disable();
 
-    uint8_t irq = int_num - 32;
+    uint8_t irq = (uint8_t)(frame->int_num) - 32;
     struct irq_handler* node = main_ioapic.handler_list[irq];
 
     while(node != NULL)
@@ -137,7 +138,7 @@ static uint32_t ioapic_read(void* ioapic_base, uint32_t reg)
     return ioapic[4];
 }
 
-static uint32_t ioapic_write(void* ioapic_base, uint32_t reg, uint32_t value)
+static void ioapic_write(void* ioapic_base, uint32_t reg, uint32_t value)
 {
     uint32_t volatile *ioapic = (uint32_t*)(ioapic_base);
     ioapic[0] = (reg & 0xFF);
@@ -227,12 +228,11 @@ void ioapic_route_line(uint32_t global_source, uint32_t bus_source, uint8_t pola
     klog_logln(LVL_INFO, "Adding mapping to IOAPICs (%d -> IRQ%d, Level: %d, Low: %d)", global_source, bus_source, trigger_mode, polarity);
 
     // Setup IO APIC Line to match requirements
-    uint32_t isa_reg = (bus_source * 2) + IOAPIC_REDTBL;
-    uint32_t vector = ioapic_read(main_ioapic.address, isa_reg) & IOAPIC_REDIR_VEC;
     ioapic_set_mode((uint8_t)global_source, polarity, trigger_mode, 0, APIC_DELMODE_FIXED);
 
     if(bus_source != global_source)
     {
+        // Add a mapping to the new global source
         struct irq_mapping *mapping = kmalloc(sizeof(struct irq_mapping));
 
         mapping->global_irq = global_source;
@@ -250,8 +250,6 @@ void ioapic_route_line(uint32_t global_source, uint32_t bus_source, uint8_t pola
             mapping_head = mapping;
             mapping_tail = mapping;
         }
-
-        // ioapic_set_vector((uint8_t)global_source, (uint8_t)vector);
 
         // Mask old line & clear vector
         ioapic_set_mask((uint8_t)bus_source, true);

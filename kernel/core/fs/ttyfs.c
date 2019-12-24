@@ -9,7 +9,7 @@
 extern struct dirent* default_dnode_readdir(struct dnode *dnode, size_t index, struct dirent* dirent);
 extern struct dnode* default_dnode_finddir(struct dnode *dnode, const char* path);
 
-static const struct dnode_ops ttyfs_dops =
+static struct dnode_ops ttyfs_dops =
 {
     .read_dir = default_dnode_readdir,
     .find_dir = default_dnode_finddir,
@@ -57,7 +57,7 @@ static ssize_t ttyfs_write(struct inode *file_node, size_t off, size_t len, void
     return len;
 }
 
-static const struct inode_ops ttyfs_iops = 
+static struct inode_ops ttyfs_iops = 
 {
     .open = default_open,
     .close = default_close,
@@ -86,8 +86,8 @@ struct fs_instance* ttyfs_create()
     struct dnode *root_dir = kmalloc(sizeof(struct dnode));
     struct inode *root_inode = kmalloc(sizeof(struct inode));
 
-    construct_dnode(instance, root_dir, root_inode, "/");
-    construct_inode(instance, root_inode);
+    construct_dnode((struct fs_instance*)instance, (struct dnode*)root_dir, root_inode, "/");
+    construct_inode((struct fs_instance*)instance, (struct inode*)root_inode);
 
     root_inode->type = VFS_TYPE_DIRECTORY;
 
@@ -105,8 +105,8 @@ void ttyfs_add_tty(struct ttyfs_instance* instance, tty_dev_t* dev, const char* 
     struct ttyfs_dnode *dnode = kmalloc(sizeof(struct ttyfs_dnode));
     struct ttyfs_inode *inode = kmalloc(sizeof(struct ttyfs_inode));
 
-    construct_inode(instance, (struct inode*)inode);
-    construct_dnode((struct fs_instance*)instance, (struct dnode*)dnode, inode, path);
+    construct_inode((struct fs_instance*)instance, (struct inode*)inode);
+    construct_dnode((struct fs_instance*)instance, (struct dnode*)dnode, (struct inode*)inode, path);
 
     inode->inode.type = VFS_TYPE_CHARDEV;
     inode->tty = dev;

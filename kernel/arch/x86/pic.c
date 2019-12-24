@@ -70,11 +70,11 @@ void pic_eoi(uint8_t irq);
 static struct irq_handler* handler_list[NR_PIC_IRQS];
 static bool is_enabled = false;
 
-static void irq_wrapper(void* params, uint8_t int_num)
+static void irq_wrapper(struct intr_stack* frame, void* params)
 {
     taskswitch_disable();
 
-    uint8_t irq = int_num - 32;
+    uint8_t irq = (uint8_t)(frame->int_num) - 32;
     // Check if it's a spurious interrupt
     if(pic_check_spurious(irq))
         return;

@@ -11,7 +11,7 @@ inline uint32_t pci_get_ecam_addr(uint16_t bus_base, uint16_t bus, uint8_t devic
     if(!ecam_base)
         return 0xFFFFFFFF;
     
-    return ecam_base + (bus - bus_base) << 20 | device << 15 | function << 12;
+    return ecam_base + ((bus - bus_base) << 20 | device << 15 | function << 12);
 }
 
 // PCI Config Space Access

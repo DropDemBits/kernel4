@@ -5,6 +5,7 @@
 #include <common/mm/liballoc.h>
 #include <common/io/pci.h>
 #include <common/util/kfuncs.h>
+#include <common/hal/timer.h>
 
 #include <arch/io.h>
 
@@ -142,7 +143,7 @@ static bool switch_device(uint16_t id, uint8_t lba_bits)
         return false;
     else if(!device_list[id]->is_active)
         return false;
-    else if(current_id == id && inb(current_device->command_base + ATA_DRV_SEL) & 0xF == lba_bits & 0xF)
+    else if(current_id == id && (inb(current_device->command_base + ATA_DRV_SEL) & 0xF) == (lba_bits & 0xF))
         return true;
 
     current_id = id;

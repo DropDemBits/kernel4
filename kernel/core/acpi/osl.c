@@ -9,6 +9,7 @@
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
 #include <common/util/kfuncs.h>
+#include <common/hal/timer.h>
 
 #include <arch/iobase.h>
 #include <arch/io.h>
@@ -145,7 +146,7 @@ void AcpiOsFree(void *Memory)
 
 BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
 {
-    for(size_t offset = 0; offset < (Length + 0xFFF) & ~0xFFF; offset += 0x1000)
+    for(size_t offset = 0; offset < PAGE_ROUNDUP(Length); offset += 0x1000)
     {
         if(!mmu_check_access(Memory + offset, MMU_ACCESS_R))
             return FALSE;
@@ -156,7 +157,7 @@ BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
 
 BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length)
 {
-    for(size_t offset = 0; offset < (Length + 0xFFF) & ~0xFFF; offset += 0x1000)
+    for(size_t offset = 0; offset < PAGE_ROUNDUP(Length); offset += 0x1000)
     {
         if(!mmu_check_access(Memory + offset, MMU_ACCESS_RW))
             return FALSE;
@@ -563,6 +564,8 @@ ACPI_STATUS AcpiOsWritePciConfiguration (ACPI_PCI_ID *PciId, UINT32 Reg, UINT64 
         pci_write_raw(PciId->Bus, PciId->Device, PciId->Function, Reg+0x0, Width >> 3, (uint32_t)(Value >>  0));
         pci_write_raw(PciId->Bus, PciId->Device, PciId->Function, Reg+0x4, Width >> 3, (uint32_t)(Value >> 32));
     }
+
+    return (AE_OK);
 }
 
 /**** Formatted Output ****/

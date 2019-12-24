@@ -27,7 +27,6 @@
 #include <common/util/klog.h>
 
 static struct inode *root_node = KNULL;
-static const char *root_path = KNULL;
 static unsigned int num_mounts;
 static struct vfs_mount **vfs_mounts = KNULL;
 

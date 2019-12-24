@@ -77,22 +77,6 @@ static struct inode* get_inode(struct fs_instance *instance, ino_t inode)
     return node_list[inode - NODE_LIST_BASE];
 }
 
-/**
- * @brief  Gets the length of the parent path (excluding the null byte)
- * @note   Also includes the path seperator (if there is any)
- * @param  path: The path to get the parent path from
- * @retval The length of the parent path
- */
-static size_t get_parent_len(char* path)
-{
-    // TODO: Solve issue of traling slash (i.e /blorg/aaa*/*)
-    const char* current_dir = strrchr(path, '/');
-    if(current_dir != NULL && strlen(current_dir) > 1)
-        return current_dir - path;
-    else
-        return 0;   // strlen("/")
-}
-
 static unsigned int getsize(const char *in)
 {
     unsigned int size = 0;
@@ -278,7 +262,6 @@ struct fs_instance* tarfs_init(void* address, size_t tar_len)
             path_buf[parent_len - 1] = '\0';
         }
 
-    node_at_root:
         // Append node to respective dirent list
         append_dirent(node, parent_path, filename, tar_file->filename);
 

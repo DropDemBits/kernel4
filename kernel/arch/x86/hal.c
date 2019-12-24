@@ -42,8 +42,7 @@
 
 extern void halt();
 
-static bool use_apic = false;
-static size_t native_flags = 0;
+static bool force_pic = false;
 static struct heap_info heap_context = {
 #if defined(__x86_64__)
     .base=0xFFFF900000000000, .length=0x0000100000000000
@@ -55,12 +54,16 @@ static struct heap_info heap_context = {
 static struct ic_dev* default_ic;
 static uint8_t ic_mode = IC_MODE_PIC;
 
+
+// Only used with systems that have an APIC, but not ACPI
+/*
 static bool apic_exists()
 {
     uint32_t edx;
     asm volatile("cpuid":"=d"(edx):"a"(1));
     return (edx >> 9) & 0x1;
 }
+*/
 
 static ACPI_SUBTABLE_HEADER* madt_find_table(ACPI_TABLE_MADT* madt, uint8_t Type, uint32_t Instance)
 {
@@ -87,11 +90,11 @@ static ACPI_SUBTABLE_HEADER* madt_find_table(ACPI_TABLE_MADT* madt, uint8_t Type
 
 void hal_init()
 {
-    bool force_pic = false;
     ACPI_TABLE_MADT* madt = (ACPI_TABLE_MADT*)acpi_early_get_table(ACPI_SIG_MADT, 1);
 
     if(!force_pic && madt != NULL)
     {
+        klog_logln(LVL_DEBUG, "Initializing APIC");
         // We have a MADT, and most likely an APIC/IOAPIC
 
         // If there is a legacy PIC, disable it
@@ -176,6 +179,7 @@ void hal_init()
     }*/
     else
     {
+        klog_logln(LVL_DEBUG, "Initializing PIC");
         // The system only has a legacy PIC, init that
         pic_get_dev()->enable(0x20);
 

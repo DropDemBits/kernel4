@@ -17,6 +17,7 @@
  * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
+#include <stdio.h>
 
 #include <common/sched/sched.h>
 
@@ -151,25 +152,6 @@ void sched_queue_thread(thread_t *thread)
     sched_queue_thread_to(thread, &run_queue);
 }
 
-static thread_t* sched_next_thread()
-{
-    struct thread_queue *queue = &run_queue;
-    if(queue->queue_head != KNULL)
-    {
-        thread_t *next_thread = queue->queue_head;
-        while(next_thread->current_state > STATE_READY)
-        {
-            next_thread = next_thread->next;
-            if(next_thread == KNULL) break;
-        }
-
-        if(next_thread != KNULL)
-            return next_thread;
-    }
-
-    return idle_thread;
-}
-
 void sched_init()
 {
     if(run_queue.queue_head != KNULL)
@@ -286,46 +268,46 @@ void sched_switch_thread()
     }
 
     sched_track_swaps();
-    if(run_queue.queue_head != KNULL)
+    if(run_queue.queue_head == KNULL)
+        return;
+
+    // We have a next thread, so switch to it
+    thread_t* next_thread = run_queue.queue_head;
+    run_queue.queue_head = next_thread->next;
+
+    if(next_thread == idle_thread)
     {
-        // We have a next thread, so switch to it
-        thread_t* next_thread = run_queue.queue_head;
-        run_queue.queue_head = next_thread->next;
-
-        if(next_thread == idle_thread)
+        // Next thread is the idle thread, although there may be other options
+        if(run_queue.queue_head != KNULL)
         {
-            // Next thread is the idle thread, although there may be other options
-            if(run_queue.queue_head != KNULL)
-            {
-                // Still a thread in the queue, so swap places with idle thread.
-                next_thread = run_queue.queue_head;
-                idle_thread->next = next_thread->next;
-                run_queue.queue_head = idle_thread;
+            // Still a thread in the queue, so swap places with idle thread.
+            next_thread = run_queue.queue_head;
+            idle_thread->next = next_thread->next;
+            run_queue.queue_head = idle_thread;
 
-                // Should idle thread be the last thread in the queue, set it to be the tail
-                if(idle_thread->next == KNULL)
-                    run_queue.queue_tail = idle_thread;
+            // Should idle thread be the last thread in the queue, set it to be the tail
+            if(idle_thread->next == KNULL)
+                run_queue.queue_tail = idle_thread;
 
-                next_thread->next = KNULL;
-            }
-            else if (active_thread->current_state == STATE_RUNNING)
-            {
-                // No other threads in the queue, but the current one is still running. Just return
-                sched_queue_thread(next_thread);
-                return;
-            }
-            else {
-                // Idle thread is the only one left.
-                sched_queue_remove(idle_thread, &run_queue);
-            }
+            next_thread->next = KNULL;
+        }
+        else if (active_thread->current_state == STATE_RUNNING)
+        {
+            // No other threads in the queue, but the current one is still running. Just return
+            sched_queue_thread(next_thread);
+            return;
         }
         else {
-            // Remove next thread from run queue
-            sched_queue_remove(next_thread, &run_queue);
+            // Idle thread is the only one left.
+            sched_queue_remove(idle_thread, &run_queue);
         }
-
-        switch_to_thread(next_thread);
     }
+    else {
+        // Remove next thread from run queue
+        sched_queue_remove(next_thread, &run_queue);
+    }
+
+    switch_to_thread(next_thread);
 }
 
 void sched_block_thread(enum thread_state new_state)

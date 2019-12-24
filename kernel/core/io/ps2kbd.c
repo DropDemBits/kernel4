@@ -179,7 +179,6 @@ static void keycode_decoder()
     // Command processing state
     uint8_t command = 0xFF;
     uint8_t subcommand = 0xFF;
-    bool send_subcmd = false;
 
     // Decoding State
     // Currently processed key code

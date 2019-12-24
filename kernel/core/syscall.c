@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include <common/syscall.h>
 #include <common/sched/sched.h>
@@ -29,7 +30,8 @@ syscall_ret syscall_print(struct syscall_args* frame)
     if(tty == NULL)
         return -1;
 
-    return vfs_write(tty->inode, 0, strlen(frame->arg1), frame->arg1);
+    char* print_out = (char*)frame->arg1;
+    return vfs_write(tty->inode, 0, strlen(print_out), print_out);
 }
 
 syscall_ret syscall_sleep(struct syscall_args* frame)

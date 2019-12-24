@@ -325,7 +325,7 @@ void core_fini()
             klog_logc(LVL_INFO, '\n');
     }*/
 
-    struct vfs_mount *root;
+    //struct vfs_mount *root;
     if(initrd_start != 0xDEADBEEF)
     {
         klog_logln(LVL_INFO, "Setting up initrd");
@@ -337,7 +337,7 @@ void core_fini()
         struct fs_instance* tarfs = tarfs_init((void*)INITRD_BASE, initrd_size);
         klog_logln(LVL_INFO, "Mounting initrd:");
         vfs_mount(tarfs, "/");
-        root = vfs_get_mount("/");
+        //root = vfs_get_mount("/");
 
         klog_logln(LVL_INFO, "Mounting ttyfs:");
         struct fs_instance* ttyfs = ttyfs_create();

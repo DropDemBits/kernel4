@@ -166,11 +166,8 @@ void isr_common(struct intr_stack *frame)
     if(function_table[frame->int_num].function != KNULL)
     {
         isr_t function = function_table[frame->int_num].function;
-        // Bit of a workaround to merge the parameters and stack frame
-        if(frame->int_num < 32)
-            function(frame, frame->int_num);
-        else
-            function(function_table[frame->int_num].parameters, frame->int_num);
+        void* params = function_table[frame->int_num].parameters;
+        function(frame, params);
     }
 }
 
@@ -185,7 +182,7 @@ void setup_idt()
     // Generic exceptions
     for(int i = 0; i < 32; i++)
     {
-        function_table[i].function = default_exception;
+        function_table[i].function = (isr_t)default_exception;
         function_table[i].parameters = NULL;
     }
 
