@@ -36,6 +36,7 @@
 #include <common/elf.h>
 
 #include <common/hal.h>
+#include <common/hal/timer.h>
 #include <common/util/kfuncs.h>
 #include <common/io/uart.h>
 #include <common/fs/ttyfs.h>
@@ -66,6 +67,7 @@ static uint8_t shell_bg_clr = 0x0;
 static tty_dev_t* tty;
 static thread_t *test_wakeup = KNULL;
 static thread_t *refresh_thread = KNULL;
+static bool force_refresh = false;
 
 extern void enter_usermode(thread_t* thread, void* entry_addr);
 extern uint32_t initrd_start;
@@ -155,7 +157,7 @@ void refresh_task()
 
     while(1)
     {
-        if(timer_read_counter(0) < next_refresh_time)
+        if(!force_refresh && timer_read_counter(0) < next_refresh_time)
             goto keep_waiting;
         // Don't update too fast (helps prevent tearing)
         next_refresh_time = timer_read_counter(0) + refresh_rate;
@@ -227,8 +229,9 @@ static void print_tree(process_t* process, int level)
     }
 }
 
-static void request_refresh()
+static void request_refresh(bool refresh_now)
 {
+    force_refresh = refresh_now;
     sched_unblock_thread(refresh_thread);
 }
 
@@ -240,6 +243,11 @@ static void shell_readline()
 
     while(1)
     {
+        // To wait for keypresses:
+        // listen_for_event: Adds thread to list of event listeners
+        // wait_for_event: Blocks the thread until an event happens
+        // send_event: Sends the event & unblocks waiting threads
+
         char keycode = kbd_read();
         char kchr = kbd_tochar(keycode);
 
@@ -296,7 +304,7 @@ static void shell_readline()
             }
         }
 
-        request_refresh();
+        request_refresh(false);
     }
 }
 
@@ -431,7 +439,7 @@ static bool shell_parse()
         // Print shutdown message
         tty_set_colours(tty, EGA_BRIGHT_YELLOW, EGA_BLACK);
         printf("Goodbye");
-        request_refresh();
+        request_refresh(true);
         sched_sleep_ms(500);
 
         // Enter sleep state
@@ -449,7 +457,7 @@ static bool shell_parse()
         // Print reboot message
         tty_set_colours(tty, EGA_BRIGHT_YELLOW, EGA_BLACK);
         printf("Goodbye");
-        request_refresh();
+        request_refresh(true);
         sched_sleep_ms(500);
 
         // Reboot the system
@@ -540,7 +548,7 @@ void kshell_main()
             tty_set_colours(tty, shell_text_clr, shell_bg_clr);
         }
 
-        request_refresh();
+        request_refresh(false);
     }
 
     puts("kshell is exiting, nothing left to do");
