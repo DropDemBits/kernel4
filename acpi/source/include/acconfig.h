@@ -170,6 +170,8 @@
  *
  */
 
+// #define ACPI_DEBUG_OUTPUT
+
 /*
  * OS name, used for the _OS object. The _OS object is essentially obsolete,
  * but there is a large base of ASL/AML code in existing machines that check

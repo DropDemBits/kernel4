@@ -4,9 +4,16 @@
 #include <common/util/klog.h>
 #include <common/util/kfuncs.h>
 
+#include <common/tty/fb.h>
+#include <arch/iobase.h>
+#include <arch/io.h>
+#include <string.h>
+#include <stdio.h>
+#include <common/hal.h>
+
 #define ACPI_EC_IBF 0x02
 #define ACPI_EC_OBF 0x01
-#define RD_EC 0x81
+#define RD_EC 0x80
 #define WR_EC 0x81
 
 struct ECDT_CONTEXT
@@ -22,51 +29,53 @@ static ACPI_TABLE_DESC early_tables[ACPI_MAX_EARLY_TABLES];
 static bool acpi_initalized = false;
 static struct ECDT_CONTEXT ec_context = {};
 
-static void acpi_ec_read(uint8_t Address, void* Store)
+static void ec_wait_on (uint8_t wait_mask)
 {
     uint32_t sts = 0;
+    uint32_t expected_wait = 0;
 
-    // Send Read (0x80) Command and Address to EC
-    AcpiOsWritePort(ec_context.Control, RD_EC, 8);
+    // Build the expected to wait on mask
+    if (wait_mask & ACPI_EC_IBF)
+        expected_wait |= ACPI_EC_IBF;
+    if (wait_mask & ACPI_EC_OBF)
+        expected_wait |= 0;
 
-    // Wait until ec is ready for the address and data
     AcpiOsReadPort(ec_context.Control, &sts, 8);
-    while(sts & ACPI_EC_IBF)
+    while((sts & wait_mask) == expected_wait)
     {
         busy_wait();
         AcpiOsReadPort(ec_context.Control, &sts, 8);
     }
+}
 
+static void acpi_ec_read(uint8_t Address, void* Store)
+{
+    // Send Read (0x80) Command and Address to EC
+    AcpiOsWritePort(ec_context.Control, RD_EC, 8);
+    ec_wait_on(ACPI_EC_IBF);
+
+    // Send the address, wait for it to be processed
     AcpiOsWritePort(ec_context.Data, Address, 8);
+    ec_wait_on(ACPI_EC_IBF);
+
+    // Wait for the output buffer to be full
+    ec_wait_on(ACPI_EC_OBF);
     AcpiOsReadPort(ec_context.Data, (uint32_t*)Store, 8);
 }
 
 static void acpi_ec_write(uint8_t Address, uint8_t Value)
 {
-    uint32_t sts = 0;
-
     // Send Write (0x81) Command and Address to EC
     AcpiOsWritePort(ec_context.Control, WR_EC, 8);
+    ec_wait_on(ACPI_EC_IBF);
 
-    // Wait until ec is ready for the address
-    AcpiOsReadPort(ec_context.Control, &sts, 8);
-    while(sts & ACPI_EC_IBF)
-    {
-        busy_wait();
-        AcpiOsReadPort(ec_context.Control, &sts, 8);
-    }
-
+    // Send the address, wait until it has been processed
     AcpiOsWritePort(ec_context.Data, Address, 8);
+    ec_wait_on(ACPI_EC_IBF);
 
-    // Wait until ec is ready for the data
-    AcpiOsReadPort(ec_context.Control, &sts, 8);
-    while(sts & ACPI_EC_IBF)
-    {
-        busy_wait();
-        AcpiOsReadPort(ec_context.Control, &sts, 8);
-    }
-
+    // Write the data, wait until it has been committed
     AcpiOsWritePort(ec_context.Data, Value, 8);
+    ec_wait_on(ACPI_EC_IBF);
 }
 
 static ACPI_STATUS acpi_ec_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 BitWidth, UINT64 *Value, void *HandlerContext, void *RegionContext)
@@ -107,8 +116,8 @@ ACPI_STATUS acpi_early_init()
         return (status);
     }
 
-    klog_logln(LVL_INFO, "Gathered ACPI tables");
-    klog_logln(LVL_INFO, "ACPI Tables:");
+    klog_logln(LVL_INFO, "Gathered Early ACPI tables");
+    klog_logln(LVL_INFO, "Early ACPI Tables:");
 
     for(size_t i = 0; i < ACPI_MAX_EARLY_TABLES; i++)
     {
@@ -195,6 +204,9 @@ ACPI_STATUS acpi_init()
         return (status);
     }
 
+    acpi_initalized = true;
+
+    // TODO: Separate to an EC driver area
     klog_logln(LVL_DEBUG, "Initializing ACPI EC");
 
     // Procedure for finding embedded controller:
@@ -310,8 +322,6 @@ ACPI_STATUS acpi_init()
         ec_handle_failed:
         kfree(ec_crs.Pointer);
     }
-
-    acpi_initalized = true;
 
     return status;
 }
