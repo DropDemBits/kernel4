@@ -139,14 +139,17 @@ static void controller_init()
     // Set configuration byte
     send_controller_command(0x20);
     uint8_t cfg_byte = wait_read_data();
-    cfg_byte &= 0b10111100;
+    if(cfg_byte & 0x20) usable_bitmask |= 0b10;\
+
+    cfg_byte &= 0b11111100;
+    klog_logln(LVL_DEBUG, "cfg_send %0x", cfg_byte);
     send_controller_command(0x60);
     wait_write_data(cfg_byte);
-    if(cfg_byte & 0x20) usable_bitmask |= 0b10;
 
     // Check for poor PS/2 controller emulation
-    /*send_controller_command(0x20);
-    if(wait_read_data() != cfg_byte)
+    send_controller_command(0x20);
+    klog_logln(LVL_DEBUG, "cfg_set  %0x", wait_read_data());
+    /*if(wait_read_data() != cfg_byte)
     {
         klog_logln(LVL_INFO, "Unable to change config byte");
         modify_cfg = false;
@@ -162,6 +165,17 @@ static void controller_init()
         return;
     }
     klog_logln(LVL_INFO, "Self test success (code %#x)", ret_byte);
+
+    send_controller_command(0x20);
+    klog_logln(LVL_DEBUG, "cfg_po st?  %0x", wait_read_data());
+
+    // Restore configuration byte
+    // Some devices may reset the controller byte
+    send_controller_command(0x60);
+    wait_write_data(cfg_byte);
+
+    send_controller_command(0x20);
+    klog_logln(LVL_DEBUG, "cfg_rs st?  %0x", wait_read_data());
 
     // Test ports
     device_init:
@@ -237,6 +251,8 @@ static void controller_init()
     send_controller_command(0x60);
     wait_write_data(cfg_byte);
 
+    send_controller_command(0x20);
+    klog_logln(LVL_DEBUG, "cfg_ok?  %0x (bm %x)", wait_read_data(), usable_bitmask);
 }
 
 static void detect_device(int device)
@@ -281,8 +297,10 @@ static void detect_device(int device)
         devices[device].present = 0;
     }
 
-    if(device == 0) send_controller_command(0xAE);
-    else if(device == 1) send_controller_command(0xA8);
+    if(device == 0)
+        send_controller_command(0xAE);
+    else if(device == 1)
+        send_controller_command(0xA8);
 }
 
 void ps2_init()
@@ -301,7 +319,7 @@ void ps2_init()
             || devices[active_device].type == TYPE_MF2_KBD_TRANS
             || devices[active_device].type == TYPE_AT_KBD)
         {
-            klog_logln(LVL_DEBUG, "Initialising PS2 keyboard");
+            klog_logln(LVL_DEBUG, "Initialising PS2 keyboard (%s)", type2name[devices[active_device].type]);
             ps2kbd_init(
                 active_device,
                 devices[active_device].type == TYPE_MF2_KBD_TRANS

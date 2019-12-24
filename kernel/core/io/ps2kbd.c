@@ -216,6 +216,9 @@ static void keycode_decoder()
                     continue;
                 }
 
+                if (command == 0xF4)
+                    continue;
+
                 // Send the argument and wait for a response
                 response_buffer[0] = 0xFF;
                 response_tail = 0;
@@ -343,9 +346,6 @@ void ps2kbd_init(int device, bool xlated)
     klog_logln(LVL_DEBUG, "PS2: Clearing buffer");
     memset(data_buffer, 0x00, BUFFER_SIZE);
 
-    if(!send_command(0xF4, 0x00))
-        klog_logln(LVL_INFO, "PS2 Scanning enable failed");
-
     ps2_handle_device(kbd_device, ps2_keyboard_isr);
 
     if(!translated || ps2_device_get_type(device) == TYPE_MF2_KBD_TRANS)
@@ -359,6 +359,8 @@ void ps2kbd_init(int device, bool xlated)
     send_command(0xF3, 0x2B);
     // Reset lights
     send_command(0xED, 0x00);
+    // Enable scanning
+    send_command(0xF4, 0x00);
 
     // Reset heads
     read_head = 0;
