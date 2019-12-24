@@ -87,11 +87,12 @@ static ACPI_SUBTABLE_HEADER* madt_find_table(ACPI_TABLE_MADT* madt, uint8_t Type
 
 void hal_init()
 {
+    bool force_pic = false;
     ACPI_TABLE_MADT* madt = (ACPI_TABLE_MADT*)acpi_early_get_table(ACPI_SIG_MADT, 1);
 
-    if(madt != NULL)
+    if(!force_pic && madt != NULL)
     {
-        // We have a MADT
+        // We have a MADT, and most likely an APIC/IOAPIC
 
         // If there is a legacy PIC, disable it
         if((madt->Flags & ACPI_MADT_PCAT_COMPAT) == ACPI_MADT_DUAL_PIC)

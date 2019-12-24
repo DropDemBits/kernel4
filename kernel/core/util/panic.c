@@ -27,6 +27,8 @@
 #include <common/tty/fb.h>
 #include <common/util/kfuncs.h>
 
+#include <arch/cpufuncs.h>
+
 #define STOP_FB_RESHOW 2
 #define STOP_STACK_DUMP 10
 
@@ -59,7 +61,7 @@ static void reshow_log()
 
         if(!(entry->flags & KLOG_FLAG_NO_HEADER))
         {
-            sprintf(buffer, "[%3llu.%05llu]: ", timestamp_secs, timestamp_ms);
+            sprintf(buffer, "[%3llu.%0llu]: ", timestamp_secs, timestamp_ms);
             uart_writestr(buffer, strlen(buffer));
 
             if(panic_nesting < STOP_FB_RESHOW)
@@ -77,12 +79,17 @@ static void reshow_log()
                 uart_writec('\r');
         }
         
+        for (unsigned long i = 0; i < 10000000L; i++) busy_wait();
+
+        if(panic_nesting < STOP_FB_RESHOW && mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
+        {
+            fb_clear();
+            tty_reshow_fb(tty, get_fb_address(), 0, 0);
+        }
+
         next:
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
-
-    if(panic_nesting < STOP_FB_RESHOW && mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
-        tty_reshow_fb(tty, get_fb_address(), 0, 0);
 }
 
 void __attribute__((noreturn)) kpanic(const char* message_string, ...)
