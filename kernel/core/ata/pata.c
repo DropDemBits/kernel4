@@ -396,7 +396,7 @@ int atapi_send_command(uint16_t id, uint16_t* command, void* transfer_buffer, ui
     // Initial checks
     if((transfer_buffer == NULL || transfer_buffer == KNULL) && transfer_dir == TRANSFER_WRITE)
         return 0;
-    if(get_device(id) == KNULL)
+    if(get_device(id) == KNULL || !get_device(id))
         return EABSENT;
     if((get_device(id)->device_type & TYPE_ATAPI) != TYPE_ATAPI)
         return EINVAL_ARG;

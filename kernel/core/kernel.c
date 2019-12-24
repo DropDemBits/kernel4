@@ -211,25 +211,20 @@ void kmain()
     uart_init();
     klog_early_init();
     klog_logln(LVL_INFO, "Initialising UART");
-    uart_writec('1');
     klog_logln(LVL_INFO, "Parsing Multiboot info");
     multiboot_parse();
-    uart_writec('2');
     klog_logln(LVL_INFO, "Initialising MM");
     mm_early_init();
     mmu_init();
     mm_init();
-    uart_writec('3');
 
     klog_logln(LVL_INFO, "Initialising Framebuffer");
     fb_init();
     main_fb_init();
     acpi_early_init();
-    uart_writec('4');
 
     klog_logln(LVL_INFO, "Initialising HAL");
     hal_init();
-    uart_writec('5');
     
     // Resume init in other thread
     klog_logln(LVL_INFO, "Starting up threads for init");
@@ -289,9 +284,9 @@ void core_fini()
     acpi_init();
 
     kbd_init();
-    // usb_init();
-    ata_init();
-    pci_init();
+    //usb_init();
+    //ata_init();
+    //pci_init();
 
     // Needs to be after (usb emulation must be disabled)
     ps2_init();
@@ -301,6 +296,7 @@ void core_fini()
     uint8_t* transfer_buffer = kmalloc(4096);
     int err_code = 0;
 
+    /*
     klog_logln(LVL_INFO, "Command: ATAPI READ(12):", err_code);
     err_code = atapi_send_command(2, (uint16_t*)read_command, (uint16_t*)transfer_buffer, 4096, TRANSFER_READ, false, false);
     klog_logln(LVL_INFO, "ErrCode (%d)", err_code);
@@ -327,7 +323,7 @@ void core_fini()
         klog_logf(LVL_INFO, (i % 16 > 0) ? KLOG_FLAG_NO_HEADER : 0, "%02x ", (transfer_buffer[i] & 0xFF), (transfer_buffer[i] >> 8));
         if(i % 16 == 15)
             klog_logc(LVL_INFO, '\n');
-    }
+    }*/
 
     struct vfs_mount *root;
     if(initrd_start != 0xDEADBEEF)
@@ -348,7 +344,7 @@ void core_fini()
         vfs_mount(ttyfs, "/dev");
 
         klog_logln(LVL_INFO, "Walking dir tree:");
-        walk_dir(root->instance->root, 0);
+        //walk_dir(root->instance->root, 0);
     }
 
     // TODO: Wrap into a separate test file
