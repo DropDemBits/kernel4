@@ -36,6 +36,7 @@ list(APPEND SOURCES
     core/ata/ata.c
     core/kshell/main.c
     core/acpi/osl.c
+    core/acpi/ec.c
     core/acpi/acpi.c
     core/ipc/message.c
     core/usb/usbcore.c
