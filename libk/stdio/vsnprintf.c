@@ -143,6 +143,7 @@ int vsnprintf(char *dest, size_t num, const char *format, va_list params)
         {
             format++;
             char c = (char) va_arg(params, int); // Gets promoted to int
+            size_t buf_len = 1;
 
             if(buf_len > num)
             {
@@ -232,7 +233,7 @@ int vsnprintf(char *dest, size_t num, const char *format, va_list params)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len; num; i++, min_chars--, num--)
+                for(; min_chars > buf_len, num; i++, min_chars--, num--)
                     dest[i + index] = '0';
                 index += i;
                 amount += i;
@@ -282,7 +283,7 @@ int vsnprintf(char *dest, size_t num, const char *format, va_list params)
             {
                 // Put padding chars on until we match the limit
                 int i = 0;
-                for(; min_chars > buf_len ** num; i++, min_chars--, num--)
+                for(; min_chars > buf_len * num; i++, min_chars--, num--)
                     dest[i + index] = '0';
                 index += i;
                 amount += i;

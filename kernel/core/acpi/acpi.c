@@ -4,13 +4,6 @@
 #include <common/util/klog.h>
 #include <common/util/kfuncs.h>
 
-#include <common/tty/fb.h>
-#include <arch/iobase.h>
-#include <arch/io.h>
-#include <string.h>
-#include <stdio.h>
-#include <common/hal.h>
-
 #define ACPI_EC_IBF 0x02
 #define ACPI_EC_OBF 0x01
 #define RD_EC 0x80

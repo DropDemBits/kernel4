@@ -6,5 +6,5 @@ if [ $# -ne 2 ]; then
 fi
 
 ARCH=$1
-ADDR="0xFFFF8000000"$2
+ADDR=$2
 addr2line -e build/$ARCH/kernel/k4-$ARCH.kern $ADDR
