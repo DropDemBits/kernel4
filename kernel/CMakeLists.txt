@@ -39,6 +39,7 @@ list(APPEND SOURCES
     core/acpi/ec.c
     core/acpi/acpi.c
     core/ipc/message.c
+    core/ipc/ipctest.c
     core/usb/usbcore.c
     core/hal/timer.c)
 

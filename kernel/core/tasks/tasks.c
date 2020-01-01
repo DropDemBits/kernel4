@@ -101,6 +101,11 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
     thread->priority = priority;
     thread->name = name;
     thread->pending_msgs = kmalloc(sizeof(struct ipc_message_queue));
+
+    // Init pending senders
+    thread->pending_senders.queue_head = KNULL;
+    thread->pending_senders.queue_tail = KNULL;
+
     // TODO: Use a dedicated aligned stack allocator (ie. buddy)
     init_register_state(thread, entry_point, NULL, params);
 

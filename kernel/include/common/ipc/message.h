@@ -4,10 +4,13 @@
 #ifndef __IPC_MSG_H__
 #define __IPC_MSG_H__ 1
 
-#define NUM_MSGS 8
+#define MSG_QUEUE_SIZE 8
+
+// Message Types
 #define MSG_TYPE_ACK    0
 #define MSG_TYPE_DATA   1
 
+#define MSG_XACT_SYNC   0x00000000
 #define MSG_XACT_ASYNC  0x00000001
 
 struct ipc_message
@@ -26,7 +29,7 @@ struct ipc_message_queue
     size_t head;
     size_t tail;
     size_t count;
-    struct ipc_message* messages[NUM_MSGS];
+    struct ipc_message* messages[MSG_QUEUE_SIZE];
 };
 
 /**

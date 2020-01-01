@@ -56,6 +56,8 @@ extern uint32_t initrd_size;
 extern unsigned long long tswp_counter;
 extern struct thread_queue run_queue;
 
+extern void ipc_test();
+
 void core_fini();
 
 void idle_loop()
@@ -392,6 +394,9 @@ void core_fini()
     process_t *p1 = process_create("tui_process");
     thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell", NULL);
     thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread", NULL);
+
+    process_t *p2 = process_create("ipc_tester");
+    thread_create(p2, (void*)ipc_test, PRIORITY_NORMAL, "ipc_exec", NULL);
     taskswitch_enable();
 
     // Now we are done, exit thread.
