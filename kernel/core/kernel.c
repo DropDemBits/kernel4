@@ -271,7 +271,7 @@ void walk_dir(struct dnode* dir, int level)
         if((to_inode(dir)->type & 7) == VFS_TYPE_DIRECTORY)
         {
             // Walk through subdirectories
-            struct dnode* node = vfs_find_dir(dir, dirent.name);
+            struct dnode* node = vfs_finddir(dir, dirent.name);
             if(node != NULL)
                 walk_dir(node, level + 1);
         }

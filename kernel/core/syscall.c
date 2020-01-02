@@ -24,7 +24,7 @@ syscall_ret syscall_print(struct syscall_args* frame)
     if(mount == NULL)
         return -1;
 
-    struct dnode *tty = vfs_find_dir(mount->instance->root, "/dev/tty1");
+    struct dnode *tty = vfs_finddir(mount->instance->root, "/dev/tty1");
 
     // Oppsie
     if(tty == NULL)

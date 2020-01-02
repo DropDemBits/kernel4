@@ -8,13 +8,16 @@
 
 #define MAX_PATHLEN 4096
 
-#define VFS_TYPE_UNKNOWN 0x00
-#define VFS_TYPE_FILE 0x01
-#define VFS_TYPE_DIRECTORY 0x02
-#define VFS_TYPE_CHARDEV 0x03
-#define VFS_TYPE_BLOCKDEV 0x04
-#define VFS_TYPE_PIPE 0x05
-#define VFS_TYPE_SYMLINK 0x06
+#define VFS_TYPE_UNKNOWN    0x00
+#define VFS_TYPE_FILE       0x01
+#define VFS_TYPE_DIRECTORY  0x02
+#define VFS_TYPE_CHARDEV    0x03
+#define VFS_TYPE_BLOCKDEV   0x04
+#define VFS_TYPE_PIPE       0x05
+#define VFS_TYPE_SYMLINK    0x06
+
+#define VFS_TYPE_MASK 0x7
+
 #define VFS_TYPE_MOUNT 0x08
 
 #define VFSO_RDONLY    0x01
@@ -120,13 +123,15 @@ struct dirent {
 };
 
 void vfs_mount(struct fs_instance* mount, const char* path);
+/** Finds the mount associated with the given path. Returns NULL on failure */
 struct vfs_mount* vfs_get_mount(const char* path);
 ssize_t vfs_read(struct inode *root_node, size_t off, size_t len, void* buffer);
 ssize_t vfs_write(struct inode *root_node, size_t off, size_t len, void* buffer);
 void vfs_open(struct inode *file_node, int oflags);
 void vfs_close(struct inode *file_node);
 struct dirent* vfs_readdir(struct dnode *root, size_t index, struct dirent* dirent);
-struct dnode* vfs_find_dir(struct dnode* root, const char* path);
+/** Walks the path to find the given dnode. Returns NULL on failure */
+struct dnode* vfs_finddir(struct dnode* root, const char* path);
 struct inode* to_inode(struct dnode* dnode);
 
 #endif /* __VFS_H__ */

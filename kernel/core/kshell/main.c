@@ -79,7 +79,7 @@ void program_launch(const char* path)
     klog_logln(LVL_INFO, "Launching program %s", path);
 
     struct vfs_mount* mount = vfs_get_mount("/");
-    struct dnode* dnode = vfs_find_dir(mount->instance->root, path);
+    struct dnode* dnode = vfs_finddir(mount->instance->root, path);
 
     if(dnode == NULL)
     {
@@ -487,7 +487,7 @@ static bool shell_parse()
 
     // Try loading a program
     struct vfs_mount* mount = vfs_get_mount("/");
-    struct dnode* file = vfs_find_dir(mount->instance->root, command);
+    struct dnode* file = vfs_finddir(mount->instance->root, command);
 
     // Placeholder until fork & exec are implemented in usermode
     if(file == NULL || (to_inode(file)->type & 7) != VFS_TYPE_FILE)

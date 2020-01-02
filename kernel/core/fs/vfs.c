@@ -36,7 +36,7 @@ struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
 {
     struct dnode* dnode = base_dir;
 
-    // All paths given are absolute
+    // All paths given are absolute to the given base directory
 
     // Walks the path given, returns the appropriate node
     char resolved_path[MAX_PATHLEN];
@@ -62,7 +62,7 @@ struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
         if(!*path_node)
         {
             // Check for last slash on a non-dir
-            if((to_inode(dnode)->type & 0x7) != VFS_TYPE_DIRECTORY && *(path_node - 1) == '/')
+            if((to_inode(dnode)->type & VFS_TYPE_MASK) != VFS_TYPE_DIRECTORY && *(path_node - 1) == '/')
                 return NULL;
 
             // Done with it
@@ -81,6 +81,8 @@ struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
         {
             if(path_node[1] == '.')
             {
+                // TODO: Verify that there are not multiple dots
+                // Going up
                 if(dnode->parent != NULL)
                     // Rebase to parent
                     dnode = dnode->parent;
@@ -107,6 +109,8 @@ struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
                 // Skip path lookup, move to next component
                 continue;
             }
+            // TODO: Verify that it is a single dot and not part of a normal name (e.g. ".special")
+            // Otherwise, stay in the current directory
         }
         else
         {
@@ -244,7 +248,7 @@ struct dirent* vfs_readdir(struct dnode *dnode, size_t index, struct dirent* dir
         return NULL;
 }
 
-struct dnode* vfs_find_dir(struct dnode *root, const char* path)
+struct dnode* vfs_finddir(struct dnode *root, const char* path)
 {
     if(root == NULL || root == NULL)
         return NULL;
