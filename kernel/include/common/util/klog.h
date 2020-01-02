@@ -1,8 +1,8 @@
-#include <stdarg.h>
-#include <common/types.h>
-
 #ifndef __KLOG_H__
 #define __KLOG_H__ 1
+
+#include <stdarg.h>
+#include <common/types.h>
 
 #define KLOG_FLAG_NO_HEADER 0b00000001
 

@@ -1,7 +1,7 @@
-#include <common/types.h>
-
 #ifndef __HAL_TIMER_H__
 #define __HAL_TIMER_H__ 1
+
+#include <common/types.h>
 
 struct timer_dev;
 typedef void (*timer_handler_t)(struct timer_dev* dev);

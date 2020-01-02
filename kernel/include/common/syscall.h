@@ -1,7 +1,7 @@
-#include <common/types.h>
-
 #ifndef __SYSCALLS_H_
 #define __SYSCALLS_H_ 1
+
+#include <common/types.h>
 
 #define NR_SYSCALLS 32768
 

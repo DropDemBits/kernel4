@@ -1,10 +1,10 @@
+#ifndef __VFS_H__
+#define __VFS_H__ 1
+
 #include <common/types.h>
 #include <sys/types.h>
 
 #include <common/util/locks.h>
-
-#ifndef __VFS_H__
-#define __VFS_H__
 
 #define MAX_PATHLEN 4096
 

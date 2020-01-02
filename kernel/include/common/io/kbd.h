@@ -18,10 +18,10 @@
  * 
  */
 
-#include <common/types.h>
-
 #ifndef __KEYBOARD_H__
-#define __KEYBOARD_H__
+#define __KEYBOARD_H__ 1
+
+#include <common/types.h>
 
 #define KEY_STATE_RELEASED 0
 #define KEY_STATE_PRESSED 1

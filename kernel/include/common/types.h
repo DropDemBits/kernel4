@@ -17,12 +17,13 @@
  * along with Kernel4.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
+
+#ifndef __TYPES_COMMON__
+#define __TYPES_COMMON__ 1
+
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#ifndef __TYPES_COMMON__
-#define __TYPES_COMMON__
 
 #include <types.h>
 

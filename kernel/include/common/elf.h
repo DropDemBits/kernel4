@@ -1,10 +1,10 @@
+#ifndef __ELF_H__
+#define __ELF_H__ 1
+
 #include <common/types.h>
 #include <common/fs/vfs.h>
 
 #include <arch/elf.h>
-
-#ifndef __ELF_H__
-#define __ELF_H__ 1
 
 /** ELF Header Related **/
 

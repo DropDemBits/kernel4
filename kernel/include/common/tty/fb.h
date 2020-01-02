@@ -18,10 +18,10 @@
  * 
  */
 
-#include <common/types.h>
-
 #ifndef __FB_H__
-#define __FB_H__
+#define __FB_H__ 1
+
+#include <common/types.h>
 
 extern void* get_fb_address();
 extern struct framebuffer_info fb_info;

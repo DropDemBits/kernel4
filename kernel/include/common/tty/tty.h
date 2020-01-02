@@ -1,8 +1,8 @@
+#ifndef __TTY_H__
+#define __TTY_H__ 1
+
 #include <common/types.h>
 #include <common/util/locks.h>
-
-#ifndef __TTY_H__
-#define __TTY_H__
 
 enum EGA_Colours
 {

@@ -18,11 +18,11 @@
  * 
  */
 
-#include <common/multiboot.h>
-#include <common/multiboot2.h>
-
 #ifndef __MB2PARSE_H__
 #define __MB2PARSE_H__ 1
+
+#include <common/multiboot.h>
+#include <common/multiboot2.h>
 
 /* Declerations */
 extern uint32_t mb_mem_lower;

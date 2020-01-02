@@ -1,10 +1,10 @@
+#ifndef __TASKS_H__
+#define __TASKS_H__
+
 #include <common/types.h>
 #include <common/mm/mm.h>
 
 #include <arch/cpufuncs.h>
-
-#ifndef __TASKS_H__
-#define __TASKS_H__
 
 #define THREAD_STACK_SIZE 4096*4
 

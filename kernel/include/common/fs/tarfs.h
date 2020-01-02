@@ -18,10 +18,10 @@
  * 
  */
 
-#include <common/fs/vfs.h>
-
 #ifndef __TARFS_H__
-#define __TARFS_H__
+#define __TARFS_H__ 1
+
+#include <common/fs/vfs.h>
 
 struct fs_instance* tarfs_init(void* address, size_t tarlen);
 

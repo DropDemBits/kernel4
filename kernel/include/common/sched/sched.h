@@ -18,10 +18,10 @@
  * 
  */
 
-#include <common/tasks/tasks.h>
-
 #ifndef __SCHED_H__
 #define __SCHED_H__
+
+#include <common/tasks/tasks.h>
 
 void sched_init();
 void sched_queue_thread(thread_t *thread);

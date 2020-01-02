@@ -1,8 +1,8 @@
-#include <common/types.h>
-#include <common/util/locks.h>
-
 #ifndef __ATA_H__
 #define __ATA_H__ 1
+
+#include <common/types.h>
+#include <common/util/locks.h>
 
 #define TYPE_ATA 0
 #define TYPE_ATAPI 1

@@ -1,8 +1,8 @@
+#ifndef __FS_TTYFS__
+#define __FS_TTYFS__ 1
+
 #include <common/fs/vfs.h>
 #include <common/tty/tty.h>
-
-#ifndef __FS_TTYFS__
-#define __FS_TTYFS__
 
 struct ttyfs_inode
 {

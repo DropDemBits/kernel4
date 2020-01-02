@@ -18,11 +18,11 @@
  * 
  */
 
-#include <common/types.h>
-#include <arch/cpufuncs.h>
-
 #ifndef __HAL_H__
 #define __HAL_H__ 1
+
+#include <common/types.h>
+#include <arch/cpufuncs.h>
 
 #define IRQ_HANDLED 0
 #define IRQ_NOT_HANDLED 1

@@ -18,11 +18,12 @@
  * 
  */
 
+#ifndef __KFUNCS_H__
+#define __KFUNCS_H__ 1
+
 #include <stdarg.h>
 #include <common/util/klog.h>
 
-#ifndef __KFUNCS_H__
-#define __KFUNCS_H__
 struct intr_stack;
 
 void __attribute__((noreturn)) kpanic(const char* message_string, ...);
