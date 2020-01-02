@@ -2,8 +2,7 @@
 
 #include <common/elf.h>
 #include <common/mm/liballoc.h>
-
-#define EINVAL 1
+#include <common/errno.h>
 
 int elf_parse(struct inode* file, struct elf_data** data)
 {

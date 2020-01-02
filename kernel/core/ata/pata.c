@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include <common/errno.h>
 #include <common/hal.h>
 #include <common/ata/ata.h>
 #include <common/mm/liballoc.h>
@@ -12,11 +13,6 @@
 pci_handle_ret_t ata_init_controller(struct pci_dev* dev);
 
 #define ATA_INVALID_ID 0xFFFF
-
-#define EINVAL -1
-#define EBUSY -2
-#define EABSENT -3
-#define EINVAL_ARG -4
 
 #define ATA_DATA 0
 #define ATA_ERROR 1
@@ -193,9 +189,9 @@ static bool ata_wait(bool only_irq)
 int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t lba, uint16_t sector_count, int transfer_dir, bool is48bit)
 {
     if(!switch_device(id, (lba >> 24) & 0x0F))
-        return EINVAL;
+        return -EINVAL;
     else if(current_device->dev.processing_command)
-        return EBUSY;
+        return -EBUSY;
 
     current_device->dev.processing_command = true;
     irq_fired = false;
@@ -215,7 +211,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     if(loop_counter <= 0)
     {
         klog_logln(LVL_DEBUG, "ata_dev%d wait sts %x", current_id, inb(current_device->control_base + ATA_ALT_STATUS));
-        return EABSENT;
+        return -EABSENT;
     }
 
     if(current_device->dev.has_lba48 && is48bit)
@@ -244,7 +240,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
     sched_sleep_ms(1);
 
     if(inb(control_base + ATA_ALT_STATUS) == 0)
-        return EABSENT;
+        return -EABSENT;
 
     klog_logln(LVL_DEBUG, "ata_dev%d status: %x (%d, %x)", id, last_status, loop_counter, command);
 
@@ -266,7 +262,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
         if(!timeout)
             goto normal_exit;
         else
-            return EABSENT;
+            return -EABSENT;
     }
 
     // NOTE: Writes don't raise interrupts upon data ready, so we can't wait for them and have to use a busy loop
@@ -284,7 +280,7 @@ int ata_send_command(uint16_t id, uint8_t command, uint16_t features, uint64_t l
 int ata_end_command(uint16_t id)
 {
     if(!switch_device(id, 0))
-        return EINVAL;
+        return -EINVAL;
     
     current_device->dev.processing_command = false;
     return 0;
@@ -298,16 +294,16 @@ int pata_do_transfer(uint16_t id, uint64_t lba, void* transfer_buffer, uint32_t 
     if(!sector_count)
         return 0;
     if(get_device(id) == KNULL)
-        return EABSENT;
+        return -EABSENT;
     if((get_device(id)->device_type & TYPE_ATAPI) == TYPE_ATAPI)
-        return EINVAL_ARG;
+        return -EINVAL_ARG;
     if(!get_device(id)->has_lba48 && (lba > 0x10000000 || sector_count > 0x100 || is_48bit))
-        return EINVAL_ARG;
+        return -EINVAL_ARG;
 
     if(!switch_device(id, 0))
-        return EINVAL;
+        return -EINVAL;
     else if(current_device->dev.processing_command)
-        return EBUSY;
+        return -EBUSY;
 
     // Send Read/Write Command
     int error_code = 0;
@@ -398,16 +394,16 @@ int atapi_send_command(uint16_t id, uint16_t* command, void* transfer_buffer, ui
     if((transfer_buffer == NULL || transfer_buffer == KNULL) && transfer_dir == TRANSFER_WRITE)
         return 0;
     if(get_device(id) == KNULL || !get_device(id))
-        return EABSENT;
+        return -EABSENT;
     if((get_device(id)->device_type & TYPE_ATAPI) != TYPE_ATAPI)
-        return EINVAL_ARG;
+        return -EINVAL_ARG;
     if(!get_device(id)->has_lba48 && is_16b)
-        return EINVAL_ARG;
+        return -EINVAL_ARG;
 
     if(!switch_device(id, 0))
-        return EINVAL;
+        return -EINVAL;
     else if(current_device->dev.processing_command)
-        return EBUSY;
+        return -EBUSY;
 
     // Send Packet Command
     int error_code = 0;
