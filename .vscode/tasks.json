@@ -55,7 +55,7 @@
             "dependsOn": [
                 "Build ISOs (x86_64)"
             ],
-            "command": "qemu-system-x86_64 -enable-kvm -monitor stdio -d cpu_reset -cdrom k4-x86_64.iso",
+            "command": "qemu-system-x86_64 -enable-kvm -monitor stdio -serial file:com1-qemu.txt -d cpu_reset -cdrom k4-x86_64.iso",
             "group": {
                 "kind": "build",
                 "isDefault": true

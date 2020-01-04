@@ -14,7 +14,7 @@ CPPFLAGS= -I$(SYSROOT)$(PREFIX)/include
 
 include ./arch/$(TARGET_ARCH)/make.config
 
-CFLAGS += $(ARCH_CFLAGS) -ffreestanding -fbuiltin
+CFLAGS += $(ARCH_CFLAGS) -ffreestanding -fbuiltin -g
 CPPFLAGS += $(ARCH_CPPFLAGS) -I$(ARCH_INCLUDE_DIR)
 LIBK_CFLAGS=$(CFLAGS)
 LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
