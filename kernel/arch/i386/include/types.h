@@ -5,7 +5,7 @@
 #define __TYPES_H__ 1
 
 #define KNULL (void*)0xDEADBEEFUL
-#define KMEM_POISON 0xFEEE1UL
+#define KMEM_POISON 0xFEEE1000UL
 
 // Forward decleration
 struct intr_stack;

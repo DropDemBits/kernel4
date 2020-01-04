@@ -55,7 +55,7 @@
 #include <common/util/klog.h>
 
 #define FLUSH()        /*fflush( stdout ) Changed*/
-#define printf(fmt, ...) klog_logln(LVL_DEBUG, (fmt), ## __VA_ARGS__)
+#define printf(fmt, ...) klog_log(LVL_DEBUG, (fmt), ## __VA_ARGS__)
 
 #endif
 

@@ -60,12 +60,13 @@ static size_t alloc_memblocks(size_t length)
 
 static void free_memblocks(size_t length)
 {
-    for(; length > 0 && free_base - (length << 12) > heap_base; length--)
+    // TODO: Proper deallocation of blocks
+    /*for(; length > 0 && free_base - (length << 12) > heap_base; length--)
     {
         free_base -= 0x1000;
         mm_free(mmu_get_mapping((void*)free_base), 1);
         mmu_unmap((void*)free_base, true);
-    }
+    }*/
 }
 
 void heap_init()

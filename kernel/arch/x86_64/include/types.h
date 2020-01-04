@@ -5,7 +5,7 @@
 #define __TYPES_H__ 1
 
 #define KNULL (void*)0xFFFFDEAD00000000ULL
-#define KMEM_POISON 0xDEADCEED5ULL
+#define KMEM_POISON 0xDEADCEED5000ULL
 
 typedef uint64_t uintptr_t;
 // typedef uint64_t size_t;
