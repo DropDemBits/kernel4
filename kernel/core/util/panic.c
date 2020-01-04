@@ -37,7 +37,7 @@ extern void __attribute__((noreturn)) halt();
 extern char early_klog_buffer[];
 
 tty_dev_t temp_tty = {};
-static char tbuf[80*25*2];
+static char tbuf[80*30*2];
 static size_t panic_nesting = 0;
 
 static void reshow_log()
@@ -52,7 +52,7 @@ static void reshow_log()
     }
     
     if(panic_nesting < STOP_FB_RESHOW)
-        tty_init(tty, 80, 25, tbuf, 80*25*2, NULL);
+        tty_init(tty, 80, 30, tbuf, 80*30*2, NULL);
 
     while(entry->level != EOL)
     {
@@ -74,12 +74,9 @@ static void reshow_log()
 
             if(panic_nesting < STOP_FB_RESHOW)
                 tty_putchar(tty, entry->data[i]);
-            
-            if(entry->data[i] == '\n')
-                uart_writec('\r');
         }
         
-        for (unsigned long i = 0; i < 10000000L; i++) busy_wait();
+        for (unsigned long i = 0; i < 2000000L; i++) busy_wait();
 
         if(panic_nesting < STOP_FB_RESHOW && mmu_check_access(get_fb_address(), MMU_ACCESS_RW))
         {
