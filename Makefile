@@ -4,6 +4,10 @@ COMPILERS := i686-k4os-gcc x86_64-k4os-gcc
 INITRD_FILES := $(addprefix sysroot/,$(shell /bin/bash scripts/list_initrd.sh))
 PROGRAM_PROJECTS := test
 
+ifeq ($(strip $(TARGETS)),)
+$(error "TARGETS" is not set)
+endif
+
 .PHONY: all clean geniso build-libk build-kernel build-programs clean-libk clean-kernel clean-programs sysroot pxeboot
 
 all: geniso
