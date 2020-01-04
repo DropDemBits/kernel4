@@ -1,8 +1,8 @@
-#include <common/types.h>
-#include <common/tasks/tasks.h>
-
 #ifndef __IPC_MSG_H__
 #define __IPC_MSG_H__ 1
+
+#include <common/types.h>
+#include <common/tasks/tasks.h>
 
 #define MSG_QUEUE_SIZE 8
 

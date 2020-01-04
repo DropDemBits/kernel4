@@ -1,6 +1,7 @@
-#include <common/ipc/message.h>
 #include <common/mm/liballoc.h>
+#include <common/tasks/tasks.h>
 #include <common/sched/sched.h>
+#include <common/ipc/message.h>
 
 static void msg_enqueue(struct ipc_message_queue* queue, struct ipc_message* msg)
 {
@@ -128,8 +129,6 @@ int msg_send(thread_t* target, struct ipc_message* msg, uint32_t flags, uint32_t
 
 int msg_recv(uint32_t expected_type, struct ipc_message** dest, uint32_t flags, uint32_t sequence)
 {
-    uart_writec('0');
-
     if((flags & MSG_XACT_ASYNC) == MSG_XACT_ASYNC)
     {
         return msg_recv_async(expected_type, dest, flags, sequence);

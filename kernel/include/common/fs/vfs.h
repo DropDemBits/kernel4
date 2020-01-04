@@ -83,7 +83,7 @@ struct inode {
     struct fs_instance* instance;
 
     uint32_t num_users;    // Number of users that this file has
-    mutex_t* num_users_lock;
+    struct mutex* num_users_lock;
 };
 
 // Represents a directory or the name of one
@@ -98,6 +98,13 @@ struct dnode {
     struct inode* inode; // Backing inode
     struct dnode_ops* dops;
     struct fs_instance* instance; // Associated instance
+};
+
+// Represents a mountable filesystem type
+struct fs_type
+{
+    const char* fs_name;
+    // TODO: Fill out the rest of the fields
 };
 
 // Represents an instance of a filesystem

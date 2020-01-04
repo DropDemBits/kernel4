@@ -10,7 +10,7 @@ typedef struct
 } spinlock_t;
 
 // TODO: Add spinlocks to protect the mutexes and semaphores
-typedef struct
+typedef struct semaphore
 {
     long count;
     long max_count;
@@ -18,7 +18,12 @@ typedef struct
 } semaphore_t;
 
 // TODO: Eventually add an optimized version of mutexes
-typedef semaphore_t mutex_t;
+typedef struct mutex
+{
+    long count;
+    long max_count;
+    struct thread_queue waiting_threads;
+} mutex_t;
 
 semaphore_t* semaphore_create(long max_count);
 void semaphore_destroy(semaphore_t* semaphore);
