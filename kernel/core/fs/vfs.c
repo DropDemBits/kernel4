@@ -121,7 +121,7 @@ struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
 
         *current_node = '\0';
 
-        klog_logln(LVL_DEBUG, "lkup: %s", current_node - len - 1);
+        //klog_logln(LVL_DEBUG, "lkup: %s", current_node - len - 1);
         // Lookup & rebase
         dnode = dnode->dops->find_dir(dnode, current_node - len - 1);
 

@@ -9,12 +9,22 @@
 #define THREAD_STACK_SIZE 4096*4
 
 struct thread;
+struct thread_queue;
+
+struct bitmap
+{
+    uint64_t* bitmaps;
+    size_t bitmap_len;
+};
 
 struct thread_queue
 {
     struct thread *queue_head;
     struct thread *queue_tail;
 };
+
+// Depends on "thread_queue"
+#include <common/util/locks.h>
 
 enum thread_state
 {
@@ -38,6 +48,8 @@ enum thread_priority
     PRIORITY_COUNT = 7,
 };
 
+struct filedesc;
+
 typedef struct process
 {
     unsigned int pid;
@@ -49,8 +61,13 @@ typedef struct process
 
     const char* name;
 
-    // TODO: Do we want to implement separate address spaces for exploit mitigation?
+    // ???: Do we want to implement separate address spaces for exploit mitigation?
     paging_context_t* page_context_base;
+
+    struct mutex* fd_lock;           // Protects fd_*
+    struct bitmap fd_alloc;         // Bitmap to allocated file descriptors
+    struct filedesc* *fd_map;   // Pointer to flexible array of file descriptors
+    size_t fd_map_len;          // Size of map
 } process_t;
 
 typedef struct thread

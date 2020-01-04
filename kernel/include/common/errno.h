@@ -7,8 +7,11 @@
 #define EBUSY       2
 #define EABSENT     3
 #define EINVAL_ARG  4
+#define ENOMEM      5
+
 #define ENOENT      10
 #define EROFS       11
 #define EBADF       12
+#define ENFILE      13
 
 #endif /* __K4_ERRNO_H__ */

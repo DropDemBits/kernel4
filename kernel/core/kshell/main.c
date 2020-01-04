@@ -41,6 +41,10 @@
 #include <common/io/uart.h>
 #include <common/fs/ttyfs.h>
 
+// Temp!
+#include <common/fs/filedesc.h>
+#include <common/errno.h>
+
 /*
  * KSHELL: Basic command line interface
  *
@@ -68,6 +72,10 @@ static tty_dev_t* tty;
 static thread_t *test_wakeup = KNULL;
 static thread_t *refresh_thread = KNULL;
 static bool force_refresh = false;
+
+extern int do_open(const char* file_path, int oflags, int mode);
+extern int do_close(int fd);
+extern struct filedesc* get_filedesc(int fd);
 
 extern void enter_usermode(thread_t* thread, void* entry_addr);
 extern uint32_t initrd_start;
@@ -484,15 +492,99 @@ static bool shell_parse()
         print_tree(&init_process, 0);
         return true;
     }
+    else if(is_command("fdtest", command))
+    {
+        const char* path = "/usr/bin/test.bin";
+        int errcode = 0;
+        int last_descriptor = 0;
+        int alloc_desc_count = 1024;
+        int free_desc_count = 512;
+        int free_start = 512;
+
+        printf("Allocating %d descriptors\n", alloc_desc_count);
+
+        for (int i = 0; i < alloc_desc_count; i++)
+        {
+            errcode = do_open(path, VFSO_RDONLY, 0);
+            if (errcode < 0)
+                break;
+            last_descriptor = errcode;
+        }
+
+        if (errcode < 0)
+            printf("Stopped alloc at descriptor %d (%d)\n", last_descriptor, errcode);
+
+        printf("Freeing %d descriptors starting from %d\n", free_desc_count, free_start);
+
+        for (int free_fd = free_start; free_desc_count > 0; free_desc_count--, free_fd++)
+        {
+            errcode = do_close(free_fd);
+            if (errcode < 0)
+                break;
+            last_descriptor = errcode;
+        }
+
+        if (errcode < 0)
+            printf("Stopped free at descriptor %d (%d)\n", last_descriptor, errcode);
+
+        // Check for allocation
+        int new_fd = do_open(path, VFSO_RDONLY, 0);
+        printf("Starting new allocation at %d\n", new_fd);
+
+        // Attempt to free already free'd descriptor
+        int refree_fd = do_close(1000);
+        printf("Free attempt %d (code %d)\n", 1000, refree_fd);
+
+        refree_fd = do_close(-1);
+        printf("Free attempt %d (code %d)\n", -1, refree_fd);
+
+        refree_fd = do_close(80);
+        printf("Free attempt %d (code %d)\n", 80, refree_fd);
+
+        printf("Cleaning up...\n");
+
+        for (int fd = 0; fd < alloc_desc_count; fd++)
+        {
+            // All fd's past free_start are already closed
+            if (fd >= free_start)
+                break;
+            
+            errcode = do_close(fd);
+            if (errcode < 0)
+                printf("Error closing fd %d (%d)\n", fd, errcode);
+        }
+
+        printf("fd %d should have an error (error %d)\n", 80, -EBADF);
+
+        return true;
+    }
 
     // Try loading a program
     struct vfs_mount* mount = vfs_get_mount("/");
     struct dnode* file = vfs_finddir(mount->instance->root, command);
 
     // Placeholder until fork & exec are implemented in usermode
-    if(file == NULL || (to_inode(file)->type & 7) != VFS_TYPE_FILE)
+    /*if(file == NULL || (to_inode(file)->type & 7) != VFS_TYPE_FILE)
     {
         // File doesn't exist or isn't a file
+        return false;
+    }*/
+
+    int fd = do_open(command, VFSO_RDONLY, 0);
+    klog_logln(LVL_DEBUG, "Attempt to open file at %s (%d)", command, fd);
+
+    struct filedesc* fildes = get_filedesc(fd);
+
+    if (fd < 0 || !fildes)
+    {
+        klog_logln(LVL_DEBUG, "Fail fd create (%d, %p)", fd, fildes);
+        return false;
+    }
+
+    if ((to_inode(fildes->backing_dnode)->type & VFS_TYPE_MASK) != VFS_TYPE_FILE)
+    {
+        klog_logln(LVL_DEBUG, "Not a file %s (%d)", command, fd);
+        klog_logln(LVL_DEBUG, "%p -=- %p", file, fildes->backing_dnode);
         return false;
     }
 
@@ -539,7 +631,7 @@ void kshell_main()
         ttyfs_add_tty((struct ttyfs_instance*)(mount->instance), tty, "tty1");
     else
         printf("Warning: Unable to add current tty, programs will not be able to run!\n");
-    
+
 
     while(should_run)
     {

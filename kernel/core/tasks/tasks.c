@@ -26,6 +26,7 @@
 #include <common/sched/sched.h>
 #include <common/tasks/tasks.h>
 #include <common/ipc/message.h>
+#include <common/fs/vfs.h>
 
 extern void init_register_state(thread_t *thread, uint64_t *entry_point, unsigned long* kernel_stack, void* params);
 extern void cleanup_register_state(thread_t *thread);
@@ -79,6 +80,14 @@ process_t* process_create(const char *name)
         process->sibling = process->parent->child;
         process->parent->child = process;
     }
+
+    // File descriptor magic
+    process->fd_lock = mutex_create();
+    // Managed by "create_filedesc" & "free_filedesc"
+    process->fd_alloc.bitmaps = NULL;
+    process->fd_alloc.bitmap_len = 0;
+    process->fd_map   = NULL;
+    process->fd_map_len = 0;
 
     return process;
 }
