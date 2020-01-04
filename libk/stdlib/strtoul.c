@@ -14,10 +14,12 @@ static unsigned long int map2int(char convt)
 
 unsigned long int strtoul (const char* str, char** endptr, int base)
 {
+    if (base < 0)
+        return 0;
+
     unsigned long int value;
 
-    char* endpoint_str = str;
-    const char* valid_chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+    const char* endpoint_str = str;
 
     // Skip whitespace
     while(isblank(*endpoint_str++));
@@ -54,7 +56,7 @@ unsigned long int strtoul (const char* str, char** endptr, int base)
         unsigned int digit = map2int(tolower(*endpoint_str));
 
         // If outside of range, break
-        if(digit > base)
+        if(digit > (unsigned int)base)
             break;
 
         value += digit;
@@ -65,7 +67,7 @@ unsigned long int strtoul (const char* str, char** endptr, int base)
 NoParse:
     // Set endptr
     if(endptr != NULL)
-        *endptr = endpoint_str;
+        *endptr = (char*) endpoint_str;
 
     return value;
 }

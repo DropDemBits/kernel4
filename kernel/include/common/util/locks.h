@@ -4,6 +4,9 @@
 #include <common/types.h>
 #include <common/sched/sched.h>
 
+// Forward declares
+struct thread_queue;
+
 typedef struct
 {
     uint32_t value;

@@ -84,7 +84,6 @@ static void reshow_log()
             tty_reshow_fb(tty, get_fb_address(), 0, 0);
         }
 
-        next:
         entry = (struct klog_entry*)((char*)entry + (entry->length + sizeof(struct klog_entry)));
     }
 }

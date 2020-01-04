@@ -10,7 +10,6 @@ void recv_thread(void* params)
 {
     thread_t* sibling_thread;
     struct ipc_message* recving_msg = NULL;
-    char test_buffer[64];
 
     sched_sleep_ms(1000);
 
@@ -20,9 +19,7 @@ void recv_thread(void* params)
 
     do
     {
-        int status = 0;
-        
-        status = msg_recv(MSG_TYPE_DATA, &recving_msg, MSG_XACT_SYNC, 0);
+        msg_recv(MSG_TYPE_DATA, &recving_msg, MSG_XACT_SYNC, 0);
         sched_sleep_ms(100);
     }
     while(!recving_msg);
@@ -35,8 +32,7 @@ void recv_thread(void* params)
 void ipc_test()
 {
     thread_t* sibling_thread;
-    struct ipc_message* sending_msg;
-    struct ipc_message* recving_msg;
+    struct ipc_message* sending_msg = NULL;
     char* test_buffer;
     int status;
 

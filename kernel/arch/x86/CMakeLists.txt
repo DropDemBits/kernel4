@@ -3,9 +3,11 @@
 add_definitions(-D__X86__=1)
 
 list(APPEND SOURCES
+    arch/x86/io/io.c
     arch/x86/io/pci_io.c
     arch/x86/io/ps2.c
     arch/x86/io/uart.c
+    arch/x86/cpufuncs.c
     arch/x86/hal.c
     arch/x86/pic.c
     arch/x86/apic.c

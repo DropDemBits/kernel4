@@ -2,9 +2,6 @@
 
 const char* strchr(const char* str, int chr)
 {
-    if(str == NULL)
-        return NULL;
-
     size_t len = strlen(str);
     const char* index = str;
 

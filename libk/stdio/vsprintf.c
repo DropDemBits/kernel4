@@ -6,8 +6,6 @@
 #include <stdint.h>
 #include <ctype.h>
 
-#include <archtypes.h>
-
 static void print(char *dest, const char* data, size_t data_length, size_t* offset)
 {
     for(size_t i = 0; i < data_length; i++)
@@ -343,7 +341,7 @@ int vsprintf(char *dest, const char *format, va_list params)
         else if(*format == 'p')
         {
             //Pointer (uppercase)
-            unsigned long long number = GET_POINTER(params);
+            unsigned long long number = va_arg(params, uintptr_t);
 
             size_t buf_len = strlen(ulltoa(number, buffer, 16));
 

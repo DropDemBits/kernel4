@@ -15,7 +15,7 @@ char* strncat (char* dest, const char* src, size_t num)
 
     // Directly append onto the end (Subtract src_len immediately to account for null byte)
     char* dest_chars = dest + dest_len;
-    char* src_chars = src;
+    const char* src_chars = src;
     while(*src_chars && --src_len)
         *(dest_chars++) = *(src_chars++);
 

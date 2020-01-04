@@ -103,7 +103,7 @@ static int msg_recv_async(uint32_t expected_type, struct ipc_message** dest, uin
 
 int msg_send(thread_t* target, struct ipc_message* msg, uint32_t flags, uint32_t sequence)
 {
-    if(flags & MSG_XACT_ASYNC == MSG_XACT_ASYNC)
+    if((flags & MSG_XACT_ASYNC) == MSG_XACT_ASYNC)
     {
         return msg_send_async(target, msg, flags, sequence);
     }
@@ -163,5 +163,6 @@ int msg_recv(uint32_t expected_type, struct ipc_message** dest, uint32_t flags, 
 
 struct ipc_message* msg_peek(uint32_t expected_type, uint32_t sequence)
 {
-
+    // TODO: Implement peek
+    return NULL;
 }

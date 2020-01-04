@@ -149,12 +149,6 @@ static void controller_init()
     // Check for poor PS/2 controller emulation
     send_controller_command(0x20);
     klog_logln(LVL_DEBUG, "cfg_set  %0x", wait_read_data());
-    /*if(wait_read_data() != cfg_byte)
-    {
-        klog_logln(LVL_INFO, "Unable to change config byte");
-        modify_cfg = false;
-        goto device_init;
-    }*/
 
     // Perform self test
     send_controller_command(0xAA);
@@ -178,7 +172,6 @@ static void controller_init()
     klog_logln(LVL_DEBUG, "cfg_rs st?  %0x", wait_read_data());
 
     // Test ports
-    device_init:
     send_controller_command(0xAB);
     uint8_t retval = wait_read_data();
     if(retval != 0x00)

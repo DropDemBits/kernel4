@@ -46,8 +46,6 @@ int do_open(const char* file_path, int oflags, int mode)
 
 int do_close(int fd)
 {
-    int status = 0;
-
     struct filedesc* filedesc = get_filedesc(fd);
     if (filedesc == NULL)
         return -EBADF; // File descriptor never existed
@@ -56,7 +54,8 @@ int do_close(int fd)
     struct dnode* target_dnode = filedesc->backing_dnode;
 
     // Free the file descriptor
-    if (status = free_filedesc(fd))
+    int status = free_filedesc(fd);
+    if (status)
         return status;
 
     // Close the backing inode

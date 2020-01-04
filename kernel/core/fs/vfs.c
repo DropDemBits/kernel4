@@ -28,7 +28,6 @@
 
 static struct inode *root_node = KNULL;
 static unsigned int num_mounts;
-static struct vfs_mount **vfs_mounts = KNULL;
 
 static struct vfs_mount *root_mount = KNULL;
 
@@ -102,7 +101,7 @@ struct dnode* vfs_walk_path(struct dnode* base_dir, const char* path)
                 else
                 {
                     // Erase the rest
-                    current_node = strrchr(current_node, '/');
+                    current_node = (char*)strrchr(current_node, '/');
                     current_node++;
                 }
 

@@ -6,7 +6,10 @@ char* _strupr(char *s)
     char* start = s;
 
     while(*s)
-        *s = toupper(*(s++));
+    {
+        *s = toupper(*s);
+        ++s;
+    }
 
     return start;
 }

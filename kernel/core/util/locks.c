@@ -1,6 +1,7 @@
 #include <common/mm/liballoc.h>
 #include <common/sched/sched.h>
 #include <common/util/locks.h>
+#include <common/util/klog.h>
 #include <arch/cpufuncs.h>
 
 semaphore_t* semaphore_create(long max_count)
@@ -22,6 +23,10 @@ void semaphore_destroy(semaphore_t* semaphore)
 {
     // Release the semaphores
     taskswitch_disable();
+
+    if (semaphore->count > 0)
+        klog_logln(LVL_WARN, "Semaphore %p was destroyed while still being acquired");
+
     while(semaphore->count > 0)
         semaphore_release(semaphore);
     
@@ -80,19 +85,20 @@ mutex_t* mutex_create()
     return (mutex_t*)semaphore_create(1);
 }
 
+// Since mutex are essentially semaphores, the cast is allowed
 void mutex_destroy(mutex_t* mutex)
 {
-    semaphore_destroy(mutex);
+    semaphore_destroy((semaphore_t*)mutex);
 }
 
 void mutex_acquire(mutex_t* mutex)
 {
-    semaphore_acquire(mutex);
+    semaphore_acquire((semaphore_t*)mutex);
 }
 
 void mutex_release(mutex_t* mutex)
 {
-    semaphore_release(mutex);
+    semaphore_release((semaphore_t*)mutex);
 }
 
 bool mutex_can_acquire(mutex_t* mutex)

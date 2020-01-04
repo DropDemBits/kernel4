@@ -8,6 +8,7 @@
 
 #define THREAD_STACK_SIZE 4096*4
 
+// Forward declares
 struct thread;
 struct thread_queue;
 

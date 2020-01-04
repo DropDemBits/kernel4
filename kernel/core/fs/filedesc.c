@@ -14,7 +14,7 @@
 int bitmap_init(struct bitmap* bitmap, size_t initial_size)
 {
     if (!bitmap)
-        return;
+        return -EINVAL;
 
     // If no inital size, allocate at least 4*64 bit entries
     if (!initial_size)
@@ -41,9 +41,9 @@ int bitmap_init(struct bitmap* bitmap, size_t initial_size)
 int bitmap_grow(struct bitmap* bitmap, size_t grow_by)
 {
     if (!bitmap)
-        return;
+        return -EINVAL;
     if (!grow_by)
-        return;
+        return -EINVAL;
     if (grow_by & 0x3F)
         grow_by = (grow_by + 0x3F) & ~0x3F;
 
@@ -102,10 +102,7 @@ void bitmap_set(struct bitmap* bitmap, size_t index)
     if (word_idx >= bitmap->bitmap_len)
         return;
 
-    uint64_t* preserve = bitmap->bitmaps + word_idx;
     bitmap->bitmaps[word_idx] |= (1ULL << bit_idx);
-
-    //klog_logln(LVL_DEBUG, "Set %d (%d): %016llx -> %016llx", index, word_idx, preserve, bitmap->bitmaps[word_idx]);
 }
 
 void bitmap_clear(struct bitmap* bitmap, size_t index)
@@ -146,8 +143,6 @@ static int add_fd_entry(process_t* process, size_t fd, struct filedesc* filedesc
         if (!process->fd_map)
             return -ENOMEM;
 
-        volatile struct filedesc* touch_and_fail = process->fd_map[0];
-        //*touch_and_fail = *touch_and_fail;
         klog_logln(LVL_DEBUG, "Zero [%p -> %p] (%d -> %d)", oldp, process->fd_map, oldsize * sizeof(*process->fd_map), (process->fd_map_len + GROW_BY) * sizeof(*process->fd_map));
 
         // Zero new memory
@@ -239,8 +234,12 @@ int create_filedesc(struct dnode* backing_dnode)
     filedesc->backing_dnode = backing_dnode;
 
     // Add to the map
-    if(error_code = add_fd_entry(current_process, use_fd, filedesc))
-        goto has_error_and_free;
+    error_code = add_fd_entry(current_process, use_fd, filedesc);
+    if(error_code)
+    {
+        kfree(filedesc);
+        goto has_error;
+    }
 
     // Done, relinquish lock
     mutex_release(current_process->fd_lock);
@@ -248,8 +247,6 @@ int create_filedesc(struct dnode* backing_dnode)
 
     ///////////////////////////////////////////////////////
 
-    has_error_and_free:
-    kfree(filedesc);
     has_error:
     mutex_release(current_process->fd_lock);
     return error_code;
@@ -296,7 +293,6 @@ int free_filedesc(int fd)
         return -EBADF;
 
     process_t* process = sched_active_process();
-    struct bitmap* fd_alloc = &process->fd_alloc;
 
     mutex_acquire(process->fd_lock);
     struct filedesc* filedesc = remove_fd_entry(process, (size_t)fd);

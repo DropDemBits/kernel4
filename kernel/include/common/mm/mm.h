@@ -23,8 +23,9 @@
 #ifndef __MM_H__
 #define __MM_H__ 1
 
-#define PAGE_SIZE 4096
-#define PAGE_MASK 0xFFF
+#define PAGE_SHIFT 12
+#define PAGE_SIZE  4096
+#define PAGE_MASK  0xFFF
 
 #define PAGE_ROUNDUP(x) \
     (((x) + PAGE_MASK) & ~PAGE_MASK) 
