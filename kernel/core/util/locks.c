@@ -9,17 +9,20 @@ semaphore_t* semaphore_create(long max_count)
     semaphore_t* semaphore = kmalloc(sizeof(semaphore_t));
 
     if(semaphore != NULL)
-    {
-        semaphore->count = 0;
-        semaphore->max_count = max_count;
-        semaphore->waiting_threads.queue_head = KNULL;
-        semaphore->waiting_threads.queue_tail = KNULL;
-    }
+        semaphore_construct(semaphore, max_count);
 
     return semaphore;
 }
 
-void semaphore_destroy(semaphore_t* semaphore)
+void semaphore_construct(semaphore_t* semaphore, long max_count)
+{
+    semaphore->count = 0;
+    semaphore->max_count = max_count;
+    semaphore->waiting_threads.queue_head = KNULL;
+    semaphore->waiting_threads.queue_tail = KNULL;
+}
+
+void semaphore_destruct(semaphore_t* semaphore)
 {
     // Release the semaphores
     taskswitch_disable();
@@ -29,7 +32,15 @@ void semaphore_destroy(semaphore_t* semaphore)
 
     while(semaphore->count > 0)
         semaphore_release(semaphore);
-    
+
+    taskswitch_enable();
+}
+
+void semaphore_destroy(semaphore_t* semaphore)
+{
+    // Release the semaphores
+    taskswitch_disable();
+    semaphore_destruct(semaphore);
     kfree(semaphore);
     taskswitch_enable();
 }
@@ -94,6 +105,16 @@ void mutex_destroy(mutex_t* mutex)
 void mutex_acquire(mutex_t* mutex)
 {
     semaphore_acquire((semaphore_t*)mutex);
+}
+
+void mutex_construct(mutex_t* mutex)
+{
+    semaphore_construct((semaphore_t*)mutex, 1L);
+}
+
+void mutex_destruct(mutex_t* mutex)
+{
+    semaphore_destruct((semaphore_t*)mutex);
 }
 
 void mutex_release(mutex_t* mutex)

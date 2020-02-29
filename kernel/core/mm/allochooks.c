@@ -48,6 +48,7 @@ static uintptr_t heap_base = 0;
 static uintptr_t heap_limit = 0;
 static uintptr_t alloc_base = 0;
 static size_t alloc_count = 0; // Number of pages allocated
+static mutex_t alloc_mutex;
 
 // Pointer to the free address manager
 // ???: Rebuild into a tree?
@@ -293,6 +294,9 @@ void heap_init()
 
     // Clear the area
     memset(free_memblock_region, 0, free_memblock_len << PAGE_SHIFT);
+
+    // Init the mutex
+    mutex_construct(&alloc_mutex);
 }
 
 /** This function is supposed to lock the memory data structures. It
@@ -306,8 +310,10 @@ int liballoc_lock()
 {
     // TODO: Do something with spinlocks when doing SMP
     // TODO: !!! REPLACE WITH A MUTEX !!!
-    sched_lock();
-    preempt_disable();
+    
+    //sched_lock();
+    //preempt_disable();
+    mutex_acquire(&alloc_mutex);
     return 0;
 }
 
@@ -320,8 +326,9 @@ int liballoc_lock()
 int liballoc_unlock()
 {
     // TODO: Do something with spinlocks when doing SMP
-    preempt_enable();
-    sched_unlock();
+    //preempt_enable();
+    //sched_unlock();
+    mutex_release(&alloc_mutex);
     return 0;
 }
 

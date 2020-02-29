@@ -53,4 +53,5 @@ void ipc_test()
     status = msg_send(sibling_thread, sending_msg, MSG_XACT_SYNC, 0);
 
     klog_log(LVL_INFO, "T0: Message sent! (%d, %p)", status, test_buffer);
+    sched_terminate();
 }
