@@ -24,29 +24,218 @@
 #include <common/mm/mm.h>
 #include <common/tty/tty.h>
 
-static size_t heap_base = 0;
-static size_t heap_limit = 0;
-static size_t free_base = 0;
-static cpu_flags_t flags = 0;
+#include <string.h>
 
-static size_t alloc_memblocks(size_t length)
+#ifdef ENABLE_HEAP_DEBUG
+#define HEAP_DBG(...) klog_logln(LVL_DEBUG, __VA_ARGS__)
+#else
+#define HEAP_DBG(...)
+#endif
+
+// Maximum number of entries allowed
+#define MAX_ENTRIES 4096
+// Number of entries per physical page
+#define ENTRIES_PER_PAGE (PAGE_SIZE / sizeof(struct free_memblock))
+
+// One free memblock
+struct free_memblock
 {
-    if(free_base + (length << 12) > heap_limit) return 0;
-    size_t retval = free_base;
+    uintptr_t base; // Start of the free address area
+    size_t length;  // Size of the free address area, in pages
+};
+
+static uintptr_t heap_base = 0;
+static uintptr_t heap_limit = 0;
+static uintptr_t alloc_base = 0;
+static size_t alloc_count = 0; // Number of pages allocated
+
+// Pointer to the free address manager
+// ???: Rebuild into a tree?
+static struct free_memblock* free_memblock_region = NULL;
+static size_t num_entries = 0;
+
+/**
+ * @brief  Allocates the next address block
+ * @note   
+ * @param  length: The length of the new address block, in pages
+ * @retval The pointer to the new address block, or 0 if an error occurred
+ */
+static uintptr_t get_next_address(size_t length)
+{
+    uintptr_t alloc_addr;
+
+    // First, check for a space that has the required length
+    int entry_candidate = -1;
+    struct free_memblock* entry = KNULL;
+
+    for (size_t i = 0; i < num_entries; i++)
+    {
+        entry = &free_memblock_region[i];
+        if (entry->length >= length)
+        {
+            // Found an entry
+            entry_candidate = i;
+            break;
+        }
+    }
+
+    if (entry_candidate != -1)
+    {
+        // Yoink address space from the beginning of the range
+        alloc_addr = entry->base;
+
+        if (entry->length > length)
+        {
+            size_t last_len = entry->length;
+            
+            // Shrink the current entry
+            entry->base   += (length << PAGE_SHIFT);
+            entry->length -= length;
+
+            HEAP_DBG("[Shrink (%p -> %p)]", entry->base, entry->base + (entry->length << PAGE_SHIFT));
+
+            if (entry->length == 0 || entry->length > last_len)
+                kpanic("Heap_Free entry %d shrank to size of %d", entry_candidate, (ssize_t)entry->length);
+        }
+        else
+        {
+            // Remove the current entry, take the last entry from the list and
+            // move it to the old location
+            --num_entries;
+            struct free_memblock *last_entry = &free_memblock_region[num_entries];
+
+            memcpy(entry, last_entry, sizeof(*last_entry));
+            memset(last_entry, 0x00, sizeof(*last_entry));
+
+            HEAP_DBG("[Ent Reloc %d -> %d]", num_entries, entry_candidate);
+        }
+    }
+    else
+    {
+        // No candidate entry, grab a page from the watermark allocator
+        if(alloc_base + (length << PAGE_SHIFT) > heap_limit)
+            kpanic("Ran out of heap space!");
+
+        alloc_addr = alloc_base;
+        alloc_base += length << PAGE_SHIFT;
+        HEAP_DBG("[mark -> %p]", alloc_base);
+    }
+
+    alloc_count += length;
+    HEAP_DBG("Grow, now start at %p (%u kiB used, mark %u kiB) [Alloc gave %p]",
+                 alloc_base,
+                (alloc_count << PAGE_SHIFT) >> 10,
+                (alloc_base - heap_base) >> 10,
+                 alloc_addr);
+    return alloc_addr;
+}
+
+/**
+ * @brief  Puts the given memory area into the free memory area
+ * @note   
+ * @param  free_base: The starting address of the free area
+ * @param  length: The length of the free area, in pages
+ * @retval None
+ */
+static void put_next_address(uintptr_t free_base, size_t length)
+{
+    alloc_count -= length;
+    HEAP_DBG("Shrink, using less pages (%u kiB used, mark %u kiB)",
+                (alloc_count << PAGE_SHIFT) >> 10,
+                (alloc_base - heap_base) >> 10);
+
+    // Start looking through all of the entries for a free slot
+    uintptr_t free_limit = free_base + (length << PAGE_SHIFT);
+
+    int empty_candidate = -1;
+
+    for (size_t i = 0; i < num_entries; i++)
+    {
+        struct free_memblock* entry = &free_memblock_region[i];
+        uintptr_t entry_base = entry->base;
+        uintptr_t entry_limit = entry->base + (entry->length << PAGE_SHIFT);
+
+        if (entry->base != 0)
+        {
+            // Check for overlapping entries
+            if (free_base <= entry_limit && free_limit >= entry_base)
+            {
+                // Entries overlap, merge
+
+                if (free_base > entry_base && entry_limit > free_limit)
+                {
+                    // Free entry is completely contained in this entry
+                    // Shouldn't happen, but not fatal
+                    klog_logln(LVL_WARN, "Heap free region is contained in an already larger region (%p -> %p contained in %p -> %p)",
+                        free_base, free_limit, entry_base, entry_limit);
+                    return;
+                }
+
+                // Take the smaller address for the new base
+                if (free_base < entry_base)
+                    entry_base = free_base;
+
+                // Take the bigger address for the new limit
+                if (free_limit > entry_limit)
+                    entry_limit = free_limit;
+
+                entry->base = entry_base;
+                entry->length = (entry_limit - entry_base) >> PAGE_SHIFT;
+
+                HEAP_DBG("Merging blocks (%p -> %p)",
+                        entry_base, entry_base + (entry->length << PAGE_SHIFT));
+
+                // Done!
+                return;
+            }
+        }
+        else if (empty_candidate == -1)
+        {
+            // Add entry to the first empty candidate
+            empty_candidate = (int)i;
+        }
+    }
+
+    // No mergable regions found, allocate a new one
+    if (empty_candidate == -1)
+    {
+        // TODO: If at the maximum number of entries, try and merge big regions
+
+        if (num_entries == MAX_ENTRIES)
+            kpanic("Unable to allocate heap free block (Heavily fragmented heap?)");
+        
+        struct free_memblock* entry = &free_memblock_region[num_entries];
+        entry->base = free_base;
+        entry->length = length;
+        num_entries++;
+
+        // Done!
+        return;
+    }
+}
+
+static uintptr_t alloc_memblocks(size_t length)
+{
+    uintptr_t alloc_start = get_next_address(length);
+    if (!alloc_start)
+        return 0;
+
+    HEAP_DBG("Allocating heap memory to address %p (%d pages)", alloc_start, length);
+
     bool errored = false;
 
-    for(; length > 0; length--)
+    for(size_t pfo = 0; pfo < length; pfo++)
     {
+        void* page = (void*)(alloc_start + (pfo << PAGE_SHIFT));
         size_t phy_address = mm_alloc(1);
-        int status = mmu_map((void*)free_base, phy_address, MMU_FLAGS_DEFAULT);
+        int status = mmu_map(page, phy_address, MMU_FLAGS_DEFAULT);
 
         if(status != 0)
         {
             errored = true;
-            klog_logln(LVL_ERROR, "Error mapping %p: %d", free_base, status);
+            klog_logln(LVL_ERROR, "Error mapping %p: %d", page, status);
             break;
         }
-        free_base += 0x1000;
     }
 
     if(errored)
@@ -55,25 +244,55 @@ static size_t alloc_memblocks(size_t length)
         kpanic("Could not allocate heap memory (Out of memory?)");
     }
 
-    return retval;
+    return alloc_start;
 }
 
-static void free_memblocks(size_t length)
+static void free_memblocks(void* base, size_t length)
 {
-    // TODO: Proper deallocation of blocks
-    /*for(; length > 0 && free_base - (length << 12) > heap_base; length--)
+    uintptr_t free_page = (uintptr_t)base;
+    HEAP_DBG("Freeing heap memory from address %p (%d pages)", base, length);
+
+    // Free each page
+    for(size_t pfo = 0; pfo < length; pfo++)
     {
-        free_base -= 0x1000;
-        mm_free(mmu_get_mapping((void*)free_base), 1);
-        mmu_unmap((void*)free_base, true);
-    }*/
+        void* page = (void*)(free_page + (pfo << PAGE_SHIFT));
+        unsigned long phy_addr = mmu_get_mapping(page);
+        mmu_unmap(page, true);
+        mm_free(phy_addr, 1);
+    }
+
+    // Put back each address
+    put_next_address((uintptr_t)base, length);
+    HEAP_DBG("Addr Given: %p %u pages", base, length);
 }
 
 void heap_init()
 {
-    heap_base = (uint64_t) get_heap_info()->base;
-    heap_limit = (uint64_t) (get_heap_info()->length + heap_base);
-    free_base = heap_base;
+    HEAP_DBG("Initializing kernel heap");
+    heap_base = (uintptr_t) get_heap_info()->base;
+    heap_limit = (uintptr_t) (get_heap_info()->length + heap_base);
+    alloc_base = heap_base;
+
+    // Len in page frames
+    size_t free_memblock_len = MAX_ENTRIES / ENTRIES_PER_PAGE;
+    free_memblock_region = (struct free_memblock*)(heap_limit - (free_memblock_len << PAGE_SHIFT));
+
+    // Initialize the free address manager by allocating the free entry list
+    for (size_t pfo = 0; pfo < free_memblock_len; pfo++)
+    {
+        void* page = (void*)((uintptr_t)free_memblock_region + (pfo << PAGE_SHIFT));
+        size_t phy_addr = mm_alloc(1);
+
+        if (phy_addr == (uintptr_t)KNULL)
+            kpanic("Unable to initialize heap free address manager (Out of memory?)");
+
+        int errcode = mmu_map(page, phy_addr, MMU_FLAGS_DEFAULT);
+        if (errcode < 0)
+            kpanic("Unable to map page %p to %p (%d)", page, phy_addr, errcode);
+    }
+
+    // Clear the area
+    memset(free_memblock_region, 0, free_memblock_len << PAGE_SHIFT);
 }
 
 /** This function is supposed to lock the memory data structures. It
@@ -86,8 +305,9 @@ void heap_init()
 int liballoc_lock()
 {
     // TODO: Do something with spinlocks when doing SMP
-    //preempt_disable();
-    flags = hal_disable_interrupts();
+    // TODO: !!! REPLACE WITH A MUTEX !!!
+    sched_lock();
+    preempt_disable();
     return 0;
 }
 
@@ -100,8 +320,8 @@ int liballoc_lock()
 int liballoc_unlock()
 {
     // TODO: Do something with spinlocks when doing SMP
-    //preempt_enable();
-    hal_enable_interrupts(flags);
+    preempt_enable();
+    sched_unlock();
     return 0;
 }
 
@@ -127,6 +347,6 @@ void* liballoc_alloc(size_t num_pages)
  */
 int liballoc_free(void* base, size_t num_pages)
 {
-    free_memblocks(num_pages);
+    free_memblocks(base, num_pages);
     return 0;
 }

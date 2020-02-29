@@ -248,6 +248,7 @@ void kmain()
     }
 }
 
+// TODO: Move into kshell
 void walk_dir(struct dnode* dir, int level)
 {
     struct dirent dirent;
@@ -275,6 +276,100 @@ void walk_dir(struct dnode* dir, int level)
             if(node != NULL)
                 walk_dir(node, level + 1);
         }
+    }
+}
+
+// TODO: Move into a separate testing file
+// PRNG for test allocator
+static uint32_t lfsr_state = 0xDA431789;
+
+static uint32_t do_lfsr()
+{
+    uint32_t bit = ((lfsr_state >> 31) ^
+                    (lfsr_state >> 21) ^
+                    (lfsr_state >>  1) ^
+                    (lfsr_state >>  0)) & 1;
+    
+    lfsr_state <<= 1;
+    lfsr_state |= bit;
+    return lfsr_state;
+}
+
+void test_heap_allocator()
+{
+    // Test the heap memory allocator
+    static const size_t merge_cycles = 1000;
+    static const size_t bank_size = 256;
+    static const size_t alloc_size = 8 * 1024; // 8KiB areas
+
+    static const uint32_t size_mask = 0xFFFF;
+    static const size_t fragment_cycles = 1000;
+    void* address_bank[bank_size];
+
+    klog_logln(LVL_INFO, "Starting Heap Merging Test");
+
+    // Allocate the initial addresses
+    for (size_t i = 0; i < bank_size; i++)
+    {
+        address_bank[i] = kmalloc(alloc_size);
+    }
+
+    // Perform alloc/dealloc cycle
+    for (size_t cycle = 0; cycle < merge_cycles; cycle++)
+    {
+        size_t i = do_lfsr() % bank_size;
+
+        if (address_bank[i] != KNULL)
+        {
+            kfree(address_bank[i]);
+            klog_logln(LVL_INFO, "Boop'd %p (free)", address_bank[i]);
+            address_bank[i] = KNULL;
+        }
+        else
+        {
+            address_bank[i] = kmalloc(alloc_size);
+            klog_logln(LVL_INFO, "Boop'd %p (aloc)", address_bank[i]);
+        }
+    }
+
+    // Free each non-null entry
+    for (size_t i = 0; i < bank_size; i++)
+    {
+        if (address_bank[i] != KNULL)
+            kfree(address_bank[i]);
+    }
+
+    klog_logln(LVL_INFO, "Starting Heap Fragementing Test");
+
+    // Allocate the initial addresses
+    for (size_t i = 0; i < bank_size; i++)
+    {
+        address_bank[i] = kmalloc(do_lfsr() & size_mask);
+    }
+
+    // Perform alloc/dealloc cycle
+    for (size_t cycle = 0; cycle < fragment_cycles; cycle++)
+    {
+        size_t i = do_lfsr() % bank_size;
+
+        if (address_bank[i] != KNULL)
+        {
+            kfree(address_bank[i]);
+            klog_logln(LVL_INFO, "Boop'd %p (free)", address_bank[i]);
+            address_bank[i] = KNULL;
+        }
+        else
+        {
+            address_bank[i] = kmalloc(do_lfsr() & size_mask);
+            klog_logln(LVL_INFO, "Boop'd %p (aloc)", address_bank[i]);
+        }
+    }
+
+    // Free each non-null entry
+    for (size_t i = 0; i < bank_size; i++)
+    {
+        if (address_bank[i] != KNULL)
+            kfree(address_bank[i]);
     }
 }
 
@@ -388,6 +483,8 @@ void core_fini()
     }
 #endif
 
+    test_heap_allocator();
+
     klog_logln(LVL_INFO, "Finished Kernel Initialisation");
 
     taskswitch_disable();
@@ -395,8 +492,11 @@ void core_fini()
     thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell", NULL);
     thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread", NULL);
 
-    process_t *p2 = process_create("ipc_tester");
-    thread_create(p2, (void*)ipc_test, PRIORITY_NORMAL, "ipc_exec", NULL);
+    // ???: When allocating large ranges of heap memory, doing ipc freezes the
+    // thread of 'tui_process' (mutex issue?)
+
+    //process_t *p2 = process_create("ipc_tester");
+    //thread_create(p2, (void*)ipc_test, PRIORITY_NORMAL, "ipc_exec", NULL);
     taskswitch_enable();
 
     // Now we are done, exit thread.
