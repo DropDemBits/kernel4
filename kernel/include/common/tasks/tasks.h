@@ -3,6 +3,7 @@
 
 #include <common/types.h>
 #include <common/mm/mm.h>
+#include <common/util/bitmap.h>
 
 #include <arch/cpufuncs.h>
 
@@ -11,12 +12,6 @@
 // Forward declares
 struct thread;
 struct thread_queue;
-
-struct bitmap
-{
-    uint64_t* bitmaps;
-    size_t bitmap_len;
-};
 
 struct thread_queue
 {

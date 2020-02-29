@@ -497,9 +497,9 @@ static bool shell_parse()
         const char* path = "/usr/bin/test.bin";
         int errcode = 0;
         int last_descriptor = 0;
-        int alloc_desc_count = 1024;
-        int free_desc_count = 512;
-        int free_start = 512;
+        int alloc_desc_count = 65536;
+        int free_desc_count = alloc_desc_count / 2;
+        int free_start = free_desc_count;
 
         printf("Allocating %d descriptors\n", alloc_desc_count);
 
@@ -530,10 +530,12 @@ static bool shell_parse()
         // Check for allocation
         int new_fd = do_open(path, VFSO_RDONLY, 0);
         printf("Starting new allocation at %d\n", new_fd);
+        errcode = do_close(new_fd);
+        printf("Closed new allocation %d\n", new_fd, errcode);
 
         // Attempt to free already free'd descriptor
-        int refree_fd = do_close(1000);
-        printf("Free attempt %d (code %d)\n", 1000, refree_fd);
+        int refree_fd = do_close(free_start + 20);
+        printf("Free attempt %d (code %d)\n", free_start + 20, refree_fd);
 
         refree_fd = do_close(-1);
         printf("Free attempt %d (code %d)\n", -1, refree_fd);
@@ -556,6 +558,22 @@ static bool shell_parse()
 
         printf("fd %d should have an error (error %d)\n", 80, -EBADF);
 
+        return true;
+    }
+    else if(is_command("fdlist", command))
+    {
+        size_t stray_count = 0;
+
+        for (int fd = 0; fd < 65536; fd++)
+        {
+            struct filedesc* desc = get_filedesc(fd);
+            if (!desc)
+                continue;
+
+            printf("%d alloc (%s)\n", fd, desc->backing_dnode->name);
+            stray_count++;
+        }
+        printf("Found %d stray descriptors\n", stray_count);
         return true;
     }
 
@@ -587,6 +605,9 @@ static bool shell_parse()
         klog_logln(LVL_DEBUG, "%p -=- %p", file, fildes->backing_dnode);
         return false;
     }
+
+    // Thing is a file, do the thing!
+    do_close(fd);
 
     process_t* proc = process_create("program");
     thread_create(proc, (void*)program_launch, PRIORITY_NORMAL, "thread", command);

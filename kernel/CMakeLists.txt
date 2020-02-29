@@ -17,6 +17,7 @@ list(APPEND SOURCES
     core/tty/fb_generic.c
     core/tty/font.c
     core/khooks.c
+    core/util/bitmap.c
     core/util/klog.c
     core/util/locks.c
     core/util/panic.c
