@@ -20,9 +20,6 @@ static int add_fd_entry(process_t* process, size_t fd, struct filedesc* filedesc
     if (process->fd_map_len <= fd)
     {
         // Allocate a new fd map, adding 256 entries
-        void* oldp = process->fd_map;
-        size_t oldsize = process->fd_map_len;
-
         process->fd_map = krealloc(process->fd_map, sizeof(*process->fd_map) * (GROW_BY + process->fd_map_len));
         if (!process->fd_map)
             return -ENOMEM;

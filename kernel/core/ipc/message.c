@@ -1,9 +1,11 @@
+#include <string.h>
 #include <common/mm/liballoc.h>
 #include <common/tasks/tasks.h>
 #include <common/sched/sched.h>
 #include <common/ipc/message.h>
 
 #include <common/util/klog.h>
+
 
 static void msg_enqueue(struct ipc_message_queue* queue, struct ipc_message* msg)
 {
@@ -171,8 +173,27 @@ int msg_recv(uint32_t expected_type, struct ipc_message** dest, uint32_t flags, 
 
 struct ipc_message* msg_peek(uint32_t expected_type, uint32_t sequence)
 {
-    // TODO: Implement peek
-    return NULL;
+    struct ipc_message* peeked = NULL;
+    thread_t* this_thread = sched_active_thread();
+    struct ipc_message_queue* recv_msgs = this_thread->pending_msgs;
+
+    taskswitch_disable();
+
+    peeked = peek_queue(recv_msgs);
+
+    if (peeked != NULL)
+    {
+        // Check if the message matches the peek request
+        if (peeked->sequence != sequence || peeked->type != expected_type)
+        {
+            // Message of the specified type not found
+            // ???: Do we want to give NULL on the wrong message kind?
+            peeked = NULL;
+        }
+    }
+
+    taskswitch_enable();
+    return peeked;
 }
 
 void msg_queue_init(struct ipc_message_queue* queue)

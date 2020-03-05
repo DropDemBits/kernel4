@@ -337,26 +337,26 @@ ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
     if(lock == NULL)
         return AE_NO_MEMORY;
 
-    *OutHandle = lock;
+    *OutHandle = (ACPI_SPINLOCK)lock;
     
     return AE_OK;
 }
 
 void AcpiOsDeleteLock(ACPI_SPINLOCK Handle)
 {
-    spinlock_destroy(Handle);
+    spinlock_destroy((spinlock_t*)Handle);
 }
 
 ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle)
 {
     cpu_flags_t flags = hal_disable_interrupts();
-    spinlock_acquire(Handle);
+    spinlock_acquire((spinlock_t*)Handle);
     return flags;
 }
 
 void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags)
 {
-    spinlock_release(Handle);
+    spinlock_release((spinlock_t*)Handle);
     hal_enable_interrupts(Flags);
 }
 

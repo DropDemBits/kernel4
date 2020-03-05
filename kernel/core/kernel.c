@@ -83,7 +83,6 @@ void info_display()
     bool show_times = false;
     bool clean_back = false;
     int thread_count = 0;
-    int sleep_count = 0;
 
     tty_init(tty, 80, 5, buffer, buffer_size, NULL);
     tty_set_colours(tty, 0xF, 0x0);
