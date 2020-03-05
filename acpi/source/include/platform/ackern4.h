@@ -154,13 +154,19 @@
 
 // Since it's only kernel mode from here on out, we don't have to encapsulate inside kernel-only defines
 #include <common/types.h>
-#include <common/util/locks.h>
 #include <arch/cpufuncs.h>
 
+// Anonymous forward declares as the specific types aren't needed
+// Done so that changes upstream (e.g. in tasks.h) don't cause a
+// rebuild of the acpi library
+struct spinlock;
+struct semaphore;
+struct mutex;
+
 // Lock definitions
-#define ACPI_SPINLOCK   spinlock_t*
-#define ACPI_SEMAPHORE  semaphore_t*
-#define ACPI_MUTEX      mutex_t*
+#define ACPI_SPINLOCK   struct spinlock*
+#define ACPI_SEMAPHORE  struct semaphore*
+#define ACPI_MUTEX      struct mutex*
 
 #define ACPI_CPU_FLAGS  cpu_flags_t
 #define ACPI_UINTPTR_T  uintptr_t
