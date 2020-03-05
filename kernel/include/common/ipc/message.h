@@ -74,4 +74,12 @@ int msg_recv(uint32_t expected_type, struct ipc_message** msg, uint32_t flags, u
  */
 struct ipc_message* msg_peek(uint32_t expected_type, uint32_t sequence);
 
+/**
+ * @brief  Initializes the given message queue
+ * @note   
+ * @param  queue: The queue to initialize
+ * @retval None
+ */
+void msg_queue_init(struct ipc_message_queue* queue);
+
 #endif /* __IPC_MSG_H__ */

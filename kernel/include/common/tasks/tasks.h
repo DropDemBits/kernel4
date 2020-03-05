@@ -92,7 +92,7 @@ typedef struct thread
     struct thread *sibling;
 
     // Message Passing
-    void* pending_msgs; // Avoids circular dependency between message.h and tasks.h
+    struct ipc_message_queue* pending_msgs;
     struct thread_queue pending_senders;
 
 } thread_t;

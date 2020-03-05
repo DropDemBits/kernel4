@@ -95,9 +95,14 @@ static void sched_timer(struct timer_dev* dev)
     {
         // There is a time quanta (as we can't achieve a 1 ns timer resolution)
         if(current_timeslice <= dev->resolution)
-            sched_switch_thread();
+        {
+            if(preempt_enabled)
+                sched_switch_thread();
+        }
         else
+        {
             current_timeslice -= dev->resolution;
+        }
     }
 }
 

@@ -109,7 +109,10 @@ thread_t* thread_create(process_t *parent, void *entry_point, enum thread_priori
     thread->tid = tid_counter++;
     thread->priority = priority;
     thread->name = name;
-    thread->pending_msgs = kmalloc(sizeof(struct ipc_message_queue));
+
+    // Setup ipc things
+    thread->pending_msgs = kmalloc(sizeof(*thread->pending_msgs));
+    msg_queue_init(thread->pending_msgs);
 
     // Init pending senders
     thread->pending_senders.queue_head = KNULL;

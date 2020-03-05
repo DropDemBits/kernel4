@@ -83,6 +83,7 @@ void info_display()
     bool show_times = false;
     bool clean_back = false;
     int thread_count = 0;
+    int sleep_count = 0;
 
     tty_init(tty, 80, 5, buffer, buffer_size, NULL);
     tty_set_colours(tty, 0xF, 0x0);
@@ -110,7 +111,7 @@ void info_display()
         tty_puts(tty, buf);
 
         // Swap counter
-        sprintf(buf, "Thread swaps/s: %lld\n", last_swap_count);
+        sprintf(buf, "Thread swaps/s: (%lld)\n", last_swap_count);
         tty_puts(tty, buf);
 
         // Active thread
@@ -118,7 +119,8 @@ void info_display()
         tty_puts(tty, buf);
 
         // Thread queue proper
-        thread_t* node = run_queue.queue_head;
+        thread_t* node;
+        node = run_queue.queue_head;
         while(node != KNULL)
         {
             if(current_thread_count > 8)
@@ -139,6 +141,7 @@ void info_display()
             thread_count = current_thread_count;
             clean_back = true;
         }
+
 
         if(swap_timer < timer_read_counter(0))
         {
@@ -165,7 +168,7 @@ void info_display()
         tty_clear(tty, true);
         reshow_time = timer_read_counter(0) - reshow_time;
         draw_time = print_time + reshow_time;
-        sched_sleep_ms(10);
+        sched_sleep_ms(50);
         show_times = true;
     }
 }
@@ -337,6 +340,7 @@ void test_heap_allocator()
     {
         if (address_bank[i] != KNULL)
             kfree(address_bank[i]);
+        address_bank[i] = KNULL;
     }
 
     klog_logln(LVL_INFO, "Starting Heap Fragementing Test");
@@ -370,6 +374,7 @@ void test_heap_allocator()
     {
         if (address_bank[i] != KNULL)
             kfree(address_bank[i]);
+        address_bank[i] = KNULL;
     }
 }
 
@@ -492,11 +497,8 @@ void core_fini()
     thread_create(p1, (void*)kshell_main, PRIORITY_NORMAL, "kshell", NULL);
     thread_create(p1, (void*)info_display, PRIORITY_NORMAL, "info_thread", NULL);
 
-    // ???: When allocating large ranges of heap memory, doing ipc freezes the
-    // thread of 'tui_process' (mutex issue?)
-
-    //process_t *p2 = process_create("ipc_tester");
-    //thread_create(p2, (void*)ipc_test, PRIORITY_NORMAL, "ipc_exec", NULL);
+    process_t *p2 = process_create("ipc_tester");
+    thread_create(p2, (void*)ipc_test, PRIORITY_NORMAL, "ipc_exec", NULL);
     taskswitch_enable();
 
     // Now we are done, exit thread.

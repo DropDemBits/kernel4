@@ -3,6 +3,8 @@
 #include <common/sched/sched.h>
 #include <common/ipc/message.h>
 
+#include <common/util/klog.h>
+
 static void msg_enqueue(struct ipc_message_queue* queue, struct ipc_message* msg)
 {
     // Queue is full, don't do it
@@ -76,14 +78,20 @@ static int msg_recv_async(uint32_t expected_type, struct ipc_message** dest, uin
     struct ipc_message* msg;
     thread_t* this_thread = sched_active_thread();
     thread_t* pending_thread;
+    struct ipc_message_queue* recv_msgs = this_thread->pending_msgs;
 
     taskswitch_disable();
+
     // If there aren't any messages, wait
     // FIXME: If it's async, it should be async!
-    if(((struct ipc_message_queue*)this_thread->pending_msgs)->count == 0)
+    while(recv_msgs->count == 0)
+    {
+        taskswitch_enable();
         sched_block_thread(STATE_BLOCKED);
+        taskswitch_disable();
+    }
     
-    msg = msg_dequeue(this_thread->pending_msgs);
+    msg = msg_dequeue(recv_msgs);
 
     // Wake up all pending senders
     pending_thread = this_thread->pending_senders.queue_head;
@@ -165,4 +173,10 @@ struct ipc_message* msg_peek(uint32_t expected_type, uint32_t sequence)
 {
     // TODO: Implement peek
     return NULL;
+}
+
+void msg_queue_init(struct ipc_message_queue* queue)
+{
+    // Zero out the queue
+    memset(queue, 0, sizeof(*queue));
 }
